@@ -75,7 +75,7 @@ export const getColumns = ({
           </span>
         </div>
       ),
-      size: 24,
+      size: 36,
       enableSorting: false,
       enableHiding: false,
     },
@@ -83,14 +83,13 @@ export const getColumns = ({
       accessorKey: "first_name",
       header: ({ column }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="flex items-center font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             First Name
             <ArrowUpDown className="ml-2 h-3 w-3" />
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
@@ -110,14 +109,13 @@ export const getColumns = ({
       accessorKey: "last_name",
       header: ({ column }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="flex items-center font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Last Name
             <ArrowUpDown className="ml-2 h-3 w-3" />
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
@@ -137,13 +135,12 @@ export const getColumns = ({
       accessorKey: "age",
       header: ({ column }) => (
         <div className="flex items-center justify-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Age
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
@@ -164,13 +161,12 @@ export const getColumns = ({
       accessorKey: "notes",
       header: ({ column }) => (
         <div className="flex items-center justify-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Notes
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => <NotesCell row={row} handleFieldChange={handleFieldChange} isDark={isDark} />,
