@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\gksak\\\\ProjectATFJ\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\gksak\\\\ProjectATFJ\\\\src\" -Recurse | Select-Object FullName, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) {\"DIR\"} else {\"FILE\"}}} | Format-Table -AutoSize)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\gksak\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-gksak-ProjectATFJ\\\\f19daeca-1847-4a36-9e75-7a2e9ca9c962\\\\tasks\\\\bldhourai.output\" -Wait -Tail 20)",
+      "Bash(Select-Object -First 20)",
+      "Bash(findstr \":5173\")"
+    ]
+  }
+}

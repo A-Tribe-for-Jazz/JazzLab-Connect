@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    
+    /* Custom Brand Primary (Electric Blue) */
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 210 100% 50%;
+    --radius: 0.5rem;
+
+    /* Legacy variables for old components (temporary) */
+    --primary-color: #4F46E5;
+    --primary-hover: #4338CA;
+    --primary-light: #EEF2FF;
+    --secondary-color: #10B981;
+    --accent-color: #F59E0B;
+    --danger-color: #EF4444;
+    --text-primary: #111827;
+    --surface-color: #FFFFFF;
+    --border-color: #E5E7EB;
+    --font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 210 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Legacy Utilities (Will be removed after migration) */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors;
+}
+.btn-primary {
+  @apply bg-[#4F46E5] text-white hover:bg-[#4338CA];
+}
+.btn-secondary {
+  @apply bg-white text-gray-900 border border-gray-200 hover:bg-gray-50;
+}
+.btn-danger {
+  @apply bg-red-500 text-white hover:bg-red-600;
+}
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+}
+.input-group {
+  @apply flex flex-col gap-1.5 mb-4;
+}
+.input-label {
+  @apply text-sm font-medium text-gray-900;
+}
+.input-field {
+  @apply px-3 py-2 rounded-md border border-gray-200 text-sm w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all;
+}
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/20;
+}
+
+/* ─── Partner Portal: Unified Entry Transition ─── */
+/* Pure opacity fade — no translate, no slide, no bounce. */
+@keyframes partnerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.partner-enter {
+  animation: partnerFadeIn 700ms ease-out both;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.shake {
+  animation: shake 0.2s ease-in-out infinite;
+}
