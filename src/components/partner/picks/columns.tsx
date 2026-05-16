@@ -19,17 +19,19 @@ interface ColumnProps {
 }
 
 const LAB_SHORT_NAMES: Record<string, string> = {
-  "Arts Collaboratorium": "ARTS",
-  "Jazz Fab Lab": "JAZZ",
-  "Virtual Reality MusicMaking": "VR",
-  "Conga Drumming": "CONGA",
-  "Afro-Futuristic Studio": "AFRO",
-  "Remix the Code": "CODE",
-  "Pixel Beats Lab": "PIXEL",
-  "The Decibel Lab with DriveOhio": "DB",
-  "The Vocal Resonance Lab with The Singing Buckeyes": "VOCAL",
-  "Guitar \u0026 Audio Engineering": "GUIT",
-  "Guitar Lab (8+) or Audio Engineering (11+)": "GUIT",
+  "Arts Collaboratorium": "Arts Collab",
+  "Jazz Fab Lab": "Jazz Fab",
+  "Virtual Reality MusicMaking": "VR Music",
+  "Conga Drumming": "Conga Drum",
+  "Afro-Futuristic Studio": "Afro-Future",
+  "Remix the Code": "Remix Code",
+  "Pixel Beats Lab": "Pixel Beats",
+  "The Decibel Lab with DriveOhio": "Decibel Lab",
+  "The Vocal Resonance Lab with The Singing Buckeyes": "Vocal Resonance",
+  "The Vocal Resonance Lab": "Vocal Resonance",
+  "Vocal Resonance Lab": "Vocal Resonance",
+  "Guitar \u0026 Audio Engineering": "Guitar / Audio Eng",
+  "Guitar Lab (8+) or Audio Engineering (11+)": "Guitar / Audio Eng",
 };
 
 export const getColumns = ({
@@ -56,14 +58,14 @@ export const getColumns = ({
           </span>
         </div>
       ),
-      size: 24,
+      size: 36,
       enableSorting: false,
     },
     {
       accessorKey: "name",
       header: () => (
-        <div className="flex items-center min-w-[150px]">
-          <span className="font-black uppercase tracking-widest text-[10px] text-slate-500">Student Name</span>
+        <div className="flex items-center px-4">
+          <span className="font-semibold text-[13px] text-slate-500">Student Name</span>
         </div>
       ),
       cell: ({ row }) => (
@@ -76,6 +78,7 @@ export const getColumns = ({
           </div>
         </div>
       ),
+      size: 250,
     },
   ];
 
@@ -83,15 +86,10 @@ export const getColumns = ({
   const labColumns: ColumnDef<LabPickRow>[] = labs.map((lab) => ({
     id: `lab-${lab.id}`,
     header: () => (
-      <div className="flex items-center justify-center w-full group/header">
-        <div className={cn(
-          "px-2 py-1 rounded-md transition-all duration-300",
-          isDark ? "group-hover/header:bg-white/5" : "group-hover/header:bg-slate-100"
-        )}>
-          <span className="font-black uppercase tracking-widest text-[11px] text-slate-500 group-hover/header:text-sky-500">
-            {LAB_SHORT_NAMES[lab.name] || lab.name.substring(0, 4)}
-          </span>
-        </div>
+      <div className="flex items-center justify-center w-full">
+        <span className="font-bold text-[10px] text-slate-500 whitespace-nowrap">
+          {LAB_SHORT_NAMES[lab.name] || lab.name}
+        </span>
       </div>
     ),
     cell: ({ row }) => {
@@ -123,12 +121,16 @@ export const getColumns = ({
         </button>
       );
     },
-    size: 80,
+    size: 85,
   }));
 
   const statusColumn: ColumnDef<LabPickRow> = {
     id: "status",
-    header: () => <div className="text-center font-black uppercase tracking-widest text-[10px] text-slate-500 px-4">Status</div>,
+    header: () => (
+      <div className="flex items-center justify-center">
+        <span className="font-semibold text-[13px] text-slate-500">Status</span>
+      </div>
+    ),
     cell: ({ row }) => {
       const { first_name, last_name, preferences, sync_status } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
@@ -166,7 +168,7 @@ export const getColumns = ({
     id: "actions",
     header: () => (
       <div className="flex items-center justify-center">
-        <span className="font-black uppercase tracking-widest text-[10px] text-slate-500">Action</span>
+        <span className="font-semibold text-[13px] text-slate-500">Action</span>
       </div>
     ),
     cell: ({ row }) => {
