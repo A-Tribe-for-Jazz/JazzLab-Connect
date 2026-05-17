@@ -39,11 +39,13 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
 
       if (labsRes.data) setLabs(labsRes.data);
       if (studentsRes.data) {
-        const existingStudents = studentsRes.data.map(s => ({
-          ...s,
-          preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
-          sync_status: 'synced'
-        })) as any[];
+        const existingStudents = studentsRes.data
+          .filter(s => s.first_name?.trim() || s.last_name?.trim())
+          .map(s => ({
+            ...s,
+            preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
+            sync_status: 'synced'
+          })) as any[];
 
         // Excel-style: 100 rows
         const targetCount = Math.max(existingStudents.length + 20, 100);

@@ -56,7 +56,9 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
       ]);
 
       if (studentsRes.data) {
-        const existingStudents = studentsRes.data.map((s, idx) => ({ 
+        const existingStudents = studentsRes.data
+          .filter(s => s.first_name?.trim() || s.last_name?.trim())
+          .map((s, idx) => ({ 
           ...s, 
           sync_status: 'synced', 
           order_index: s.order_index ?? idx,
