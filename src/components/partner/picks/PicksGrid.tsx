@@ -32,7 +32,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
         supabase.from('labs').select('id, name').order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name, preferences(lab_id, rank)')
+          .select('id, first_name, last_name, age, preferences(lab_id, rank)')
           .eq('organization_id', organizationId)
           .order('first_name')
       ]);
@@ -40,7 +40,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
       if (labsRes.data) setLabs(labsRes.data);
       if (studentsRes.data) {
         const existingStudents = studentsRes.data
-          .filter(s => s.first_name?.trim() || s.last_name?.trim())
+          .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
           .map(s => ({
             ...s,
             preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
