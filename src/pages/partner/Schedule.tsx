@@ -338,6 +338,7 @@ export default function PartnerSchedule() {
               Please check back once the placement process is completed.
             </p>
           </div>
+          {/* Hiding Preview Demo Roster button for now
           <div className="pt-4 flex justify-center">
             <Button
               onClick={() => setShowDemo(true)}
@@ -352,6 +353,7 @@ export default function PartnerSchedule() {
               <span>Preview Demo Roster</span>
             </Button>
           </div>
+          */}
         </div>
       </div>
     );
