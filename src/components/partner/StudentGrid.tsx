@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Filter, ChevronDown } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
@@ -498,9 +498,10 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                 <SelectTrigger
                   className={cn(
                     "h-10 md:w-64 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between w-full shadow-sm",
+                    "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
                     isDark
-                      ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0"
-                      : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0"
+                      ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
+                      : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -519,13 +520,6 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                       {filterStatus === 'completed' && 'Completed Profiles'}
                     </span>
                   </div>
-                  <ChevronDown
-                    size={16}
-                    className={cn(
-                      "transition-all duration-300 shrink-0 opacity-40 group-hover/filter:opacity-80 group-hover/filter:translate-y-0.5",
-                      isDark ? "text-slate-400" : "text-slate-500"
-                    )}
-                  />
                 </SelectTrigger>
                 <SelectContent
                   side="bottom"
