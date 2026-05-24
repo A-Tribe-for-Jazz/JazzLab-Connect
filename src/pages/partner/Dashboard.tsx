@@ -190,7 +190,7 @@ export default function PartnerDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-12">
           <OrbitStat label="Total Enrolled" value={stats.count} color="border-blue-500" bgColor={isDark ? "bg-blue-500/5" : "bg-blue-50/50"} to="/partner/students" isDark={isDark} />
-          <OrbitStat label="Profiles Required" value={stats.missingDemo} color="border-amber-500" bgColor={isDark ? "bg-amber-500/5" : "bg-amber-50/50"} isWarning={stats.missingDemo > 0} to="/partner/demographics" isDark={isDark} />
+          <OrbitStat label="Profiles Required" value={stats.missingDemo} color="border-amber-500" bgColor={isDark ? "bg-amber-500/5" : "bg-amber-50/50"} isWarning={stats.missingDemo > 0} to="/partner/students?filter=incomplete_demo" isDark={isDark} />
           <OrbitStat label="Selections Required" value={stats.missingPicks} color="border-indigo-500" bgColor={isDark ? "bg-indigo-500/5" : "bg-indigo-50/50"} isWarning={stats.missingPicks > 0} to="/partner/lab-picks" isDark={isDark} />
           <OrbitStat label="Fully Registered" value={stats.fullyReady} color="border-emerald-500" bgColor={isDark ? "bg-emerald-500/5" : "bg-emerald-50/50"} isSuccess={stats.fullyReady === stats.count && stats.count > 0} to="/partner/students" isDark={isDark} />
         </div>
