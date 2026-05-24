@@ -47,15 +47,19 @@ serve(async (req) => {
       })
     }
 
-    // 3. Verify the caller is a master_admin or a partner
-    const { data: profile, error: profileError } = await supabaseClient
+    // 3. Initialize the Admin client using the Service Role Key
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    // 3.5 Fetch caller's profile using admin client to bypass RLS lookup issues
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role, organization_id')
       .eq('id', user.id)
       .single()
 
     if (profileError || !profile || (profile.role !== 'master_admin' && profile.role !== 'partner')) {
-      return new Response(JSON.stringify({ error: 'Forbidden: Requires master_admin or partner role' }), {
+      console.error('Caller role verification failed. Error:', profileError?.message)
+      return new Response(JSON.stringify({ error: `Forbidden: Requires master_admin or partner role. Details: ${profileError?.message || 'Access denied'}` }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -84,8 +88,7 @@ serve(async (req) => {
       }
     }
 
-    // 5. Initialize the Admin client using the Service Role Key
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    // 5. Already initialized supabaseAdmin previously
 
     // 6. Send the invite
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
