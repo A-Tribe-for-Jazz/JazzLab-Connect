@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
@@ -497,20 +497,20 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
               <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v ?? 'all')}>
                 <SelectTrigger
                   className={cn(
-                    "h-10 md:w-64 rounded-xl border-2 px-10 font-semibold text-[13px] transition-all duration-500 outline-none group/filter",
+                    "h-10 md:w-64 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between w-full shadow-sm",
                     isDark
-                      ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus:border-sky-400/50 focus:bg-sky-400/5 focus:ring-0"
-                      : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus:border-sky-500/30 focus:bg-sky-50/50 focus:ring-0"
+                      ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0"
+                      : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0"
                   )}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <Filter
-                      size={18}
+                      size={16}
                       className={cn(
-                        "transition-colors duration-500",
+                        "transition-colors duration-300 shrink-0",
                         isDark
-                          ? "text-sky-700 group-hover/filter:text-sky-400"
-                          : "text-sky-300 group-hover/filter:text-sky-600"
+                          ? "text-sky-500/70 group-hover/filter:text-sky-400"
+                          : "text-sky-500/70 group-hover/filter:text-sky-600"
                       )}
                     />
                     <span className="truncate">
@@ -519,23 +519,55 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                       {filterStatus === 'completed' && 'Completed Profiles'}
                     </span>
                   </div>
+                  <ChevronDown
+                    size={16}
+                    className={cn(
+                      "transition-all duration-300 shrink-0 opacity-40 group-hover/filter:opacity-80 group-hover/filter:translate-y-0.5",
+                      isDark ? "text-slate-400" : "text-slate-500"
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent
                   side="bottom"
-                  sideOffset={6}
-                  alignItemWithTrigger={false}
+                  sideOffset={8}
                   className={cn(
-                    "rounded-2xl border-none p-2 shadow-2xl md:w-64",
-                    isDark ? "bg-slate-900 text-white" : "bg-white"
+                    "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] md:w-64 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                    isDark
+                      ? "bg-slate-950/90 border-white/10 text-white"
+                      : "bg-white/95 border-slate-100 text-slate-900"
                   )}
                 >
-                  <SelectItem value="all" className="rounded-xl font-semibold text-[13px] py-4 px-6">
+                  <SelectItem 
+                    value="all" 
+                    className={cn(
+                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                      isDark 
+                        ? "focus:bg-white/5 focus:text-white" 
+                        : "focus:bg-slate-50 focus:text-slate-900"
+                    )}
+                  >
                     All Students
                   </SelectItem>
-                  <SelectItem value="incomplete_demo" className="rounded-xl font-semibold text-[13px] py-4 px-6 text-amber-500">
+                  <SelectItem 
+                    value="incomplete_demo" 
+                    className={cn(
+                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-amber-500 focus:text-amber-500",
+                      isDark 
+                        ? "focus:bg-amber-500/10" 
+                        : "focus:bg-amber-50"
+                    )}
+                  >
                     Incomplete Profiles
                   </SelectItem>
-                  <SelectItem value="completed" className="rounded-xl font-semibold text-[13px] py-4 px-6 text-emerald-500">
+                  <SelectItem 
+                    value="completed" 
+                    className={cn(
+                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-emerald-500 focus:text-emerald-500",
+                      isDark 
+                        ? "focus:bg-emerald-500/10" 
+                        : "focus:bg-emerald-50"
+                    )}
+                  >
                     Completed Profiles
                   </SelectItem>
                 </SelectContent>
