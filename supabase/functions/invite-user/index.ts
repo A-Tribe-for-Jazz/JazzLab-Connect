@@ -47,28 +47,41 @@ serve(async (req) => {
       })
     }
 
-    // 3. Verify the caller is a master_admin
+    // 3. Verify the caller is a master_admin or a partner
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('role')
+      .select('role, organization_id')
       .eq('id', user.id)
       .single()
 
-    if (profileError || !profile || profile.role !== 'master_admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden: Requires master_admin role' }), {
+    if (profileError || !profile || (profile.role !== 'master_admin' && profile.role !== 'partner')) {
+      return new Response(JSON.stringify({ error: 'Forbidden: Requires master_admin or partner role' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
     // 4. Get the request payload
-    const { email, role, organizationId } = await req.json()
+    let { email, role, organizationId, fullName } = await req.json()
 
     if (!email || !role) {
       return new Response(JSON.stringify({ error: 'Email and role are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // 4.5 Enforce partner role limits (can only invite other partners to their own organization)
+    if (profile.role === 'partner') {
+      role = 'partner'
+      organizationId = profile.organization_id
+      
+      if (!organizationId) {
+        return new Response(JSON.stringify({ error: 'Caller does not have an associated organization' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
 
     // 5. Initialize the Admin client using the Service Role Key
@@ -79,7 +92,7 @@ serve(async (req) => {
       data: {
         role: role,
         organization_id: organizationId || null,
-        full_name: '', // Required by our trigger fallback
+        full_name: fullName || '', 
       },
     })
 

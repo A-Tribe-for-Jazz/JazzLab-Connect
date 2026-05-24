@@ -196,7 +196,7 @@ export default function PartnerDashboard() {
         </div>
 
         {profile?.organization_id && (
-          <ShareAccessModal open={showShareModal} onOpenChange={setShowShareModal} organizationId={profile.organization_id} />
+          <ShareAccessModal open={showShareModal} onOpenChange={setShowShareModal} organizationId={profile.organization_id} isDark={isDark} />
         )}
 
       </div>

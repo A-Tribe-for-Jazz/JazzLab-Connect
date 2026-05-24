@@ -11,15 +11,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Loader2, UserPlus, CheckCircle2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ShareAccessModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: string;
+  isDark?: boolean;
 }
 
-export default function ShareAccessModal({ open, onOpenChange, organizationId: _organizationId }: ShareAccessModalProps) {
+export default function ShareAccessModal({ open, onOpenChange, organizationId, isDark = false }: ShareAccessModalProps) {
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,34 +34,42 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId: _
     setError(null);
 
     try {
-      // In a real app, this would be an Edge Function call to avoid exposing admin keys
-      // For this implementation, we assume the user has permission to invite
-      // or we're using a simulated invite flow that creates a profile.
-      
-      // 1. Check if user already exists
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .single();
+      // 1. Get the session JWT token to authorize the Edge Function call
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
 
-      if (existingUser) {
-        throw new Error('A user with this email already has access.');
+      if (!token) {
+        throw new Error('Authentication session not found. Please log in again.');
       }
 
-      // 2. Mocking the invite process for now as Supabase Auth Admin requires service role
-      // In production: await supabase.auth.admin.inviteUserByEmail(email, { data: { organization_id: organizationId } })
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // 2. Call the deployed invite-user Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          role: 'partner',
+          organizationId: organizationId,
+          fullName: fullName.trim()
+        })
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || 'Failed to send secure invitation.');
+      }
+
       setSuccess(true);
       setTimeout(() => {
         onOpenChange(false);
         setSuccess(false);
         setEmail('');
         setFullName('');
-      }, 2000);
+      }, 3000);
 
     } catch (err: any) {
       setError(err.message || 'Failed to send invite.');
@@ -70,63 +80,104 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId: _
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] rounded-3xl border-none shadow-2xl">
+      <DialogContent className={cn(
+        "sm:max-w-[425px] rounded-3xl border-none shadow-[0_25px_60px_rgba(0,0,0,0.25)] transition-all duration-500",
+        isDark 
+          ? "bg-slate-950/90 backdrop-blur-xl text-white ring-1 ring-white/10" 
+          : "bg-white ring-1 ring-slate-100"
+      )}>
         <DialogHeader>
-          <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+          <div className={cn(
+            "size-12 rounded-2xl flex items-center justify-center mb-4 transition-colors duration-500",
+            isDark ? "bg-sky-500/10 text-sky-400" : "bg-sky-50 text-blue-600"
+          )}>
             <UserPlus size={24} />
           </div>
-          <DialogTitle className="text-2xl font-black tracking-tight text-slate-900">Share Access</DialogTitle>
-          <DialogDescription className="text-slate-500 font-medium leading-relaxed">
+          <DialogTitle className={cn("text-2xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+            Share Access
+          </DialogTitle>
+          <DialogDescription className={cn("font-medium leading-relaxed", isDark ? "text-slate-400" : "text-slate-500")}>
             Invite a colleague from your school to help manage student registrations. They will receive a temporary password via email.
           </DialogDescription>
         </DialogHeader>
 
         {success ? (
           <div className="py-10 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95 duration-300">
-            <div className="size-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-lg shadow-emerald-200">
+            <div className={cn(
+              "size-16 rounded-full flex items-center justify-center shadow-lg transition-all",
+              isDark 
+                ? "bg-emerald-500/10 text-emerald-400 shadow-emerald-500/10" 
+                : "bg-emerald-50 text-emerald-500 shadow-emerald-200"
+            )}>
               <CheckCircle2 size={32} />
             </div>
-            <p className="text-lg font-bold text-slate-900">Invite Sent!</p>
-            <p className="text-sm text-slate-500 text-center">Your colleague will be able to log in and set their password immediately.</p>
+            <p className={cn("text-lg font-bold", isDark ? "text-white" : "text-slate-900")}>Invite Sent!</p>
+            <p className={cn("text-sm text-center font-medium max-w-[280px]", isDark ? "text-slate-400" : "text-slate-500")}>
+              Your colleague will be able to log in and set their password immediately.
+            </p>
           </div>
         ) : (
           <form onSubmit={handleInvite} className="space-y-6 py-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Colleague's Full Name</Label>
+                <Label htmlFor="fullName" className={cn("text-[10px] font-black uppercase tracking-widest pl-1", isDark ? "text-slate-500" : "text-slate-400")}>
+                  Colleague's Full Name
+                </Label>
                 <Input 
                   id="fullName"
                   placeholder="Jane Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="rounded-xl border-slate-200 focus:ring-primary focus:border-primary h-11 font-medium"
+                  className={cn(
+                    "rounded-xl h-11 font-medium transition-all duration-300 border-2 outline-none",
+                    isDark 
+                      ? "bg-white/[0.02] border-white/5 text-white placeholder:text-slate-700 hover:border-sky-500/30 focus-visible:border-sky-500/50 focus-visible:bg-white/[0.04] focus-visible:ring-0" 
+                      : "bg-slate-50 border-slate-200/60 text-slate-900 placeholder:text-slate-300 hover:border-sky-500/30 focus-visible:border-sky-500/50 focus-visible:bg-white focus-visible:ring-0"
+                  )}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                <Label htmlFor="email" className={cn("text-[10px] font-black uppercase tracking-widest pl-1", isDark ? "text-slate-500" : "text-slate-400")}>
+                  Email Address
+                </Label>
                 <Input 
                   id="email"
                   type="email"
                   placeholder="jane@school.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl border-slate-200 focus:ring-primary focus:border-primary h-11 font-medium"
+                  className={cn(
+                    "rounded-xl h-11 font-medium transition-all duration-300 border-2 outline-none",
+                    isDark 
+                      ? "bg-white/[0.02] border-white/5 text-white placeholder:text-slate-700 hover:border-sky-500/30 focus-visible:border-sky-500/50 focus-visible:bg-white/[0.04] focus-visible:ring-0" 
+                      : "bg-slate-50 border-slate-200/60 text-slate-900 placeholder:text-slate-300 hover:border-sky-500/30 focus-visible:border-sky-500/50 focus-visible:bg-white focus-visible:ring-0"
+                  )}
                   required
                 />
               </div>
             </div>
 
             {error && (
-              <p className="text-xs font-bold text-rose-500 bg-rose-50 p-3 rounded-lg flex items-center gap-2 animate-in fade-in">
-                <AlertCircle size={14} /> {error}
+              <p className={cn(
+                "text-xs font-bold p-3 rounded-xl flex items-center gap-2 animate-in fade-in transition-colors duration-500",
+                isDark 
+                  ? "text-rose-400 bg-rose-500/10 border border-rose-500/20" 
+                  : "text-rose-500 bg-rose-50 border border-rose-100"
+              )}>
+                <AlertCircle size={14} className="shrink-0" /> {error}
               </p>
             )}
 
             <DialogFooter className="pt-4">
               <Button 
                 type="submit" 
-                className="w-full rounded-xl h-11 font-bold shadow-lg shadow-primary/20"
+                className={cn(
+                  "w-full rounded-xl h-11 font-bold shadow-lg transition-all duration-300",
+                  isDark 
+                    ? "bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/10 hover:shadow-sky-500/20" 
+                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/10 hover:shadow-blue-600/20"
+                )}
                 disabled={loading}
               >
                 {loading ? (
@@ -144,25 +195,4 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId: _
       </DialogContent>
     </Dialog>
   );
-}
-
-function AlertCircle(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" x2="12" y1="8" y2="12" />
-      <line x1="12" x2="12.01" y1="16" y2="16" />
-    </svg>
-  )
 }
