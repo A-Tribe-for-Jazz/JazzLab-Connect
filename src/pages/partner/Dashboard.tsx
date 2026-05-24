@@ -26,6 +26,46 @@ export default function PartnerDashboard() {
   useEffect(() => {
     if (profile?.organization_id) {
       fetchData();
+
+      const channelStudents = supabase
+        .channel(`dashboard-students-org-${profile.organization_id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'students',
+          },
+          (payload) => {
+            const newRecord = payload.new as any;
+            const oldRecord = payload.old as any;
+            const recordOrgId = newRecord?.organization_id || oldRecord?.organization_id;
+            if (recordOrgId === profile.organization_id) {
+              fetchData();
+            }
+          }
+        )
+        .subscribe();
+
+      const channelPrefs = supabase
+        .channel(`dashboard-prefs-org-${profile.organization_id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'preferences',
+          },
+          () => {
+            fetchData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channelStudents);
+        supabase.removeChannel(channelPrefs);
+      };
     } else if (profile) {
       setLoading(false);
     }

@@ -41,9 +41,53 @@ export type StudentRow = {
   zip_code: string;
   camp_day_id: string | null;
   notes?: string;
+  organization_id?: string;
   sync_status: 'synced' | 'saving' | 'error';
   order_index: number;
 };
+
+function CollaborativeInput({
+  value,
+  placeholder,
+  onChange,
+  onFocus,
+  onBlur,
+  className,
+  studentId,
+  fieldName,
+  activeCursors,
+  type
+}: {
+  value: any;
+  placeholder: string;
+  onChange: (e: any) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  className: string;
+  studentId: string;
+  fieldName: string;
+  activeCursors: { [key: string]: string };
+  type?: string;
+}) {
+  const isOtherEditing = !!activeCursors[`${studentId}_${fieldName}`];
+
+  return (
+    <div className="relative w-full h-10 flex items-center">
+      <Input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        className={cn(
+          className,
+          isOtherEditing && "ring-2 ring-inset ring-purple-500/80 bg-purple-500/[0.03] transition-all duration-200"
+        )}
+      />
+    </div>
+  );
+}
 
 interface ColumnProps {
   handleFieldChange: (id: string, field: keyof StudentRow, value: any) => void;
@@ -51,12 +95,18 @@ interface ColumnProps {
   deleteStudent: (id: string) => void;
   campDays: { id: string, date: string }[];
   isDark: boolean;
+  activeCursors?: { [cellKey: string]: string };
+  handleCellFocus?: (studentId: string, field: string) => void;
+  handleCellBlur?: () => void;
 }
 
 export const getColumns = ({
   handleFieldChange,
   deleteStudent,
-  isDark
+  isDark,
+  activeCursors = {},
+  handleCellFocus,
+  handleCellBlur
 }: ColumnProps): ColumnDef<StudentRow>[] => [
     {
       id: "serial",
@@ -93,14 +143,19 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           value={row.original.first_name}
           placeholder="First Name"
           onChange={(e) => handleFieldChange(row.original.id, 'first_name', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
             "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="first_name"
+          activeCursors={activeCursors}
         />
       ),
       meta: { isEditable: true },
@@ -119,14 +174,19 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           value={row.original.last_name}
           placeholder="Last Name"
           onChange={(e) => handleFieldChange(row.original.id, 'last_name', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
             "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="last_name"
+          activeCursors={activeCursors}
         />
       ),
       meta: { isEditable: true },
@@ -144,15 +204,20 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           type="number"
           value={row.original.age}
           placeholder="Age"
           onChange={(e) => handleFieldChange(row.original.id, 'age', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
             "h-10 px-3 font-black text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="age"
+          activeCursors={activeCursors}
         />
       ),
       meta: { isEditable: true },
@@ -263,27 +328,29 @@ function NotesCell({ row, handleFieldChange, isDark }: any) {
   return (
     <div className="h-full w-full min-h-[40px]">
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <button
-            className={cn(
-              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note hover:bg-slate-50/50 dark:hover:bg-white/[0.02]",
-              open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
-            )}
-            onClick={() => setDraft(notes || '')}
-          >
-            <FileText
-              size={18}
-              fill="none"
+        <DialogTrigger
+          render={
+            <button
               className={cn(
-                "transition-all duration-300 group-hover/note:scale-110",
-                hasNotes || open
-                  ? "text-yellow-400 opacity-100"
-                  : (isDark
-                    ? "text-slate-700 group-hover/note:text-yellow-400"
-                    : "text-slate-300 group-hover/note:text-yellow-400")
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note hover:bg-slate-50/50 dark:hover:bg-white/[0.02]",
+                open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
               )}
+              onClick={() => setDraft(notes || '')}
             />
-          </button>
+          }
+        >
+          <FileText
+            size={18}
+            fill="none"
+            className={cn(
+              "transition-all duration-300 group-hover/note:scale-110",
+              hasNotes || open
+                ? "text-yellow-400 opacity-100"
+                : (isDark
+                  ? "text-slate-700 group-hover/note:text-yellow-400"
+                  : "text-slate-300 group-hover/note:text-yellow-400")
+            )}
+          />
         </DialogTrigger>
         <DialogContent className={cn(
           "w-[480px] rounded-[24px] border-none shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-0 overflow-hidden translate-x-[-50%] translate-y-[-50%] transition-all duration-500",

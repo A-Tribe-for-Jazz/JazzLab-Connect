@@ -24,6 +24,141 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
 
   useEffect(() => {
     fetchData();
+
+    const handlePreferencesRealtimeChange = async (studentId: string) => {
+      const { data, error } = await supabase
+        .from('preferences')
+        .select('lab_id, rank')
+        .eq('student_id', studentId)
+        .order('rank');
+
+      if (error) {
+        console.error('Error fetching updated preferences:', error);
+        return;
+      }
+
+      setStudents(prev => prev.map(s => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            preferences: data || [],
+            sync_status: 'synced'
+          };
+        }
+        return s;
+      }));
+    };
+
+    const handleStudentRealtimeChange = async (studentId: string) => {
+      const { data: student, error } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, age, organization_id, preferences(lab_id, rank)')
+        .eq('id', studentId)
+        .single();
+
+      if (error) {
+        // Handle deletion or not found
+        setStudents(prev => {
+          const filtered = prev.filter(s => s.id !== studentId);
+          if (filtered.length < prev.length) {
+            filtered.push({
+              id: crypto.randomUUID(),
+              first_name: '',
+              last_name: '',
+              preferences: [],
+              sync_status: 'synced'
+            } as any);
+          }
+          return filtered;
+        });
+        return;
+      }
+
+      if (student.organization_id !== organizationId) return;
+
+      const isValid = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== null && student.age !== undefined && student.age !== '');
+
+      setStudents(prev => {
+        const idx = prev.findIndex(s => s.id === studentId);
+
+        if (!isValid) {
+          if (idx === -1) return prev;
+          const filtered = prev.filter(s => s.id !== studentId);
+          filtered.push({
+            id: crypto.randomUUID(),
+            first_name: '',
+            last_name: '',
+            preferences: [],
+            sync_status: 'synced'
+          } as any);
+          return filtered;
+        }
+
+        const parsedStudent = {
+          ...student,
+          preferences: (student.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
+          sync_status: 'synced' as const
+        };
+
+        const newStudents = [...prev];
+        if (idx !== -1) {
+          newStudents[idx] = parsedStudent;
+        } else {
+          const emptyRowIdx = prev.findIndex(s => !s.first_name?.trim() && !s.last_name?.trim());
+          if (emptyRowIdx !== -1) {
+            newStudents[emptyRowIdx] = parsedStudent;
+          } else {
+            newStudents.push(parsedStudent);
+          }
+        }
+        return newStudents;
+      });
+    };
+
+    const channelStudents = supabase
+      .channel(`picks-students-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'students',
+        },
+        (payload) => {
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          const studentId = newRecord?.id || oldRecord?.id;
+          if (studentId) {
+            handleStudentRealtimeChange(studentId);
+          }
+        }
+      )
+      .subscribe();
+
+    const channelPrefs = supabase
+      .channel(`picks-prefs-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'preferences',
+        },
+        (payload) => {
+          const newRec = payload.new as any;
+          const oldRec = payload.old as any;
+          const studentId = newRec?.student_id || oldRec?.student_id;
+          if (studentId) {
+            handlePreferencesRealtimeChange(studentId);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channelStudents);
+      supabase.removeChannel(channelPrefs);
+    };
   }, [organizationId]);
 
   const fetchData = async () => {
