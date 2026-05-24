@@ -84,7 +84,18 @@ export default function PartnerDashboard() {
 
       const { data: stData, error: stError } = await supabase
         .from('students')
-        .select(`id, race, ethnicity, preferences (lab_id)`)
+        .select(`
+          id,
+          first_name,
+          last_name,
+          age,
+          race,
+          ethnicity,
+          gender,
+          household_income_tier,
+          zip_code,
+          preferences (lab_id)
+        `)
         .eq('organization_id', orgId);
 
       if (stError) throw stError;
@@ -92,17 +103,37 @@ export default function PartnerDashboard() {
       const { data: labData } = await supabase.from('labs').select('id, name');
       setLabs(labData || []);
 
-      const count = stData?.length || 0;
-      const missingDemo = stData?.filter(s => !s.race || !s.ethnicity).length || 0;
-      const missingPicks = stData?.filter(s => (s.preferences?.length || 0) < 5).length || 0;
-      const fullyReady = count - missingDemo - missingPicks;
+      // Filter out empty phantom rows that might exist in the database
+      const realStudents = (stData || []).filter(
+        s => s.first_name?.trim() || s.last_name?.trim()
+      );
+
+      const count = realStudents.length;
+
+      // Profiles Required (Missing Demographics: race, ethnicity, gender, zip_code, household_income_tier)
+      const missingDemo = realStudents.filter(
+        s => !s.race || !s.ethnicity || !s.gender || !s.household_income_tier || !s.zip_code
+      ).length;
+
+      // Selections Required (Missing 5 Lab Picks)
+      const missingPicks = realStudents.filter(
+        s => (s.preferences?.length || 0) < 5
+      ).length;
+
+      // Fully Ready (Both Core Profile, Demographics, and 5 selections are complete)
+      const fullyReady = realStudents.filter(s => {
+        const hasCore = s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '';
+        const hasDemo = s.race && s.ethnicity && s.gender && s.household_income_tier && s.zip_code;
+        const hasPicks = (s.preferences?.length || 0) === 5;
+        return hasCore && hasDemo && hasPicks;
+      }).length;
 
       setStats({
         target: 50,
         count,
         missingDemo,
         missingPicks,
-        fullyReady: Math.max(0, fullyReady)
+        fullyReady
       });
 
       if (!orgData) setOrganization({ name: 'Creative Youth Alliance' });
@@ -159,9 +190,9 @@ export default function PartnerDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-12">
           <OrbitStat label="Total Enrolled" value={stats.count} color="border-blue-500" bgColor={isDark ? "bg-blue-500/5" : "bg-blue-50/50"} to="/partner/students" isDark={isDark} />
-          <OrbitStat label="Profiles Required" value={stats.missingDemo} color="border-amber-500" bgColor={isDark ? "bg-amber-500/5" : "bg-amber-50/50"} isWarning={stats.missingDemo > 0} to="/partner/students?filter=incomplete_demo" isDark={isDark} />
-          <OrbitStat label="Selections Required" value={stats.missingPicks} color="border-indigo-500" bgColor={isDark ? "bg-indigo-500/5" : "bg-indigo-50/50"} isWarning={stats.missingPicks > 0} to="/partner/students?filter=incomplete_labs" isDark={isDark} />
-          <OrbitStat label="Fully Registered" value={stats.fullyReady} color="border-emerald-500" bgColor={isDark ? "bg-emerald-500/5" : "bg-emerald-50/50"} isSuccess={stats.fullyReady === stats.count && stats.count > 0} to="/partner/students?filter=completed" isDark={isDark} />
+          <OrbitStat label="Profiles Required" value={stats.missingDemo} color="border-amber-500" bgColor={isDark ? "bg-amber-500/5" : "bg-amber-50/50"} isWarning={stats.missingDemo > 0} to="/partner/demographics" isDark={isDark} />
+          <OrbitStat label="Selections Required" value={stats.missingPicks} color="border-indigo-500" bgColor={isDark ? "bg-indigo-500/5" : "bg-indigo-50/50"} isWarning={stats.missingPicks > 0} to="/partner/lab-picks" isDark={isDark} />
+          <OrbitStat label="Fully Registered" value={stats.fullyReady} color="border-emerald-500" bgColor={isDark ? "bg-emerald-500/5" : "bg-emerald-50/50"} isSuccess={stats.fullyReady === stats.count && stats.count > 0} to="/partner/students" isDark={isDark} />
         </div>
 
         {profile?.organization_id && (

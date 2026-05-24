@@ -38,7 +38,10 @@ export default function PartnerDemographics() {
         .eq('organization_id', profile!.organization_id);
         
       if (error) throw error;
-      setStudents(data || []);
+      const realStudents = (data || []).filter(
+        s => s.first_name?.trim() || s.last_name?.trim()
+      );
+      setStudents(realStudents);
     } catch (error) {
       console.error(error);
     } finally {
