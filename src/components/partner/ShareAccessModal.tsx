@@ -173,10 +173,10 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId, i
               <Button 
                 type="submit" 
                 className={cn(
-                  "w-full rounded-xl h-11 font-bold shadow-lg transition-all duration-300",
+                  "w-full rounded-xl h-11 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border",
                   isDark 
-                    ? "bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/10 hover:shadow-sky-500/20" 
-                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/10 hover:shadow-blue-600/20"
+                    ? "bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/50" 
+                    : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
                 )}
                 disabled={loading}
               >
