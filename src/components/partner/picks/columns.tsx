@@ -19,17 +19,16 @@ interface ColumnProps {
 }
 
 const LAB_SHORT_NAMES: Record<string, string> = {
-  "Arts Collaboratorium": "ARTS",
-  "Jazz Fab Lab": "JAZZ",
-  "Virtual Reality MusicMaking": "VR",
-  "Conga Drumming": "CONGA",
-  "Afro-Futuristic Studio": "AFRO",
-  "Remix the Code": "CODE",
-  "Pixel Beats Lab": "PIXEL",
-  "The Decibel Lab with DriveOhio": "DB",
-  "The Vocal Resonance Lab with The Singing Buckeyes": "VOCAL",
-  "Guitar \u0026 Audio Engineering": "GUIT",
-  "Guitar Lab (8+) or Audio Engineering (11+)": "GUIT",
+  "Arts Collaboratorium": "Arts Collab",
+  "Jazz Fab Lab": "Jazz Fab",
+  "Virtual Reality MusicMaking": "VR Music",
+  "Conga Drumming": "Conga",
+  "Afro-Futuristic Studio": "Afro-Future",
+  "Remix the Code": "Remix Code",
+  "Pixel Beats Lab": "Pixel Beats",
+  "Eco Jazz Sound Lab": "Eco Jazz",
+  "The Vocal Resonance Lab with The Singing Buckeyes": "Vocal Resonance",
+  "Young Producers Lab": "Young Producers",
 };
 
 export const getColumns = ({
@@ -56,26 +55,27 @@ export const getColumns = ({
           </span>
         </div>
       ),
-      size: 24,
+      size: 36,
       enableSorting: false,
     },
     {
       accessorKey: "name",
       header: () => (
-        <div className="flex items-center min-w-[150px]">
-          <span className="font-black uppercase tracking-widest text-[10px] text-slate-500">Student Name</span>
+        <div className="flex items-center px-4">
+          <span className="font-semibold text-[13px] text-slate-500">Student Name</span>
         </div>
       ),
       cell: ({ row }) => (
         <div className="px-2 flex items-center h-10">
           <div className={cn(
-            "font-bold text-[13px] whitespace-nowrap",
+            "font-semibold text-[13px] whitespace-nowrap",
             isDark ? "text-white" : "text-slate-900"
           )}>
             {row.original.first_name} {row.original.last_name}
           </div>
         </div>
       ),
+      size: 250,
     },
   ];
 
@@ -83,15 +83,10 @@ export const getColumns = ({
   const labColumns: ColumnDef<LabPickRow>[] = labs.map((lab) => ({
     id: `lab-${lab.id}`,
     header: () => (
-      <div className="flex items-center justify-center w-full group/header">
-        <div className={cn(
-          "px-2 py-1 rounded-md transition-all duration-300",
-          isDark ? "group-hover/header:bg-white/5" : "group-hover/header:bg-slate-100"
-        )}>
-          <span className="font-black uppercase tracking-widest text-[11px] text-slate-500 group-hover/header:text-sky-500">
-            {LAB_SHORT_NAMES[lab.name] || lab.name.substring(0, 4)}
-          </span>
-        </div>
+      <div className="flex items-center justify-center w-full">
+        <span className="font-bold text-[10px] text-slate-500 whitespace-nowrap">
+          {LAB_SHORT_NAMES[lab.name] || lab.name}
+        </span>
       </div>
     ),
     cell: ({ row }) => {
@@ -123,18 +118,22 @@ export const getColumns = ({
         </button>
       );
     },
-    size: 80,
+    size: 85,
   }));
 
   const statusColumn: ColumnDef<LabPickRow> = {
     id: "status",
-    header: () => <div className="text-center font-black uppercase tracking-widest text-[10px] text-slate-500 px-4">Status</div>,
+    header: () => (
+      <div className="flex items-center justify-center">
+        <span className="font-semibold text-[13px] text-slate-500">Status</span>
+      </div>
+    ),
     cell: ({ row }) => {
       const { first_name, last_name, preferences, sync_status } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
       const count = preferences?.length || 0;
-      const isComplete = count === 5;
+      const isComplete = count === 7;
       const hasSelections = count > 0;
 
       return (
@@ -166,7 +165,7 @@ export const getColumns = ({
     id: "actions",
     header: () => (
       <div className="flex items-center justify-center">
-        <span className="font-black uppercase tracking-widest text-[10px] text-slate-500">Action</span>
+        <span className="font-semibold text-[13px] text-slate-500">Action</span>
       </div>
     ),
     cell: ({ row }) => {
@@ -182,8 +181,8 @@ export const getColumns = ({
             onClick={() => handleClearPreferences(row.original.id)}
             title="Clear Selections"
             className={cn(
-              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear hover:bg-rose-50/50 dark:hover:bg-rose-900/10",
-              isDark ? "text-rose-400" : "text-rose-500"
+              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear",
+              isDark ? "text-rose-400 hover:bg-rose-900/10" : "text-rose-500 hover:bg-rose-50/50"
             )}
           >
             <Eraser

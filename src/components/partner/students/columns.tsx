@@ -1,49 +1,94 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal, Check, Loader2, AlertCircle, Trash2, User, Calendar, Hash, Eye, Copy, ShieldAlert, Activity, Zap, ShieldCheck, Settings2, FileText } from "lucide-react";
+import { ArrowUpDown, Check, Loader2, AlertCircle, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback, startTransition } from "react";
 
 export type StudentRow = {
   id: string;
   first_name: string;
   last_name: string;
   age: number | '';
-  gender: string;
-  race: string;
-  ethnicity: string;
-  zip_code: string;
   camp_day_id: string | null;
   notes?: string;
+  organization_id?: string;
   sync_status: 'synced' | 'saving' | 'error';
   order_index: number;
 };
+
+function CollaborativeInput({
+  value,
+  placeholder,
+  onChange,
+  onFocus,
+  onBlur,
+  className,
+  studentId,
+  fieldName,
+  activeCursorsRef,
+  type
+}: {
+  value: any;
+  placeholder: string;
+  onChange: (e: any) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  className: string;
+  studentId: string;
+  fieldName: string;
+  activeCursorsRef: { current: { [key: string]: string } };
+  type?: string;
+}) {
+  // Local state for instant input response — parent update is deferred
+  const [localValue, setLocalValue] = useState(value);
+  const isLocalEdit = useRef(false);
+
+  // Sync from parent when value changes externally (colleague edit, realtime)
+  useEffect(() => {
+    if (!isLocalEdit.current) {
+      setLocalValue(value);
+    }
+    isLocalEdit.current = false;
+  }, [value]);
+
+  const handleChange = useCallback((e: any) => {
+    const newVal = e.target.value;
+    isLocalEdit.current = true;
+    setLocalValue(newVal);             // instant — only this input re-renders
+    startTransition(() => {            // deferred — table re-render is non-urgent
+      onChange(e);
+    });
+  }, [onChange]);
+
+  const isOtherEditing = !!activeCursorsRef.current[`${studentId}_${fieldName}`];
+
+  return (
+    <div className={cn(
+      "relative w-full h-10 flex items-center transition-all duration-200",
+      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+    )}>
+      <Input
+        type={type}
+        value={localValue}
+        placeholder={placeholder}
+        onChange={handleChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        className={cn(
+          className,
+          "bg-transparent dark:bg-transparent"
+        )}
+      />
+    </div>
+  );
+}
 
 interface ColumnProps {
   handleFieldChange: (id: string, field: keyof StudentRow, value: any) => void;
@@ -51,12 +96,20 @@ interface ColumnProps {
   deleteStudent: (id: string) => void;
   campDays: { id: string, date: string }[];
   isDark: boolean;
+  activeCursorsRef?: { current: { [cellKey: string]: string } };
+  handleCellFocus?: (studentId: string, field: string) => void;
+  handleCellBlur?: () => void;
 }
+
+const defaultCursorsRef = { current: {} as { [cellKey: string]: string } };
 
 export const getColumns = ({
   handleFieldChange,
   deleteStudent,
-  isDark
+  isDark,
+  activeCursorsRef = defaultCursorsRef,
+  handleCellFocus,
+  handleCellBlur
 }: ColumnProps): ColumnDef<StudentRow>[] => [
     {
       id: "serial",
@@ -75,7 +128,7 @@ export const getColumns = ({
           </span>
         </div>
       ),
-      size: 24,
+      size: 36,
       enableSorting: false,
       enableHiding: false,
     },
@@ -83,25 +136,29 @@ export const getColumns = ({
       accessorKey: "first_name",
       header: ({ column }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="flex items-center font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             First Name
             <ArrowUpDown className="ml-2 h-3 w-3" />
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           value={row.original.first_name}
           placeholder="First Name"
           onChange={(e) => handleFieldChange(row.original.id, 'first_name', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="first_name"
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -110,25 +167,29 @@ export const getColumns = ({
       accessorKey: "last_name",
       header: ({ column }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="flex items-center font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Last Name
             <ArrowUpDown className="ml-2 h-3 w-3" />
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           value={row.original.last_name}
           placeholder="Last Name"
           onChange={(e) => handleFieldChange(row.original.id, 'last_name', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="last_name"
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -137,25 +198,29 @@ export const getColumns = ({
       accessorKey: "age",
       header: ({ column }) => (
         <div className="flex items-center justify-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Age
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => (
-        <Input
+        <CollaborativeInput
           type="number"
           value={row.original.age}
           placeholder="Age"
           onChange={(e) => handleFieldChange(row.original.id, 'age', e.target.value)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-black text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
+          studentId={row.original.id}
+          fieldName="age"
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -164,13 +229,12 @@ export const getColumns = ({
       accessorKey: "notes",
       header: ({ column }) => (
         <div className="flex items-center justify-center">
-          <Button
-            variant="ghost"
+          <div
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="p-0 hover:bg-transparent font-semibold text-[13px] text-slate-500"
+            className="font-semibold text-[13px] text-slate-500 cursor-pointer select-none"
           >
             Notes
-          </Button>
+          </div>
         </div>
       ),
       cell: ({ row }) => <NotesCell row={row} handleFieldChange={handleFieldChange} isDark={isDark} />,
@@ -238,8 +302,8 @@ export const getColumns = ({
             <button
               onClick={() => deleteStudent(row.original.id)}
               className={cn(
-                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/delete hover:bg-rose-50/50 dark:hover:bg-rose-900/10",
-                isDark ? "text-rose-400" : "text-rose-500"
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/delete",
+                isDark ? "text-rose-400 hover:bg-rose-900/10" : "text-rose-500 hover:bg-rose-50/50"
               )}
             >
               <Trash2
@@ -267,27 +331,30 @@ function NotesCell({ row, handleFieldChange, isDark }: any) {
   return (
     <div className="h-full w-full min-h-[40px]">
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <button
-            className={cn(
-              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note hover:bg-slate-50/50 dark:hover:bg-white/[0.02]",
-              open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
-            )}
-            onClick={() => setDraft(notes || '')}
-          >
-            <FileText
-              size={18}
-              fill="none"
+        <DialogTrigger
+          render={
+            <button
               className={cn(
-                "transition-all duration-300 group-hover/note:scale-110",
-                hasNotes || open
-                  ? "text-yellow-400 opacity-100"
-                  : (isDark
-                    ? "text-slate-700 group-hover/note:text-yellow-400"
-                    : "text-slate-300 group-hover/note:text-yellow-400")
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note",
+                isDark ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/50",
+                open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
               )}
+              onClick={() => setDraft(notes || '')}
             />
-          </button>
+          }
+        >
+          <FileText
+            size={18}
+            fill="none"
+            className={cn(
+              "transition-all duration-300 group-hover/note:scale-110",
+              hasNotes || open
+                ? "text-yellow-400 opacity-100"
+                : (isDark
+                  ? "text-slate-700 group-hover/note:text-yellow-400"
+                  : "text-slate-300 group-hover/note:text-yellow-400")
+            )}
+          />
         </DialogTrigger>
         <DialogContent className={cn(
           "w-[480px] rounded-[24px] border-none shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-0 overflow-hidden translate-x-[-50%] translate-y-[-50%] transition-all duration-500",

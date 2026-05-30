@@ -17,20 +17,12 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, Settings2, SlidersHorizontal, Plus } from "lucide-react"
+import { Settings2 } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -87,7 +79,7 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Scrollable table area — toolbar above stays fixed, thead sticks to top of scroll */}
-        <Table wrapperClassName="flex-1 overflow-auto min-h-0" className="border-collapse">
+        <Table wrapperClassName={cn("flex-1 overflow-auto min-h-0 border-r", isDark ? "border-white/20" : "border-slate-300")} className="border-collapse">
           <TableHeader className="sticky top-0 z-40">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className={cn(
@@ -96,13 +88,20 @@ export function DataTable<TData, TValue>({
               )}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} style={{ width: header.column.getSize() }} className={cn(
-                      "py-3 font-semibold text-[13px] transition-colors duration-700 border-r last:border-r-0",
-                      header.id === "serial" ? "px-0" : "px-4",
-                      isDark 
-                        ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
-                        : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]",
-                    )}>
+                    <TableHead 
+                      key={header.id} 
+                      style={{ 
+                        width: header.column.getSize(),
+                        minWidth: header.column.getSize(),
+                        maxWidth: header.column.getSize()
+                      }} 
+                      className={cn(
+                        "py-3 font-semibold text-[13px] transition-colors duration-700 border-r last:border-r-0 overflow-hidden",
+                        header.id === "serial" ? "px-0" : "px-4",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]",
+                      )}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -129,14 +128,21 @@ export function DataTable<TData, TValue>({
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} style={{ width: cell.column.getSize() }} className={cn(
-                      "p-0 transition-colors duration-150 border-r last:border-r-0 relative",
-                      (cell.column.columnDef.meta as any)?.isEditable && [
-                        "hover:ring-2 hover:ring-inset hover:ring-sky-400/40 hover:z-20 hover:bg-sky-400/[0.02]",
-                        "focus-within:ring-2 focus-within:ring-inset focus-within:ring-sky-400 focus-within:z-30 focus-within:bg-sky-400/[0.05]"
-                      ],
-                      isDark ? "border-white/20" : "border-slate-300"
-                    )}>
+                    <TableCell 
+                      key={cell.id} 
+                      style={{ 
+                        width: cell.column.getSize(),
+                        minWidth: cell.column.getSize(),
+                        maxWidth: cell.column.getSize()
+                      }} 
+                      className={cn(
+                        "p-0 transition-colors duration-150 border-r last:border-r-0 relative overflow-hidden",
+                        (cell.column.columnDef.meta as any)?.isEditable && [
+                          "hover:ring-2 hover:ring-inset hover:ring-sky-400/40 hover:z-20 hover:bg-sky-400/[0.02]",
+                          "focus-within:ring-2 focus-within:ring-inset focus-within:ring-sky-400 focus-within:z-30 focus-within:bg-sky-400/[0.05]"
+                        ],
+                        isDark ? "border-white/20" : "border-slate-300"
+                      )}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
