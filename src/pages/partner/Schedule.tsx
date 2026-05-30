@@ -335,7 +335,7 @@ export default function PartnerSchedule() {
             </h2>
             <p className={cn("text-sm font-medium leading-relaxed mb-6", isDark ? "text-slate-500" : "text-slate-400")}>
               The master admin has not finalized the lab assignments yet.
-              Please check back once the placement process is completed.
+              You will be automatically notified via email once the placement process is finalized and the schedules are ready.
             </p>
           </div>
           {/* Hiding Preview Demo Roster button for now
@@ -478,7 +478,7 @@ export default function PartnerSchedule() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={cn(
-                  "w-full pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-medium outline-none",
+                  "w-full pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none",
                   isDark
                     ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                     : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
@@ -528,7 +528,7 @@ export default function PartnerSchedule() {
                     </TableCell>
                     <TableCell className="px-8 py-4">
                       <div className="flex flex-col">
-                        <span className={cn("font-bold text-[13px]", isDark ? "text-white" : "text-slate-900")}>
+                        <span className={cn("font-semibold text-[13px]", isDark ? "text-white" : "text-slate-900")}>
                           {row.studentName}
                         </span>
                         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
@@ -542,7 +542,7 @@ export default function PartnerSchedule() {
                         <TableCell key={session.id} className="px-8 py-4">
                           {assignment ? (
                             <div className="flex flex-col gap-1">
-                              <span className={cn("text-[13px] font-bold", isDark ? "text-white" : "text-slate-900")}>
+                              <span className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-slate-900")}>
                                 {assignment.labName}
                               </span>
                               <span className={cn(

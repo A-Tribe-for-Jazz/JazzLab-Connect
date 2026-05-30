@@ -1,38 +1,45 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, Star, User as UserIcon, Sun, Moon, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Microscope, Sun, Moon, Calendar, LogOut } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 export default function PartnerLayout() {
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDark, setIsDark] = React.useState(false);
 
-  const isDataGridRoute = ['/partner/students', '/partner/lab-picks'].includes(location.pathname);
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
+  const isDataGridRoute = ['/partner/students', '/partner/lab-picks', '/partner/schedule'].includes(location.pathname);
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/login');
+    navigate('/signin');
   };
 
   const navItems = [
     { name: 'Overview', path: '/partner/dashboard', icon: LayoutDashboard },
     { name: 'Student Directory', path: '/partner/students', icon: Users },
-    { name: 'Lab Preferences', path: '/partner/lab-picks', icon: Star },
+    { name: 'Lab Preferences', path: '/partner/lab-picks', icon: Microscope },
     { name: 'Final Placements', path: '/partner/schedule', icon: Calendar },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50">
       {/* Final Muse Centered Header */}
-      <PortalHeader 
-        navItems={navItems} 
-        onSignOut={handleSignOut} 
+      <PortalHeader
+        navItems={navItems}
+        onSignOut={handleSignOut}
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
         hideBorder={isDataGridRoute}
+        userName={profile?.full_name?.split(' ')[0]}
+        fullName={profile?.full_name}
       />
 
       {/* Main Content Area */}
@@ -55,7 +62,7 @@ export default function PartnerLayout() {
              "text-[10px] font-black uppercase tracking-[0.3em] transition-colors duration-700",
              isDark ? "text-slate-700" : "text-slate-300"
            )}>
-             &copy; 2026 A Tribe for Jazz. All Rights Reserved.
+             &copy; 2026 A Tribe for Jazz.
            </p>
         </footer>
       )}
@@ -63,7 +70,7 @@ export default function PartnerLayout() {
   );
 }
 
-function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder }: any) {
+function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, userName, fullName }: any) {
   return (
     <header className={cn(
       "sticky top-0 z-50 h-16 flex items-center px-8 transition-all duration-700",
@@ -72,9 +79,10 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder }
     )}>
        <div className="flex items-center justify-between w-full max-w-7xl mx-auto h-full">
           {/* Logo on Left */}
-          <Link to="/partner/dashboard" className="flex items-center gap-3 group w-48 h-full">
-             <Music className={cn("transition-colors duration-700", isDark ? "text-blue-500" : "text-primary")} size={20} />
-             <span className={cn("font-black text-sm tracking-tight transition-colors duration-700", isDark ? "text-white" : "text-slate-900")}>JazzLab</span>
+          <Link to="/partner/dashboard" className="flex items-center w-48 h-full">
+            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
+              <img src="/atfj-logo.png" alt="ATFJ" className="h-full w-full object-cover" />
+            </div>
           </Link>
           
           {/* Navigation Centered */}
@@ -107,21 +115,32 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder }
           </nav>
 
           {/* Controls on Right */}
-          <div className="flex items-center justify-end gap-5 w-48 h-full">
-             <button 
+          <div className="flex items-center justify-end gap-4 w-48 h-full">
+             <button
                onClick={onToggleTheme}
                className={cn(
                  "transition-colors",
                  isDark ? "text-slate-400 hover:text-amber-400" : "text-slate-400 hover:text-slate-900"
                )}
              >
-                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+               {isDark ? <Sun size={16} /> : <Moon size={16} />}
              </button>
-             <button onClick={onSignOut} className={cn(
-               "text-[13px] font-semibold transition-colors",
-               isDark ? "text-slate-400 hover:text-rose-400" : "text-slate-500 hover:text-rose-600"
-             )}>
-                Sign Out
+             {userName && (
+               <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                   <button className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm shrink-0 focus:outline-none">
+                     {userName[0].toUpperCase()}
+                   </button>
+                 </DropdownMenuTrigger>
+                 <DropdownMenuContent align="end" className="min-w-0">
+                   <DropdownMenuItem className="text-[13px] font-semibold pointer-events-none">
+                     {fullName}
+                   </DropdownMenuItem>
+                 </DropdownMenuContent>
+               </DropdownMenu>
+             )}
+             <button onClick={onSignOut} className="text-rose-500 hover:text-rose-600 transition-colors">
+               <LogOut size={15} />
              </button>
           </div>
        </div>
@@ -129,22 +148,3 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder }
   );
 }
 
-// Helper for dynamic icon styling
-const Music = ({ size, className }: { size: number, className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M9 18V5l12-2v13" />
-    <circle cx="6" cy="18" r="3" />
-    <circle cx="18" cy="16" r="3" />
-  </svg>
-);

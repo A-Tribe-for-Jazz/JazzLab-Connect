@@ -61,7 +61,7 @@ export default function SetPassword() {
         if (profile?.role === 'master_admin') navigate('/admin/dashboard');
         else if (profile?.role === 'partner') navigate('/partner/dashboard');
         else if (profile?.role === 'educator') navigate('/educator/roster');
-        else navigate('/login');
+        else navigate('/signin');
       }, 1500);
       
     } catch (err: any) {

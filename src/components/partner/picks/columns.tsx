@@ -22,16 +22,13 @@ const LAB_SHORT_NAMES: Record<string, string> = {
   "Arts Collaboratorium": "Arts Collab",
   "Jazz Fab Lab": "Jazz Fab",
   "Virtual Reality MusicMaking": "VR Music",
-  "Conga Drumming": "Conga Drum",
+  "Conga Drumming": "Conga",
   "Afro-Futuristic Studio": "Afro-Future",
   "Remix the Code": "Remix Code",
   "Pixel Beats Lab": "Pixel Beats",
-  "The Decibel Lab with DriveOhio": "Decibel Lab",
+  "Eco Jazz Sound Lab": "Eco Jazz",
   "The Vocal Resonance Lab with The Singing Buckeyes": "Vocal Resonance",
-  "The Vocal Resonance Lab": "Vocal Resonance",
-  "Vocal Resonance Lab": "Vocal Resonance",
-  "Guitar \u0026 Audio Engineering": "Guitar / Audio Eng",
-  "Guitar Lab (8+) or Audio Engineering (11+)": "Guitar / Audio Eng",
+  "Young Producers Lab": "Young Producers",
 };
 
 export const getColumns = ({
@@ -71,7 +68,7 @@ export const getColumns = ({
       cell: ({ row }) => (
         <div className="px-2 flex items-center h-10">
           <div className={cn(
-            "font-bold text-[13px] whitespace-nowrap",
+            "font-semibold text-[13px] whitespace-nowrap",
             isDark ? "text-white" : "text-slate-900"
           )}>
             {row.original.first_name} {row.original.last_name}
@@ -136,7 +133,7 @@ export const getColumns = ({
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
       const count = preferences?.length || 0;
-      const isComplete = count === 5;
+      const isComplete = count === 7;
       const hasSelections = count > 0;
 
       return (
@@ -184,8 +181,8 @@ export const getColumns = ({
             onClick={() => handleClearPreferences(row.original.id)}
             title="Clear Selections"
             className={cn(
-              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear hover:bg-rose-50/50 dark:hover:bg-rose-900/10",
-              isDark ? "text-rose-400" : "text-rose-500"
+              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear",
+              isDark ? "text-rose-400 hover:bg-rose-900/10" : "text-rose-500 hover:bg-rose-50/50"
             )}
           >
             <Eraser

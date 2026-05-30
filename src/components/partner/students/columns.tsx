@@ -1,44 +1,21 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal, Check, Loader2, AlertCircle, Trash2, User, Calendar, Hash, Eye, Copy, ShieldAlert, Activity, Zap, ShieldCheck, Settings2, FileText } from "lucide-react";
+import { ArrowUpDown, Check, Loader2, AlertCircle, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback, startTransition } from "react";
 
 export type StudentRow = {
   id: string;
   first_name: string;
   last_name: string;
   age: number | '';
-  gender: string;
-  race: string;
-  ethnicity: string;
-  zip_code: string;
   camp_day_id: string | null;
   notes?: string;
   organization_id?: string;
@@ -55,7 +32,7 @@ function CollaborativeInput({
   className,
   studentId,
   fieldName,
-  activeCursors,
+  activeCursorsRef,
   type
 }: {
   value: any;
@@ -66,23 +43,47 @@ function CollaborativeInput({
   className: string;
   studentId: string;
   fieldName: string;
-  activeCursors: { [key: string]: string };
+  activeCursorsRef: { current: { [key: string]: string } };
   type?: string;
 }) {
-  const isOtherEditing = !!activeCursors[`${studentId}_${fieldName}`];
+  // Local state for instant input response — parent update is deferred
+  const [localValue, setLocalValue] = useState(value);
+  const isLocalEdit = useRef(false);
+
+  // Sync from parent when value changes externally (colleague edit, realtime)
+  useEffect(() => {
+    if (!isLocalEdit.current) {
+      setLocalValue(value);
+    }
+    isLocalEdit.current = false;
+  }, [value]);
+
+  const handleChange = useCallback((e: any) => {
+    const newVal = e.target.value;
+    isLocalEdit.current = true;
+    setLocalValue(newVal);             // instant — only this input re-renders
+    startTransition(() => {            // deferred — table re-render is non-urgent
+      onChange(e);
+    });
+  }, [onChange]);
+
+  const isOtherEditing = !!activeCursorsRef.current[`${studentId}_${fieldName}`];
 
   return (
-    <div className="relative w-full h-10 flex items-center">
+    <div className={cn(
+      "relative w-full h-10 flex items-center transition-all duration-200",
+      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+    )}>
       <Input
         type={type}
-        value={value}
+        value={localValue}
         placeholder={placeholder}
-        onChange={onChange}
+        onChange={handleChange}
         onFocus={onFocus}
         onBlur={onBlur}
         className={cn(
           className,
-          isOtherEditing && "ring-2 ring-inset ring-purple-500/80 bg-purple-500/[0.03] transition-all duration-200"
+          "bg-transparent dark:bg-transparent"
         )}
       />
     </div>
@@ -95,16 +96,18 @@ interface ColumnProps {
   deleteStudent: (id: string) => void;
   campDays: { id: string, date: string }[];
   isDark: boolean;
-  activeCursors?: { [cellKey: string]: string };
+  activeCursorsRef?: { current: { [cellKey: string]: string } };
   handleCellFocus?: (studentId: string, field: string) => void;
   handleCellBlur?: () => void;
 }
+
+const defaultCursorsRef = { current: {} as { [cellKey: string]: string } };
 
 export const getColumns = ({
   handleFieldChange,
   deleteStudent,
   isDark,
-  activeCursors = {},
+  activeCursorsRef = defaultCursorsRef,
   handleCellFocus,
   handleCellBlur
 }: ColumnProps): ColumnDef<StudentRow>[] => [
@@ -150,12 +153,12 @@ export const getColumns = ({
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
           studentId={row.original.id}
           fieldName="first_name"
-          activeCursors={activeCursors}
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -181,12 +184,12 @@ export const getColumns = ({
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-bold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
           studentId={row.original.id}
           fieldName="last_name"
-          activeCursors={activeCursors}
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -212,12 +215,12 @@ export const getColumns = ({
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-black text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
           studentId={row.original.id}
           fieldName="age"
-          activeCursors={activeCursors}
+          activeCursorsRef={activeCursorsRef}
         />
       ),
       meta: { isEditable: true },
@@ -299,8 +302,8 @@ export const getColumns = ({
             <button
               onClick={() => deleteStudent(row.original.id)}
               className={cn(
-                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/delete hover:bg-rose-50/50 dark:hover:bg-rose-900/10",
-                isDark ? "text-rose-400" : "text-rose-500"
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/delete",
+                isDark ? "text-rose-400 hover:bg-rose-900/10" : "text-rose-500 hover:bg-rose-50/50"
               )}
             >
               <Trash2
@@ -332,7 +335,8 @@ function NotesCell({ row, handleFieldChange, isDark }: any) {
           render={
             <button
               className={cn(
-                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note hover:bg-slate-50/50 dark:hover:bg-white/[0.02]",
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note",
+                isDark ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/50",
                 open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
               )}
               onClick={() => setDraft(notes || '')}

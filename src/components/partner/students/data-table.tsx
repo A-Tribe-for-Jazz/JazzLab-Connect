@@ -17,20 +17,12 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, Settings2, SlidersHorizontal, Plus } from "lucide-react"
+import { Settings2 } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -87,7 +79,7 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Scrollable table area — toolbar above stays fixed, thead sticks to top of scroll */}
-        <Table wrapperClassName="flex-1 overflow-auto min-h-0" className="border-collapse">
+        <Table wrapperClassName={cn("flex-1 overflow-auto min-h-0 border-r", isDark ? "border-white/20" : "border-slate-300")} className="border-collapse">
           <TableHeader className="sticky top-0 z-40">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className={cn(

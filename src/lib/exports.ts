@@ -20,11 +20,6 @@ export async function generateProgramReport() {
       'Last Name': s.last_name,
       'Age': s.age,
       'Organization': s.organizations?.name,
-      'Race': s.race,
-      'Ethnicity': s.ethnicity,
-      'Gender': s.gender,
-      'Income Tier': s.household_income_tier,
-      'ZIP Code': s.zip_code,
     };
     
     // Add assignments

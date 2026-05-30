@@ -26,10 +26,6 @@ const makeEmptyRow = (orgId: string, idx: number): StudentRow => ({
   first_name: '',
   last_name: '',
   age: '',
-  gender: '',
-  race: '',
-  ethnicity: '',
-  zip_code: '',
   camp_day_id: null,
   notes: '',
   organization_id: orgId,
@@ -50,7 +46,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState(searchParams.get('filter') || 'all');
-  const [activeCursors, setActiveCursors] = useState<{ [cellKey: string]: string }>({});
+  const activeCursorsRef = useRef<{ [cellKey: string]: string }>({});
 
   // Refs ─────────────────────────────────────────────────────────────────────
   const channelRef = useRef<any>(null);
@@ -59,6 +55,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   const dirtyRowsRef = useRef(new Set<string>());
   const pendingDeletesRef = useRef<string[]>([]);
   const isFlushingRef = useRef(false);
+  const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Keep studentsRef always current for use inside callbacks
   useEffect(() => { studentsRef.current = students; }, [students]);
@@ -141,7 +138,11 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     const currentStudents = studentsRef.current;
 
     try {
-      // ── Upserts ─────────────────────────────────────────────────────────
+      // ── Prepare rows ────────────────────────────────────────────────────
+      const phantomRows: { phantomId: string; insertPayload: any }[] = [];
+      const upsertRows: any[] = [];
+      const upsertIds: string[] = [];
+
       for (const id of dirtyIds) {
         const student = currentStudents.find(s => s.id === id);
         if (!student) continue;
@@ -157,61 +158,63 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             : Number(payload.age);
 
         if (isPhantom(payload.id)) {
-          const phantomId = payload.id;
-          // Strip the phantom id — let the DB generate a real UUID
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id: _id, ...insertPayload } = payload;
-
-          const { data, error } = await supabase
-            .from('students')
-            .insert({ ...insertPayload, organization_id: organizationId, age: ageValue })
-            .select()
-            .single();
-
-          if (error) {
-            console.error('Insert error:', error.message);
-            dirtyRowsRef.current.add(phantomId); // retry next cycle
-            continue;
-          }
-
-          if (data) {
-            // Remap locally
-            setStudents(prev =>
-              prev.map(s =>
-                s.id === phantomId
-                  ? { ...s, ...data, age: data.age ?? '', sync_status: 'synced' }
-                  : s
-              )
-            );
-            // Tell other clients to remap their copy of this phantom id
-            channelRef.current?.send({
-              type: 'broadcast',
-              event: 'id_remap',
-              payload: { senderId: connectionIdRef.current, oldId: phantomId, newId: data.id },
-            });
-          }
+          phantomRows.push({ phantomId: payload.id, insertPayload: { ...insertPayload, organization_id: organizationId, age: ageValue } });
         } else {
-          const { error } = await supabase
-            .from('students')
-            .upsert({ ...payload, organization_id: organizationId, age: ageValue });
-
-          if (error) {
-            console.error('Upsert error:', error.message);
-            dirtyRowsRef.current.add(id); // retry
-          } else {
-            setStudents(prev =>
-              prev.map(s => (s.id === id ? { ...s, sync_status: 'synced' } : s))
-            );
-          }
+          upsertRows.push({ ...payload, organization_id: organizationId, age: ageValue });
+          upsertIds.push(id);
         }
       }
 
-      // ── Deletes ─────────────────────────────────────────────────────────
-      for (const id of deletes) {
-        if (!isPhantom(id)) {
-          const { error } = await supabase.from('students').delete().eq('id', id);
-          if (error) console.error('Delete error:', error.message);
+      // ── Batch upsert existing rows ──────────────────────────────────────
+      if (upsertRows.length > 0) {
+        const { error } = await supabase.from('students').upsert(upsertRows);
+        if (error) {
+          console.error('Batch upsert error:', error.message);
+          upsertIds.forEach(id => dirtyRowsRef.current.add(id));
+        } else {
+          setStudents(prev =>
+            prev.map(s => upsertIds.includes(s.id) ? { ...s, sync_status: 'synced' } : s)
+          );
         }
+      }
+
+      // ── Individual inserts for phantom rows (need ID remap) ─────────────
+      for (const { phantomId, insertPayload } of phantomRows) {
+        const { data, error } = await supabase
+          .from('students')
+          .insert(insertPayload)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Insert error:', error.message);
+          dirtyRowsRef.current.add(phantomId);
+          continue;
+        }
+
+        if (data) {
+          setStudents(prev =>
+            prev.map(s =>
+              s.id === phantomId
+                ? { ...s, ...data, age: data.age ?? '', sync_status: 'synced' }
+                : s
+            )
+          );
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'id_remap',
+            payload: { senderId: connectionIdRef.current, oldId: phantomId, newId: data.id },
+          });
+        }
+      }
+
+      // ── Batch deletes ──────────────────────────────────────────────────
+      const realDeletes = deletes.filter(id => !isPhantom(id));
+      if (realDeletes.length > 0) {
+        const { error } = await supabase.from('students').delete().in('id', realDeletes);
+        if (error) console.error('Batch delete error:', error.message);
       }
     } finally {
       isFlushingRef.current = false;
@@ -276,42 +279,32 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         prev.map(s => (s.id === payload.oldId ? { ...s, id: payload.newId } : s))
       );
       // Also remap any active cursor entries
-      setActiveCursors(prev => {
-        const next: typeof prev = {};
-        for (const [key, val] of Object.entries(prev)) {
-          next[key.replace(payload.oldId, payload.newId)] = val;
-        }
-        return next;
-      });
+      const cursorsCopy: { [key: string]: string } = {};
+      for (const [key, val] of Object.entries(activeCursorsRef.current)) {
+        cursorsCopy[key.replace(payload.oldId, payload.newId)] = val;
+      }
+      activeCursorsRef.current = cursorsCopy;
     });
 
     // ── Broadcast: cursor moves ───────────────────────────────────────────
     channel.on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
       if (payload.senderId === connId) return;
-      setActiveCursors(prev => {
-        const next = { ...prev };
-        // Clear old positions for this sender
-        for (const key of Object.keys(next)) {
-          if (next[key] === payload.senderId) delete next[key];
-        }
-        // Set new position
-        if (payload.studentId && payload.field) {
-          next[`${payload.studentId}_${payload.field}`] = payload.senderId;
-        }
-        return next;
-      });
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (cursors[key] === payload.senderId) delete cursors[key];
+      }
+      if (payload.studentId && payload.field) {
+        cursors[`${payload.studentId}_${payload.field}`] = payload.senderId;
+      }
     });
 
     // ── Broadcast: cursor clears ──────────────────────────────────────────
     channel.on('broadcast', { event: 'cursor_clear' }, ({ payload }) => {
       if (payload.senderId === connId) return;
-      setActiveCursors(prev => {
-        const next = { ...prev };
-        for (const key of Object.keys(next)) {
-          if (next[key] === payload.senderId) delete next[key];
-        }
-        return next;
-      });
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (cursors[key] === payload.senderId) delete cursors[key];
+      }
     });
 
     // ── Presence: clean up stale cursors when a user disconnects ──────────
@@ -320,13 +313,10 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         (leftPresences as any[]).map(p => p.senderId).filter(Boolean)
       );
       if (leftSenders.size === 0) return;
-      setActiveCursors(prev => {
-        const next = { ...prev };
-        for (const key of Object.keys(next)) {
-          if (leftSenders.has(next[key])) delete next[key];
-        }
-        return next;
-      });
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (leftSenders.has(cursors[key])) delete cursors[key];
+      }
     });
 
     // Subscribe to the channel
@@ -337,6 +327,66 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     });
 
     channelRef.current = channel;
+
+    // ── Postgres changes: catch external additions (StudentForm, CSV, admin) ──
+    const pgChannel = supabase
+      .channel(`pg-students-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (!newRow?.id) return;
+          // Skip if already in local state (our own flush inserts)
+          setStudents(prev => {
+            if (prev.some(s => s.id === newRow.id)) return prev;
+            const hasData = !!(newRow.first_name?.trim() || newRow.last_name?.trim());
+            if (!hasData) return prev;
+            const phantomIdx = prev.findIndex(
+              s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
+            );
+            const student: StudentRow = {
+              ...newRow,
+              age: newRow.age ?? '',
+              sync_status: 'synced' as const,
+              order_index: phantomIdx !== -1 ? phantomIdx : prev.length,
+            };
+            if (phantomIdx !== -1) {
+              const next = [...prev];
+              next[phantomIdx] = student;
+              return next;
+            }
+            return [...prev, student];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const oldRow = payload.old as any;
+          if (!oldRow?.id) return;
+          // Skip our own deletes
+          if (pendingDeletesRef.current.includes(oldRow.id)) return;
+          setStudents(prev => {
+            if (!prev.some(s => s.id === oldRow.id)) return prev;
+            const filtered = prev.filter(s => s.id !== oldRow.id);
+            filtered.push(makeEmptyRow(organizationId, filtered.length));
+            return filtered;
+          });
+        }
+      )
+      .subscribe();
 
     // ── Periodic batch save to DB ─────────────────────────────────────────
     const saveInterval = setInterval(flushToDB, FLUSH_INTERVAL_MS);
@@ -354,9 +404,11 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       clearInterval(saveInterval);
-      // Best-effort final flush on unmount
+      broadcastTimersRef.current.forEach(t => clearTimeout(t));
+      broadcastTimersRef.current.clear();
       flushToDB();
       supabase.removeChannel(channel);
+      supabase.removeChannel(pgChannel);
       channelRef.current = null;
     };
   }, [organizationId, profile, fetchData, flushToDB]);
@@ -385,12 +437,18 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
       // 2. Mark dirty for the next periodic save
       dirtyRowsRef.current.add(id);
 
-      // 3. Broadcast to other users — arrives in < 100ms over WebSocket
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'cell_edit',
-        payload: { senderId: connectionIdRef.current, studentId: id, field, value },
-      });
+      // 3. Debounced broadcast — coalesces rapid keystrokes into fewer messages
+      const broadcastKey = `${id}_${String(field)}`;
+      const pendingTimer = broadcastTimersRef.current.get(broadcastKey);
+      if (pendingTimer) clearTimeout(pendingTimer);
+      broadcastTimersRef.current.set(broadcastKey, setTimeout(() => {
+        broadcastTimersRef.current.delete(broadcastKey);
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'cell_edit',
+          payload: { senderId: connectionIdRef.current, studentId: id, field, value },
+        });
+      }, 150));
     },
     [organizationId]
   );
@@ -423,18 +481,39 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   );
 
   // ─── Filtered view ──────────────────────────────────────────────────────
+  // Snapshot which IDs match the active filter so rows don't vanish mid-edit.
+  // Only recomputed when the filter value itself changes, NOT on every keystroke.
+  const filterSnapshotRef = useRef<Set<string> | null>(null);
+  const lastFilterRef = useRef(filterStatus);
+
   const filteredStudents = useMemo(() => {
+    // Recompute the snapshot only when the filter selection changes
+    if (lastFilterRef.current !== filterStatus) {
+      lastFilterRef.current = filterStatus;
+      filterSnapshotRef.current = null;
+    }
+
+    if (filterStatus !== 'all' && (!filterSnapshotRef.current || filterSnapshotRef.current.size === 0)) {
+      const ids = new Set<string>();
+      students.forEach(student => {
+        const hasData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
+        const isComplete = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== '');
+
+        if (filterStatus === 'completed' && isComplete) ids.add(student.id);
+        if (filterStatus === 'incomplete_demo' && hasData && !isComplete) ids.add(student.id);
+      });
+      filterSnapshotRef.current = ids;
+    }
+
     return students.filter(student => {
       const name = `${student.first_name || ''} ${student.last_name || ''}`.toLowerCase();
       const matchesSearch = name.includes(searchTerm.toLowerCase());
+      if (!matchesSearch) return false;
 
-      const hasData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
-      const isComplete = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== '');
-
-      if (filterStatus === 'completed') return matchesSearch && isComplete;
-      if (filterStatus === 'incomplete_demo') return matchesSearch && (hasData && !isComplete);
-
-      return matchesSearch;
+      if (filterSnapshotRef.current) {
+        return filterSnapshotRef.current.has(student.id);
+      }
+      return true;
     });
   }, [students, searchTerm, filterStatus]);
 
@@ -446,11 +525,11 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         deleteStudent,
         campDays,
         isDark,
-        activeCursors,
+        activeCursorsRef,
         handleCellFocus,
         handleCellBlur,
       }),
-    [handleFieldChange, deleteStudent, campDays, isDark, activeCursors, handleCellFocus, handleCellBlur]
+    [handleFieldChange, deleteStudent, campDays, isDark, handleCellFocus, handleCellBlur]
   );
 
   if (loading) return <PartnerLoader label="Powering Up Database..." isDark={isDark} />;
@@ -486,7 +565,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-medium outline-none",
+                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none",
                     isDark
                       ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                       : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"

@@ -1,345 +1,457 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, X, Plus, Trash2, ChevronLeft, Music, Info, Users, ShieldCheck, Activity } from 'lucide-react';
+import { X, SlidersHorizontal, Microscope, Users, Trash2, Mail, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { cn } from '@/lib/utils';
 
 export default function EditLab() {
+  const { isDark }: any = useOutletContext();
   const { id } = useParams<{ id: string }>();
   const isNew = !id;
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
-  const [instructors, setInstructors] = useState<{ id: string, full_name: string }[]>([]);
-  const [availableEducators, setAvailableEducators] = useState<{ id: string, full_name: string }[]>([]);
+  const [instructors, setInstructors] = useState<{ id: string; full_name: string }[]>([]);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     capacity_per_session: 20,
     min_age: 10,
     max_age: 18,
   });
 
   useEffect(() => {
-    if (!isNew) {
-      fetchLab();
-    }
-    fetchEducators();
+    if (!isNew) fetchLab();
   }, [id]);
 
   const fetchLab = async () => {
     try {
-      const { data: lab, error } = await supabase
-        .from('labs')
-        .select('*')
-        .eq('id', id)
-        .single();
-        
+      const { data: lab, error } = await supabase.from('labs').select('*').eq('id', id).single();
       if (error) throw error;
-      
       setFormData({
         name: lab.name,
-        description: lab.description || '',
         capacity_per_session: lab.capacity_per_session,
         min_age: lab.min_age,
         max_age: lab.max_age,
       });
-
       const { data: instData } = await supabase
         .from('lab_instructors')
         .select('educator_id, profiles(full_name)')
         .eq('lab_id', id);
-
       if (instData) {
-        setInstructors(instData.map((i: any) => ({
-          id: i.educator_id,
-          full_name: i.profiles.full_name
-        })));
+        setInstructors(instData.map((i: any) => ({ id: i.educator_id, full_name: i.profiles.full_name })));
       }
-    } catch (error) {
-      console.error('Error fetching lab:', error);
+    } catch {
       navigate('/admin/labs');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchEducators = async () => {
+  const handleInvite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviteLoading(true);
+    setInviteMessage(null);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'educator');
-      if (error) throw error;
-      setAvailableEducators(data || []);
-    } catch (error) {
-      console.error('Error fetching educators:', error);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email: inviteEmail.trim(), role: 'educator', fullName: inviteName.trim() })
+      });
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || 'Failed to send invite');
+      setInviteMessage({ type: 'success', text: `Invited ${inviteEmail}` });
+      setInviteEmail('');
+      setInviteName('');
+    } catch (err: any) {
+      setInviteMessage({ type: 'error', text: err.message || 'Error sending invite' });
+    } finally {
+      setInviteLoading(false);
     }
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
     try {
       let labId = id;
-      
       if (isNew) {
         const { data, error } = await supabase.from('labs').insert(formData).select().single();
         if (error) throw error;
         labId = data.id;
       } else {
-        const { error } = await supabase.from('labs').update(formData).eq('id', id);
-        if (error) throw error;
+        await supabase.from('labs').update(formData).eq('id', id);
       }
-
-      if (!isNew) {
-        await supabase.from('lab_instructors').delete().eq('lab_id', labId);
-      }
-      
+      await supabase.from('lab_instructors').delete().eq('lab_id', labId);
       if (instructors.length > 0) {
-        const instInserts = instructors.map(i => ({ lab_id: labId, educator_id: i.id }));
-        await supabase.from('lab_instructors').insert(instInserts);
+        await supabase.from('lab_instructors').insert(
+          instructors.map(i => ({ lab_id: labId, educator_id: i.id }))
+        );
       }
-
       navigate('/admin/labs');
-    } catch (error) {
-      console.error('Error saving lab:', error);
+    } catch (err) {
+      console.error('Error saving lab:', err);
     } finally {
       setSaving(false);
     }
   };
 
-  const addInstructor = (edu: { id: string, full_name: string }) => {
-    if (!instructors.find(i => i.id === edu.id)) {
-      setInstructors([...instructors, edu]);
-    }
-  };
-
-  const removeInstructor = (eduId: string) => {
-    setInstructors(instructors.filter(i => i.id !== eduId));
-  };
-
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this lab? This action cannot be undone.')) return;
+    if (!window.confirm(`Permanently delete "${formData.name}"? This cannot be undone.`)) return;
     try {
-      await supabase.from('labs').delete().eq('id', id);
+      // 1. Clean up instructor assignments to prevent foreign key constraint violations
+      await supabase.from('lab_instructors').delete().eq('lab_id', id);
+
+      // 2. Clean up day placements associated with this lab to avoid foreign key violations
+      await supabase.from('day_placements').delete().eq('lab_id', id);
+
+      // 3. Delete the lab itself
+      const { error } = await supabase.from('labs').delete().eq('id', id);
+      if (error) throw error;
+
       navigate('/admin/labs');
     } catch (err) {
-      console.error(err);
+      console.error('Error deleting lab:', err);
     }
   };
 
-  if (loading) return (
-    <div className="p-20 text-center flex flex-col items-center justify-center space-y-4">
-      <div className="size-12 border-4 border-slate-900/20 border-t-slate-900 rounded-full animate-spin"></div>
-      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Loading Lab Profile...</p>
-    </div>
+  // ─── Loading ─────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className={cn(
+        'fixed inset-0 z-[60] flex items-center justify-center flex-col gap-4',
+        isDark ? 'bg-black text-white' : 'bg-white text-slate-900'
+      )}>
+        <div className={cn(
+          'size-10 border-[3px] rounded-full animate-spin',
+          isDark ? 'border-white/10 border-t-white' : 'border-slate-200 border-t-slate-900'
+        )} />
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Loading...</p>
+      </div>
+    );
+  }
+
+  const inputCls = cn(
+    'h-10 border rounded-xl text-xs font-semibold transition-all',
+    isDark
+      ? 'bg-white/5 border-white/10 text-white placeholder-slate-600 focus-visible:border-sky-500/40 focus-visible:ring-0'
+      : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:border-sky-400 focus-visible:ring-0'
   );
 
+  const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-slate-400';
+
+  // ─── Page ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto space-y-10 pb-32 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 text-slate-500 hover:text-primary mb-2">
-            <Link to="/admin/labs">
-              <ChevronLeft size={16} className="mr-1" /> Back to Labs
-            </Link>
-          </Button>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">
-            {isNew ? 'Initialize New Lab' : 'Refine Lab Architecture'}
-          </h1>
-          <p className="text-slate-500 font-medium max-w-2xl">
-            {isNew ? 'Configure a new JazzLab course for the upcoming program cycle.' : `Managing ${formData.name}`}
-          </p>
-        </div>
-        {!isNew && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleDelete}
-            className="text-rose-600 border-rose-100 hover:bg-rose-50 hover:text-rose-700 font-bold rounded-full px-6 transition-all"
-          >
-            <Trash2 size={16} className="mr-2" /> DISMANTLE LAB
-          </Button>
-        )}
-      </div>
+    <div className={cn(
+      'fixed inset-0 z-[60] flex flex-col overflow-hidden',
+      isDark ? 'bg-black text-white' : 'bg-white text-slate-900'
+    )}>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Core Configuration */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
-            <div className="flex items-center gap-3 text-primary">
-              <Music size={20} />
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Core Configuration</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Lab Identity Name</Label>
-                <Input 
-                  id="name"
-                  required
-                  placeholder="e.g. Advanced Improvisation"
-                  className="h-14 text-lg font-bold border-slate-200 focus:border-primary focus:ring-primary/20 transition-all shadow-sm" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Program Narrative</Label>
-                <Textarea 
-                  id="description"
-                  rows={4}
-                  placeholder="Describe the learning objectives and syllabus for this lab..."
-                  className="text-base font-medium border-slate-200 focus:border-primary focus:ring-primary/20 transition-all shadow-sm resize-none"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Dynamic Constraints */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
-            <div className="flex items-center gap-3 text-primary">
-              <ShieldCheck size={20} />
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Dynamic Constraints</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity / Session</Label>
-                <Input 
-                  type="number" 
-                  required min="1"
-                  className="h-12 font-bold border-slate-200"
-                  value={formData.capacity_per_session}
-                  onChange={(e) => setFormData({ ...formData, capacity_per_session: parseInt(e.target.value) })}
-                />
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Maximum students allowed</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Lower Age Limit</Label>
-                <Input 
-                  type="number" 
-                  required min="1"
-                  className="h-12 font-bold border-slate-200"
-                  value={formData.min_age}
-                  onChange={(e) => setFormData({ ...formData, min_age: parseInt(e.target.value) })}
-                />
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Inclusive minimum</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Upper Age Limit</Label>
-                <Input 
-                  type="number" 
-                  required min="1"
-                  className="h-12 font-bold border-slate-200"
-                  value={formData.max_age}
-                  onChange={(e) => setFormData({ ...formData, max_age: parseInt(e.target.value) })}
-                />
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Inclusive maximum</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Instructor Deployment */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-primary">
-                <Users size={20} />
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Instructor Deployment</CardTitle>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="rounded-full font-bold border-slate-200 shadow-sm">
-                    <Plus size={16} className="mr-2" /> ADD INSTRUCTOR
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl border-slate-100 shadow-xl">
-                  {availableEducators.filter(e => !instructors.find(i => i.id === e.id)).map(edu => (
-                    <DropdownMenuItem 
-                      key={edu.id} 
-                      onClick={() => addInstructor(edu)}
-                      className="font-bold text-slate-700 cursor-pointer py-2 px-4 focus:bg-primary/5 focus:text-primary"
-                    >
-                      {edu.full_name}
-                    </DropdownMenuItem>
-                  ))}
-                  {availableEducators.filter(e => !instructors.find(i => i.id === e.id)).length === 0 && (
-                    <div className="px-4 py-2 text-xs text-slate-400 font-bold uppercase tracking-widest">No available staff</div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {instructors.map(inst => (
-                <div key={inst.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-primary/20 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-[10px]">
-                       {inst.full_name.charAt(0)}
-                    </div>
-                    <span className="font-bold text-slate-900">{inst.full_name}</span>
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => removeInstructor(inst.id)}
-                    className="size-8 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <X size={16} />
-                  </Button>
-                </div>
-              ))}
-              {instructors.length === 0 && (
-                <div className="col-span-full py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-3xl space-y-3">
-                   <Info size={32} className="text-slate-200" />
-                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No instructors deployed</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Global Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-6 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <Button asChild variant="ghost" className="rounded-full px-8 font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
-              <Link to="/admin/labs">Discard Changes</Link>
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={saving} 
-              className="rounded-full px-12 h-14 font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 transition-all active:scale-95"
-            >
-              {saving ? <Activity className="animate-spin mr-3" /> : <Save size={18} className="mr-3" />}
-              {saving ? 'SYNCHRONIZING...' : 'COMMIT CHANGES'}
-            </Button>
+      {/* ── Header ─────────────────────────────────────────────────────────────── */}
+      <div className={cn(
+        'grid grid-cols-3 items-center px-8 h-16 border-b shrink-0',
+        isDark ? 'border-white/10' : 'border-slate-200'
+      )}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn(
+            'size-9 rounded-xl flex items-center justify-center shrink-0 border',
+            isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+          )}>
+            <SlidersHorizontal size={16} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {isNew ? 'New Lab' : 'Manage Lab'}
+            </p>
+            <h2 className={cn(
+              'text-sm font-black tracking-tight leading-none truncate',
+              isDark ? 'text-white' : 'text-slate-900'
+            )}>
+              {isNew ? 'Create a new lab module' : formData.name}
+            </h2>
           </div>
         </div>
-      </form>
+
+        <div />
+
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/labs')}
+            className={cn(
+              'size-9 rounded-xl flex items-center justify-center border transition-all duration-200',
+              isDark
+                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <X size={15} className="stroke-[2.5]" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Body ───────────────────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="h-full flex flex-col max-w-5xl mx-auto w-full px-6 py-6 gap-6"
+        >
+          {/* Two-column grid */}
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* ── Left: Settings stacked ─────────────────────────────────────── */}
+            <div className="flex flex-col gap-5 overflow-y-auto pr-1">
+
+              {/* Lab Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="lab_name" className={labelCls}>Lab Name</Label>
+                <div className="relative">
+                  <Microscope size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="lab_name"
+                    required
+                    placeholder="e.g. Advanced Improvisation"
+                    className={cn(inputCls, 'pl-9')}
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Capacity */}
+              <div className="space-y-1.5">
+                <Label htmlFor="capacity" className={labelCls}>Capacity per Session</Label>
+                <div className="relative">
+                  <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="capacity"
+                    type="number"
+                    required
+                    min={1}
+                    className={cn(inputCls, 'pl-9')}
+                    value={formData.capacity_per_session}
+                    onChange={e => setFormData({ ...formData, capacity_per_session: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              {/* Age Range */}
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Age Range</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className={cn('text-[10px] font-medium', isDark ? 'text-slate-500' : 'text-slate-400')}>Minimum</p>
+                    <Input
+                      id="min_age"
+                      type="number"
+                      required
+                      min={1}
+                      className={inputCls}
+                      value={formData.min_age}
+                      onChange={e => setFormData({ ...formData, min_age: parseInt(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className={cn('text-[10px] font-medium', isDark ? 'text-slate-500' : 'text-slate-400')}>Maximum</p>
+                    <Input
+                      id="max_age"
+                      type="number"
+                      required
+                      min={1}
+                      className={inputCls}
+                      value={formData.max_age}
+                      onChange={e => setFormData({ ...formData, max_age: parseInt(e.target.value) })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className={cn('border-t', isDark ? 'border-white/5' : 'border-slate-100')} />
+
+              {/* Invite Instructor */}
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Invite Instructor</Label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <GraduationCap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="Albert Einstein"
+                      className={cn(inputCls, 'pl-9')}
+                      value={inviteName}
+                      onChange={e => setInviteName(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <Input
+                        type="email"
+                        placeholder="name@example.com"
+                        className={cn(inputCls, 'pl-9')}
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={inviteLoading}
+                      onClick={handleInvite}
+                      className={cn(
+                        'rounded-xl h-10 px-4 font-semibold text-xs transition-all border shrink-0',
+                        isDark
+                          ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20'
+                          : 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
+                      )}
+                    >
+                      {inviteLoading ? 'Sending...' : 'Invite'}
+                    </Button>
+                  </div>
+                </div>
+                {inviteMessage && (
+                  <p className={cn(
+                    'text-[11px] font-semibold mt-1',
+                    inviteMessage.type === 'success' ? 'text-emerald-500' : 'text-rose-500'
+                  )}>
+                    {inviteMessage.text}
+                  </p>
+                )}
+              </div>
+
+              {/* Danger Zone */}
+              {!isNew && (
+                <>
+                  <div className={cn('border-t', isDark ? 'border-white/5' : 'border-slate-100')} />
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Danger Zone</p>
+                    <p className={cn('text-[11px] leading-snug', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                      Permanently delete this lab and remove all instructor assignments.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={handleDelete}
+                      className="mt-1 rounded-xl h-9 px-4 text-xs font-semibold border bg-rose-500/10 border-rose-500/20 text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all w-full"
+                    >
+                      <Trash2 size={12} className="mr-1.5" />
+                      Delete Lab
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ── Right: Assigned Instructors ────────────────────────────────── */}
+            <div className={cn(
+              'rounded-2xl border flex flex-col min-h-0 overflow-hidden',
+              isDark ? 'border-white/10 bg-white/[0.01]' : 'border-slate-200 bg-slate-50/40'
+            )}>
+              {/* Panel header */}
+              <div className={cn(
+                'px-4 py-3 border-b shrink-0',
+                isDark ? 'border-white/10' : 'border-slate-200'
+              )}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Instructors</p>
+                <p className={cn('text-[11px] mt-0.5', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                  {instructors.length === 0
+                    ? 'No instructors assigned yet'
+                    : `${instructors.length} instructor${instructors.length > 1 ? 's' : ''} assigned`}
+                </p>
+              </div>
+
+              {/* List */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {instructors.length > 0 ? (
+                  <div className={cn('divide-y', isDark ? 'divide-white/5' : 'divide-slate-100')}>
+                    {instructors.map(inst => {
+                      const initials = inst.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                      return (
+                        <div key={inst.id} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              'size-8 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0',
+                              isDark ? 'bg-slate-900 border-white/10 text-sky-400' : 'bg-sky-50 border-sky-100 text-sky-700'
+                            )}>
+                              {initials}
+                            </div>
+                            <div>
+                              <p className={cn('text-[13px] font-semibold leading-none', isDark ? 'text-white' : 'text-slate-900')}>
+                                {inst.full_name}
+                              </p>
+                              <p className={cn('text-[10px] mt-1', isDark ? 'text-slate-500' : 'text-slate-400')}>Instructor</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setInstructors(p => p.filter(i => i.id !== inst.id))}
+                            className={cn(
+                              'size-7 rounded-lg flex items-center justify-center border transition-all',
+                              isDark
+                                ? 'border-white/10 text-slate-500 hover:bg-rose-500/10 hover:border-rose-500/20 hover:text-rose-400'
+                                : 'border-slate-200 text-slate-400 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-500'
+                            )}
+                          >
+                            <X size={12} className="stroke-[2.5]" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full py-16 opacity-30">
+                    <Users size={32} className="mb-3 text-slate-400" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">No instructors yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* ── Footer ─────────────────────────────────────────────────────────── */}
+          <div className={cn(
+            'flex items-center justify-end gap-3 pt-4 border-t shrink-0',
+            isDark ? 'border-white/5' : 'border-slate-100'
+          )}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate('/admin/labs')}
+              className={cn(
+                'rounded-xl h-10 px-5 font-semibold text-xs transition-all border border-transparent',
+                isDark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50'
+              )}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className={cn(
+                'rounded-xl h-10 px-5 font-semibold text-xs transition-all border shadow-sm',
+                isDark
+                  ? 'bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/40'
+                  : 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
+              )}
+            >
+              {saving ? 'Saving...' : isNew ? 'Add Lab' : 'Save Changes'}
+            </Button>
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 }

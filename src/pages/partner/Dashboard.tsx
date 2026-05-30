@@ -89,11 +89,6 @@ export default function PartnerDashboard() {
           first_name,
           last_name,
           age,
-          race,
-          ethnicity,
-          gender,
-          household_income_tier,
-          zip_code,
           preferences (lab_id)
         `)
         .eq('organization_id', orgId);
@@ -110,22 +105,26 @@ export default function PartnerDashboard() {
 
       const count = realStudents.length;
 
-      // Profiles Required (Missing Demographics: race, ethnicity, gender, zip_code, household_income_tier)
+      // Profiles Required (Missing core profile: first_name + last_name + age)
+      // Matches the StudentGrid's "Incomplete Profiles" filter definition
       const missingDemo = realStudents.filter(
-        s => !s.race || !s.ethnicity || !s.gender || !s.household_income_tier || !s.zip_code
+        s => !s.first_name?.trim() || !s.last_name?.trim() || s.age === null || s.age === undefined || s.age === ''
       ).length;
 
-      // Selections Required (Missing 5 Lab Picks)
-      const missingPicks = realStudents.filter(
+      // Selections Required (core-complete students missing 5 Lab Picks)
+      // Only count from students visible on the Lab Picks page (requires complete core profile)
+      const coreComplete = realStudents.filter(
+        s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
+      );
+      const missingPicks = coreComplete.filter(
         s => (s.preferences?.length || 0) < 5
       ).length;
 
-      // Fully Ready (Both Core Profile, Demographics, and 5 selections are complete)
+      // Fully Ready (Core Profile + 5 selections are complete)
       const fullyReady = realStudents.filter(s => {
         const hasCore = s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '';
-        const hasDemo = s.race && s.ethnicity && s.gender && s.household_income_tier && s.zip_code;
         const hasPicks = (s.preferences?.length || 0) === 5;
-        return hasCore && hasDemo && hasPicks;
+        return hasCore && hasPicks;
       }).length;
 
       setStats({
@@ -170,17 +169,17 @@ export default function PartnerDashboard() {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div className="space-y-1">
             <h1 className={cn("text-3xl font-black tracking-tighter transition-colors duration-700", isDark ? "text-white" : "text-slate-900")}>{organization?.name}</h1>
-            <p className={cn("font-medium italic transition-colors duration-700", isDark ? "text-slate-500" : "text-slate-400")}>Jazz Lab&trade; Summer Experience &bull; Partner Portal</p>
+            <p className={cn("font-medium italic transition-colors duration-700", isDark ? "text-slate-500" : "text-slate-400")}>Jazz Lab Summer Experience &bull; Partner Portal</p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={() => setShowShareModal(true)} variant="outline" className={cn(
-              "rounded-xl h-12 px-6 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border",
+              "rounded-xl h-12 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border",
               isDark ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white" : "bg-white border-slate-200/60 text-slate-600 hover:border-slate-300 hover:shadow-md"
             )}>
               <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
             </Button>
             <Button asChild className={cn(
-              "rounded-xl h-12 px-6 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border",
+              "rounded-xl h-12 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border",
               isDark ? "bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/50" : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
             )}>
               <Link to="/partner/students?add=true"><Plus size={16} className="mr-2" /> Add Student</Link>
