@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, User as UserIcon, GraduationCap, Sun, Moon } from 'lucide-react';
+import { LogOut, User as UserIcon, GraduationCap, Sun, Moon, Construction } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -73,11 +73,24 @@ export default function EducatorLayout() {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-1 transition-colors duration-700 flex flex-col",
+        "flex-1 transition-colors duration-700 flex flex-col items-center justify-center",
         isDark ? "bg-black" : "bg-white"
       )}>
-        <div className="flex-1 container mx-auto px-4 md:px-6 py-8 animate-in fade-in duration-500 max-w-7xl">
-          <Outlet context={{ isDark }} />
+        <div className="flex flex-col items-center gap-4 text-center px-4">
+          <div className={cn(
+            "w-14 h-14 rounded-2xl flex items-center justify-center",
+            isDark ? "bg-white/5" : "bg-slate-100"
+          )}>
+            <Construction size={26} className={isDark ? "text-slate-400" : "text-slate-400"} />
+          </div>
+          <div>
+            <h2 className={cn("text-lg font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+              Under Development
+            </h2>
+            <p className={cn("text-[13px] font-semibold mt-1", isDark ? "text-slate-500" : "text-slate-400")}>
+              The Educator Portal is coming soon.
+            </p>
+          </div>
         </div>
       </main>
 

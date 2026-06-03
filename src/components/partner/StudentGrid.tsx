@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Info, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,6 +15,7 @@ import {
 import { DataTable } from "./students/data-table";
 import { getColumns, type StudentRow } from "./students/columns";
 import PartnerLoader from './PartnerLoader';
+import StudentDirectoryTour from './StudentDirectoryTour';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PHANTOM_PREFIX = 'phantom-';
@@ -26,6 +27,11 @@ const makeEmptyRow = (orgId: string, idx: number): StudentRow => ({
   first_name: '',
   last_name: '',
   age: '',
+  last_grade_completed: '',
+  home_zip_code: '',
+  race_ethnicity: '',
+  gender: '',
+  total_program_hours: '',
   camp_day_id: null,
   notes: '',
   organization_id: orgId,
@@ -47,6 +53,17 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState(searchParams.get('filter') || 'all');
   const activeCursorsRef = useRef<{ [cellKey: string]: string }>({});
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Auto-play Student Directory guide if they haven't seen it yet
+  useEffect(() => {
+    if (!loading && students.length > 0) {
+      const hasSeen = localStorage.getItem('has_seen_dir_tour');
+      if (!hasSeen) {
+        setIsTourOpen(true);
+      }
+    }
+  }, [loading, students]);
 
   // Refs ─────────────────────────────────────────────────────────────────────
   const channelRef = useRef<any>(null);
@@ -100,6 +117,11 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             sync_status: 'synced' as const,
             order_index: s.order_index ?? idx,
             age: s.age ?? '',
+            last_grade_completed: s.last_grade_completed ?? '',
+            home_zip_code: s.home_zip_code ?? '',
+            race_ethnicity: s.race_ethnicity ?? '',
+            gender: s.gender ?? '',
+            total_program_hours: s.total_program_hours ?? '',
           })) as StudentRow[];
 
         const targetCount = Math.max(existing.length + 20, 100);
@@ -147,7 +169,17 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         const student = currentStudents.find(s => s.id === id);
         if (!student) continue;
 
-        const hasData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
+        const fields = [
+          student.first_name,
+          student.last_name,
+          student.age,
+          student.last_grade_completed,
+          student.home_zip_code,
+          student.race_ethnicity,
+          student.gender,
+          student.total_program_hours
+        ];
+        const hasData = fields.some(f => f !== '' && f !== null && f !== undefined);
         if (!hasData) continue;
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -157,12 +189,23 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             ? null
             : Number(payload.age);
 
+        const hoursValue =
+          payload.total_program_hours === '' || payload.total_program_hours === null || payload.total_program_hours === undefined
+            ? null
+            : Number(payload.total_program_hours);
+
+        const dbPayload = {
+          ...payload,
+          age: ageValue,
+          total_program_hours: hoursValue,
+        };
+
         if (isPhantom(payload.id)) {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id: _id, ...insertPayload } = payload;
-          phantomRows.push({ phantomId: payload.id, insertPayload: { ...insertPayload, organization_id: organizationId, age: ageValue } });
+          const { id: _id, ...insertPayload } = dbPayload;
+          phantomRows.push({ phantomId: payload.id, insertPayload: { ...insertPayload, organization_id: organizationId } });
         } else {
-          upsertRows.push({ ...payload, organization_id: organizationId, age: ageValue });
+          upsertRows.push({ ...dbPayload, organization_id: organizationId });
           upsertIds.push(id);
         }
       }
@@ -198,7 +241,17 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
           setStudents(prev =>
             prev.map(s =>
               s.id === phantomId
-                ? { ...s, ...data, age: data.age ?? '', sync_status: 'synced' }
+                ? {
+                    ...s,
+                    ...data,
+                    age: data.age ?? '',
+                    last_grade_completed: data.last_grade_completed ?? '',
+                    home_zip_code: data.home_zip_code ?? '',
+                    race_ethnicity: data.race_ethnicity ?? '',
+                    gender: data.gender ?? '',
+                    total_program_hours: data.total_program_hours ?? '',
+                    sync_status: 'synced' as const
+                  }
                 : s
             )
           );
@@ -353,13 +406,18 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             const student: StudentRow = {
               ...newRow,
               age: newRow.age ?? '',
+              last_grade_completed: newRow.last_grade_completed ?? '',
+              home_zip_code: newRow.home_zip_code ?? '',
+              race_ethnicity: newRow.race_ethnicity ?? '',
+              gender: newRow.gender ?? '',
+              total_program_hours: newRow.total_program_hours ?? '',
               sync_status: 'synced' as const,
               order_index: phantomIdx !== -1 ? phantomIdx : prev.length,
             };
             if (phantomIdx !== -1) {
-              const next = [...prev];
-              next[phantomIdx] = student;
-              return next;
+               const next = [...prev];
+               next[phantomIdx] = student;
+               return next;
             }
             return [...prev, student];
           });
@@ -496,11 +554,13 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     if (filterStatus !== 'all' && (!filterSnapshotRef.current || filterSnapshotRef.current.size === 0)) {
       const ids = new Set<string>();
       students.forEach(student => {
-        const hasData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
-        const isComplete = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== '');
+        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours } = student;
+        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours];
+        const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
+        const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
 
-        if (filterStatus === 'completed' && isComplete) ids.add(student.id);
-        if (filterStatus === 'incomplete_demo' && hasData && !isComplete) ids.add(student.id);
+        if (filterStatus === 'completed' && isAllFilled) ids.add(student.id);
+        if (filterStatus === 'incomplete_demo' && hasAnyData && !isAllFilled) ids.add(student.id);
       });
       filterSnapshotRef.current = ids;
     }
@@ -549,8 +609,9 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
           data={filteredStudents}
           isDark={isDark}
           toolbar={
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative flex-1 w-full group/search">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
+              {/* Left: Search */}
+              <div className="relative flex-1 max-w-xs w-full group/search">
                 <Search
                   className={cn(
                     "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
@@ -561,11 +622,12 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                   size={20}
                 />
                 <Input
+                  id="tour-search-dir"
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none",
+                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
                     isDark
                       ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                       : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
@@ -573,81 +635,123 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
                 />
               </div>
 
-              <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v ?? 'all')}>
-                <SelectTrigger
-                  className={cn(
-                    "h-10 md:w-64 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between w-full shadow-sm",
-                    "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
-                    isDark
-                      ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
-                      : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Filter
-                      size={16}
+              {/* Middle: Guideline Info Note (Lighter Gradient) */}
+              <div className={cn(
+                "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
+                isDark
+                  ? "bg-gradient-to-r from-amber-500/[0.02] to-transparent text-amber-200/80"
+                  : "bg-gradient-to-r from-amber-50/[0.3] to-transparent text-amber-600/80"
+              )}>
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-amber-400" : "text-amber-500")} />
+                <span className="text-center">
+                  Fill out all fields for each student below. Click <span className="font-bold">"Delete"</span> to remove. A green checkmark under <span className="font-bold">"Ready?"</span> confirms completion.
+                </span>
+              </div>
+
+              {/* Right: Filter Controls */}
+              <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
+                {/* Filter */}
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v ?? 'all')}>
+                  <SelectTrigger
+                    className={cn(
+                      "h-10 w-28 md:w-40 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between shadow-sm shrink-0",
+                      "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
+                      isDark
+                        ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
+                        : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Filter
+                        size={14}
+                        className={cn(
+                          "transition-colors duration-300 shrink-0",
+                          isDark
+                            ? "text-sky-500/70 group-hover/filter:text-sky-400"
+                            : "text-sky-500/70 group-hover/filter:text-sky-600"
+                        )}
+                      />
+                      <span className="truncate">
+                        {filterStatus === 'all' && 'All Students'}
+                        {filterStatus === 'incomplete_demo' && 'Incomplete'}
+                        {filterStatus === 'completed' && 'Completed'}
+                      </span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent
+                    side="bottom"
+                    sideOffset={8}
+                    className={cn(
+                      "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] md:w-40 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                      isDark
+                        ? "bg-slate-950/90 border-white/10 text-white"
+                        : "bg-white/95 border-slate-100 text-slate-900"
+                    )}
+                  >
+                    <SelectItem 
+                      value="all" 
                       className={cn(
-                        "transition-colors duration-300 shrink-0",
-                        isDark
-                          ? "text-sky-500/70 group-hover/filter:text-sky-400"
-                          : "text-sky-500/70 group-hover/filter:text-sky-600"
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                        isDark 
+                          ? "focus:bg-white/5 focus:text-white" 
+                          : "focus:bg-slate-50 focus:text-slate-900"
                       )}
-                    />
-                    <span className="truncate">
-                      {filterStatus === 'all' && 'All Students'}
-                      {filterStatus === 'incomplete_demo' && 'Incomplete Profiles'}
-                      {filterStatus === 'completed' && 'Completed Profiles'}
-                    </span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent
-                  side="bottom"
-                  sideOffset={8}
-                  className={cn(
-                    "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] md:w-64 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
-                    isDark
-                      ? "bg-slate-950/90 border-white/10 text-white"
-                      : "bg-white/95 border-slate-100 text-slate-900"
-                  )}
-                >
-                  <SelectItem 
-                    value="all" 
-                    className={cn(
-                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
-                      isDark 
-                        ? "focus:bg-white/5 focus:text-white" 
-                        : "focus:bg-slate-50 focus:text-slate-900"
-                    )}
-                  >
-                    All Students
-                  </SelectItem>
-                  <SelectItem 
-                    value="incomplete_demo" 
-                    className={cn(
-                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-amber-500 focus:text-amber-500",
-                      isDark 
-                        ? "focus:bg-amber-500/10" 
-                        : "focus:bg-amber-50"
-                    )}
-                  >
-                    Incomplete Profiles
-                  </SelectItem>
-                  <SelectItem 
-                    value="completed" 
-                    className={cn(
-                      "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-emerald-500 focus:text-emerald-500",
-                      isDark 
-                        ? "focus:bg-emerald-500/10" 
-                        : "focus:bg-emerald-50"
-                    )}
-                  >
-                    Completed Profiles
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                    >
+                      All Students
+                    </SelectItem>
+                    <SelectItem 
+                      value="incomplete_demo" 
+                      className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-amber-500 focus:text-amber-500",
+                        isDark 
+                          ? "focus:bg-amber-500/10" 
+                          : "focus:bg-amber-50"
+                      )}
+                    >
+                      Incomplete
+                    </SelectItem>
+                    <SelectItem 
+                      value="completed" 
+                      className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-emerald-500 focus:text-emerald-500",
+                        isDark 
+                          ? "focus:bg-emerald-500/10" 
+                          : "focus:bg-emerald-50"
+                      )}
+                    >
+                      Completed
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           }
         />
+      {/* Floating Guide Me / Tutorial Button */}
+      <button
+        onClick={() => setIsTourOpen(true)}
+        className={cn(
+          "fixed bottom-6 right-6 z-40 h-11 px-4 rounded-full border shadow-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 hover:scale-105 active:scale-95 select-none hover:shadow-2xl",
+          isDark
+            ? "bg-slate-900 border-white/10 text-sky-400 hover:bg-slate-800 hover:border-sky-400/50 shadow-black/60"
+            : "bg-white border-slate-200 text-sky-600 hover:bg-slate-50 hover:border-sky-500/30 shadow-slate-200/55"
+        )}
+        title="Play Student Directory Guide"
+      >
+        <Play size={12} className="fill-current animate-pulse text-sky-400" />
+        <span>Guide Me</span>
+      </button>
+
+      {/* Render Portal Student Directory Tour */}
+      {isTourOpen && (
+        <StudentDirectoryTour 
+          isDark={isDark} 
+          onClose={() => {
+            setIsTourOpen(false);
+            localStorage.setItem('has_seen_dir_tour', 'true');
+          }} 
+        />
+      )}
       </div>
     </div>
   );

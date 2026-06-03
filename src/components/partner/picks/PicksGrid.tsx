@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { Search } from 'lucide-react';
+import { Search, Info, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import PartnerLoader from '../PartnerLoader';
 import { DataTable } from "../students/data-table";
 import { getColumns, type LabPickRow } from "./columns";
+import LabPreferencesTour from './LabPreferencesTour';
 
 interface PicksGridProps {
   organizationId: string;
@@ -17,6 +18,17 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
   const [labs, setLabs] = useState<{ id: string, name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Auto-start tutorial once loading completes if they haven't seen it yet
+  useEffect(() => {
+    if (!loading && students.length > 0) {
+      const hasSeen = localStorage.getItem('has_seen_lab_tour');
+      if (!hasSeen) {
+        setIsTourOpen(true);
+      }
+    }
+  }, [loading, students]);
 
   // Always-fresh ref so handlers inside memoized columns never go stale
   const studentsRef = useRef<LabPickRow[]>(students);
@@ -77,7 +89,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     const handleStudentRealtimeChange = async (studentId: string) => {
       const { data: student, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, age, organization_id, preferences(lab_id, rank)')
+        .select('id, first_name, last_name, age, notes, organization_id, preferences(lab_id, rank)')
         .eq('id', studentId)
         .single();
 
@@ -196,7 +208,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
         supabase.from('labs').select('id, name').order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name, age, preferences(lab_id, rank)')
+          .select('id, first_name, last_name, age, notes, preferences(lab_id, rank)')
           .eq('organization_id', organizationId)
           .order('first_name')
       ]);
@@ -244,7 +256,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
       newPrefs.splice(existingIndex, 1);
       newPrefs = newPrefs.map((p, idx) => ({ ...p, rank: idx + 1 }));
     } else {
-      if (newPrefs.length >= 7) return;
+      if (newPrefs.length >= 10) return;
       newPrefs.push({ lab_id: labId, rank: newPrefs.length + 1 });
     }
 
@@ -343,6 +355,36 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     });
   }, []);
 
+  const handleNoteSave = useCallback(async (studentId: string, notes: string) => {
+    // Optimistic UI
+    const updated = studentsRef.current.map(s =>
+      s.id === studentId ? { ...s, notes, sync_status: 'saving' as const } : s
+    );
+    studentsRef.current = updated;
+    setStudents(updated);
+
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ notes })
+        .eq('id', studentId);
+      if (error) throw error;
+
+      const synced = studentsRef.current.map(s =>
+        s.id === studentId ? { ...s, sync_status: 'synced' as const } : s
+      );
+      studentsRef.current = synced;
+      setStudents(synced);
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      const errUpdated = studentsRef.current.map(s =>
+        s.id === studentId ? { ...s, sync_status: 'error' as const } : s
+      );
+      studentsRef.current = errUpdated;
+      setStudents(errUpdated);
+    }
+  }, []);
+
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
       const name = `${student.first_name} ${student.last_name}`.toLowerCase();
@@ -354,8 +396,9 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     labs,
     handlePreferenceToggle,
     handleClearPreferences,
+    handleNoteSave,
     isDark
-  }), [labs, isDark, handlePreferenceToggle, handleClearPreferences]);
+  }), [labs, isDark, handlePreferenceToggle, handleClearPreferences, handleNoteSave]);
 
   if (loading) return (
     <PartnerLoader label="Configuring Lab Roster..." isDark={isDark} />
@@ -374,8 +417,8 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
           data={filteredStudents}
           isDark={isDark}
           toolbar={
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative flex-1 w-full group/search">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+              <div className="relative flex-1 max-w-md w-full group/search">
                 <Search className={cn(
                   "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
                   isDark
@@ -383,21 +426,63 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
                     : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
                 )} size={20} />
                 <Input
-                  placeholder="Search students to assign picks..."
+                  id="tour-search"
+                  placeholder="Search student name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none",
+                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
                     isDark
                       ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                       : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
                   )}
                 />
               </div>
+
+
+
+              {/* Final Note Style: Lighter Gradient */}
+              <div className={cn(
+                "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
+                isDark
+                  ? "bg-gradient-to-r from-amber-500/[0.02] to-transparent text-amber-200/80"
+                  : "bg-gradient-to-r from-amber-50/[0.3] to-transparent text-amber-600/80"
+              )}>
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-amber-400" : "text-amber-500")} />
+                <span className="text-center">
+                  Select all <span className="font-bold underline">10 unique preferences</span> per student by clicking lab cells (1 = top choice, 10 = lowest). Click <span className="font-bold">"Clear"</span> to reset. A green checkmark under <span className="font-bold">"Ready?"</span> confirms completion.
+                </span>
+              </div>
             </div>
           }
         />
       </div>
+
+      {/* Floating Play Guide / Tutorial Button */}
+      <button
+        onClick={() => setIsTourOpen(true)}
+        className={cn(
+          "fixed bottom-6 right-6 z-40 h-11 px-4 rounded-full border shadow-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 hover:scale-105 active:scale-95 select-none hover:shadow-2xl",
+          isDark
+            ? "bg-slate-900 border-white/10 text-sky-400 hover:bg-slate-800 hover:border-sky-400/50 shadow-black/60"
+            : "bg-white border-slate-200 text-sky-600 hover:bg-slate-50 hover:border-sky-500/30 shadow-slate-200/55"
+        )}
+        title="Play Guided Tutorial"
+      >
+        <Play size={12} className="fill-current animate-pulse text-sky-400" />
+        <span>Guide Me</span>
+      </button>
+
+      {/* Render Portal Tour Animation */}
+      {isTourOpen && (
+        <LabPreferencesTour 
+          isDark={isDark} 
+          onClose={() => {
+            setIsTourOpen(false);
+            localStorage.setItem('has_seen_lab_tour', 'true');
+          }} 
+        />
+      )}
     </div>
   );
 }
