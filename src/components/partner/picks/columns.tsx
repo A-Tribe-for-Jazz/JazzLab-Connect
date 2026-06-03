@@ -49,12 +49,12 @@ export const LAB_DETAILS: Record<string, { short: string; room: string; desc: st
   "Afro-Futuristic Studio": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "AI World-Building Lab": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "Pixel Beats Lab": { short: "Pixel Beats Lab", room: "112", desc: "Video game music coding", icon: "🎮", ageRequirement: "9+" },
-  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/Singing", icon: "🎤", ageRequirement: "all ages" },
-  "Vocal Resonance Lab": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/Singing", icon: "🎤", ageRequirement: "all ages" },
-  "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/JavaScript", icon: "💻", ageRequirement: "11+" },
-  "Eco Jazz Sound Lab": { short: "EcoJazz Sound Lab", room: "123", desc: "Nature recording/mixing", icon: "🌱", ageRequirement: "9+" },
+  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
+  "Vocal Resonance Lab": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
+  "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/ JavaScript", icon: "💻", ageRequirement: "11+" },
+  "Eco Jazz Sound Lab": { short: "EcoJazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
   "Virtual Reality MusicMaking": { short: "Virtual Reality", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
-  "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/Rhythms", icon: "🥁", ageRequirement: "all ages" },
+  "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/ Rhythms", icon: "🥁", ageRequirement: "all ages" },
   "Jazz Fab Lab": { short: "JazzFabLab", room: "130", desc: "Engineering Instruments", icon: "🛠️", ageRequirement: "7+" },
 };
 
