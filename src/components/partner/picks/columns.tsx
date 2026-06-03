@@ -30,32 +30,32 @@ interface ColumnProps {
 }
 
 const LAB_SHORT_NAMES: Record<string, string> = {
-  "Arts Collaboratorium": "Arts Collab",
-  "Jazz Fab Lab": "Jazz Fab",
-  "Virtual Reality MusicMaking": "VR Music",
-  "Conga Drumming": "Conga",
-  "Afro-Futuristic Studio": "Afro-Future",
-  "Remix the Code": "Remix Code",
-  "Pixel Beats Lab": "Pixel Beats",
-  "Eco Jazz Sound Lab": "Eco Jazz",
-  "The Vocal Resonance Lab with The Singing Buckeyes": "Vocal Resonance",
-  "Young Producers Lab": "Young Producers",
+  "Arts Collaboratorium": "Arts Collaboratorium",
+  "Jazz Fab Lab": "Jazz Fab Lab",
+  "Virtual Reality MusicMaking": "Virtual Reality MusicMaking",
+  "Conga Drumming": "Conga Drumming",
+  "Afro-Futuristic Studio": "Afro-Futuristic Studio",
+  "Remix the Code": "Remix the Code",
+  "Pixel Beats Lab": "Pixel Beats Lab",
+  "Eco Jazz Sound Lab": "Eco Jazz Sound Lab",
+  "The Vocal Resonance Lab with The Singing Buckeyes": "The Vocal Resonance Lab with The Singing Buckeyes",
+  "Young Producers Lab": "Young Producers Lab",
 };
 
 export const LAB_DETAILS: Record<string, { short: string; room: string; desc: string; icon: string; ageRequirement: string }> = {
   "Arts Collaboratorium": { short: "Arts Collaboratorium", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "all ages" },
-  "Young Producers Lab": { short: "Future Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
-  "Future Producers Lab": { short: "Future Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Young Producers Lab": { short: "Young Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Future Producers Lab": { short: "Young Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
   "Afro-Futuristic Studio": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "AI World-Building Lab": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "Pixel Beats Lab": { short: "Pixel Beats Lab", room: "112", desc: "Video game music coding", icon: "🎮", ageRequirement: "9+" },
-  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
-  "Vocal Resonance Lab": { short: "Vocal Resonance Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
+  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "The Vocal Resonance Lab with The Singing Buckeyes", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
+  "Vocal Resonance Lab": { short: "The Vocal Resonance Lab with The Singing Buckeyes", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
   "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/ JavaScript", icon: "💻", ageRequirement: "11+" },
-  "Eco Jazz Sound Lab": { short: "EcoJazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
-  "Virtual Reality MusicMaking": { short: "Virtual Reality", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
+  "Eco Jazz Sound Lab": { short: "Eco Jazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
+  "Virtual Reality MusicMaking": { short: "Virtual Reality MusicMaking", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
   "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/ Rhythms", icon: "🥁", ageRequirement: "all ages" },
-  "Jazz Fab Lab": { short: "JazzFabLab", room: "130", desc: "Engineering Instruments", icon: "🛠️", ageRequirement: "7+" },
+  "Jazz Fab Lab": { short: "Jazz Fab Lab", room: "130", desc: "Engineering Instruments", icon: "🛠️", ageRequirement: "7+" },
 };
 
 export const getColumns = ({
