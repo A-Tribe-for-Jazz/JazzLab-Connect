@@ -186,7 +186,7 @@ export const getColumns = ({
           
           {/* Brief Description */}
           <span className={cn(
-            "text-[10px] font-semibold leading-tight px-0.5 italic whitespace-normal break-words inline-block w-full",
+            "text-[10px] font-semibold leading-tight px-0.5 italic whitespace-normal break-normal inline-block w-full",
             isDark ? "text-slate-400" : "text-slate-500"
           )}>
             {details.desc}
