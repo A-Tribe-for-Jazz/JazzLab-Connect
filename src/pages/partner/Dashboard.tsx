@@ -1,12 +1,75 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle2, Share2, Plus } from 'lucide-react';
+import { Check, Share2, Plus, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ShareAccessModal from '../../components/partner/ShareAccessModal';
 import { cn } from '@/lib/utils';
 import { useOutletContext } from 'react-router-dom';
+
+interface StepConfig {
+  number: number;
+  title: string;
+  getSubtitle: (stats: Stats) => string;
+  isComplete: (stats: Stats) => boolean;
+  to: string;
+}
+
+interface Stats {
+  target: number;
+  count: number;
+  missingDemo: number;
+  missingPicks: number;
+  fullyReady: number;
+}
+
+const STEPS: StepConfig[] = [
+  {
+    number: 1,
+    title: 'Add Students',
+    getSubtitle: (s) =>
+      s.count > 0
+        ? `${s.count} student${s.count !== 1 ? 's' : ''} enrolled`
+        : 'Enroll at least one student to get started',
+    isComplete: (s) => s.count > 0,
+    to: '/partner/students?add=true',
+  },
+  {
+    number: 2,
+    title: 'Complete Student Profiles',
+    getSubtitle: (s) => {
+      if (s.count === 0) return 'Add students first';
+      if (s.missingDemo === 0) return 'All profiles complete';
+      return `${s.missingDemo} student${s.missingDemo !== 1 ? 's' : ''} missing profile info`;
+    },
+    isComplete: (s) => s.count > 0 && s.missingDemo === 0,
+    to: '/partner/students?filter=incomplete_demo',
+  },
+  {
+    number: 3,
+    title: 'Select Lab Preferences',
+    getSubtitle: (s) => {
+      if (s.count === 0) return 'Add students first';
+      if (s.missingDemo > 0) return 'Complete profiles first';
+      if (s.missingPicks === 0) return 'All lab selections complete';
+      return `${s.missingPicks} student${s.missingPicks !== 1 ? 's' : ''} need lab selections`;
+    },
+    isComplete: (s) => s.count > 0 && s.missingDemo === 0 && s.missingPicks === 0,
+    to: '/partner/lab-picks',
+  },
+  {
+    number: 4,
+    title: 'All Students Registered',
+    getSubtitle: (s) => {
+      if (s.fullyReady === s.count && s.count > 0) return 'Registration complete — you\'re all set!';
+      if (s.count === 0) return 'No students enrolled yet';
+      return `${s.fullyReady} of ${s.count} students fully registered`;
+    },
+    isComplete: (s) => s.fullyReady === s.count && s.count > 0,
+    to: '/partner/students',
+  },
+];
 
 export default function PartnerDashboard() {
   const { profile } = useAuth();
@@ -15,7 +78,7 @@ export default function PartnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     target: 50,
     count: 0,
     missingDemo: 0,
@@ -157,6 +220,9 @@ export default function PartnerDashboard() {
     }
   };
 
+  // Determine which step is the current active one (first incomplete)
+  const activeStepIndex = STEPS.findIndex(step => !step.isComplete(stats));
+
   if (loading) return null;
 
   return (
@@ -187,11 +253,134 @@ export default function PartnerDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-12">
-          <OrbitStat label="Total Enrolled" value={stats.count} color="border-blue-500" bgColor={isDark ? "bg-blue-500/5" : "bg-blue-50/50"} to="/partner/students" isDark={isDark} />
-          <OrbitStat label="Profiles Required" value={stats.missingDemo} color="border-amber-500" bgColor={isDark ? "bg-amber-500/5" : "bg-amber-50/50"} isWarning={stats.missingDemo > 0} to="/partner/students?filter=incomplete_demo" isDark={isDark} />
-          <OrbitStat label="Selections Required" value={stats.missingPicks} color="border-indigo-500" bgColor={isDark ? "bg-indigo-500/5" : "bg-indigo-50/50"} isWarning={stats.missingPicks > 0} to="/partner/lab-picks" isDark={isDark} />
-          <OrbitStat label="Fully Registered" value={stats.fullyReady} color="border-emerald-500" bgColor={isDark ? "bg-emerald-500/5" : "bg-emerald-50/50"} isSuccess={stats.fullyReady === stats.count && stats.count > 0} to="/partner/students" isDark={isDark} />
+        {/* Registration Progress Timeline */}
+        <div className="py-8">
+          <h2 className={cn(
+            "text-[10px] font-black uppercase tracking-[0.25em] mb-10",
+            isDark ? "text-slate-600" : "text-slate-400"
+          )}>
+            Registration Progress
+          </h2>
+
+          <div className="relative ml-2">
+            {STEPS.map((step, idx) => {
+              const isComplete = step.isComplete(stats);
+              const isActive = idx === activeStepIndex;
+              const isPending = !isComplete && !isActive;
+              const isLast = idx === STEPS.length - 1;
+
+              return (
+                <div key={step.number} className="relative flex items-start group">
+                  {/* Vertical Connector Line */}
+                  {!isLast && (
+                    <div
+                      className={cn(
+                        "absolute left-[19px] top-[44px] w-[2px] transition-all duration-700",
+                        isComplete
+                          ? isDark ? "bg-sky-500/60" : "bg-sky-400/50"
+                          : isDark ? "bg-white/[0.06]" : "bg-slate-200/80"
+                      )}
+                      style={{ height: 'calc(100% - 20px)' }}
+                    />
+                  )}
+
+                  {/* Step Circle */}
+                  <div className="relative flex-shrink-0 z-10">
+                    <div
+                      className={cn(
+                        "size-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 border-2",
+                        isComplete
+                          ? isDark
+                            ? "bg-sky-500/20 border-sky-400 text-sky-400"
+                            : "bg-sky-50 border-sky-400 text-sky-600"
+                          : isActive
+                            ? isDark
+                              ? "bg-sky-500/10 border-sky-400/70 text-sky-400"
+                              : "bg-sky-50/80 border-sky-400/60 text-sky-600"
+                            : isDark
+                              ? "bg-white/[0.03] border-white/10 text-slate-600"
+                              : "bg-slate-50 border-slate-200 text-slate-400"
+                      )}
+                    >
+                      {isComplete ? (
+                        <Check size={18} strokeWidth={3} />
+                      ) : (
+                        step.number
+                      )}
+                    </div>
+
+                    {/* Active step pulse ring */}
+                    {isActive && (
+                      <div className={cn(
+                        "absolute inset-0 rounded-full border-2 animate-ping opacity-30",
+                        isDark ? "border-sky-400" : "border-sky-400"
+                      )} />
+                    )}
+                  </div>
+
+                  {/* Step Content */}
+                  <Link
+                    to={step.to}
+                    className={cn(
+                      "ml-5 pb-10 flex-1 group/link cursor-pointer no-underline transition-all duration-300",
+                      isLast && "pb-0"
+                    )}
+                  >
+                    <div className={cn(
+                      "rounded-2xl px-6 py-4 transition-all duration-300 border",
+                      isComplete
+                        ? isDark
+                          ? "bg-sky-500/[0.04] border-sky-500/10 hover:bg-sky-500/[0.08]"
+                          : "bg-sky-50/40 border-sky-100/60 hover:bg-sky-50/80"
+                        : isActive
+                          ? isDark
+                            ? "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] shadow-lg shadow-sky-900/5"
+                            : "bg-white border-slate-200/60 hover:border-slate-300 shadow-lg shadow-slate-200/50"
+                          : isDark
+                            ? "bg-transparent border-white/[0.03] hover:bg-white/[0.02]"
+                            : "bg-transparent border-slate-100/50 hover:bg-slate-50/50"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className={cn(
+                            "text-[15px] font-bold tracking-tight transition-colors duration-300",
+                            isComplete
+                              ? isDark ? "text-sky-400" : "text-sky-700"
+                              : isActive
+                                ? isDark ? "text-white" : "text-slate-900"
+                                : isDark ? "text-slate-500" : "text-slate-400"
+                          )}>
+                            {step.title}
+                          </h3>
+                          <p className={cn(
+                            "text-[13px] mt-0.5 font-medium transition-colors duration-300",
+                            isComplete
+                              ? isDark ? "text-sky-400/60" : "text-sky-600/60"
+                              : isActive
+                                ? isDark ? "text-slate-400" : "text-slate-500"
+                                : isDark ? "text-slate-600" : "text-slate-400"
+                          )}>
+                            {step.getSubtitle(stats)}
+                          </p>
+                        </div>
+                        <ChevronRight
+                          size={18}
+                          className={cn(
+                            "transition-all duration-300 opacity-0 group-hover/link:opacity-100 group-hover/link:translate-x-1",
+                            isComplete
+                              ? isDark ? "text-sky-400/50" : "text-sky-400"
+                              : isActive
+                                ? isDark ? "text-slate-400" : "text-slate-500"
+                                : isDark ? "text-slate-600" : "text-slate-400"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {profile?.organization_id && (
@@ -200,28 +389,5 @@ export default function PartnerDashboard() {
 
       </div>
     </div>
-  );
-}
-
-function OrbitStat({ label, value, color, bgColor, isWarning, isSuccess, to, isDark }: any) {
-  return (
-    <Link to={to} className="flex flex-col items-center gap-8 group cursor-pointer no-underline hover:opacity-100">
-      <div className={cn(
-        "size-32 rounded-full border-2 flex items-center justify-center transition-all duration-500 group-hover:scale-110 relative",
-        color,
-        bgColor,
-        isDark ? "group-hover:brightness-125 shadow-2xl shadow-blue-900/10" : "group-hover:brightness-95 shadow-sm"
-      )}>
-        <span className={cn("text-4xl font-light tracking-tighter transition-colors duration-700", isDark ? "text-white" : "text-slate-900")}>{value}</span>
-
-        {/* Enhanced Simple Pulse Render */}
-        {isWarning && value > 0 && (
-          <div className={cn("absolute inset-0 rounded-full border-2 animate-ping opacity-40", color)} />
-        )}
-
-        {isSuccess && <div className="absolute -top-1 -right-1 size-4 rounded-full bg-white flex items-center justify-center shadow-lg z-10"><CheckCircle2 className="text-emerald-500" size={12} /></div>}
-      </div>
-      <div className={cn("text-xs font-black uppercase tracking-widest text-center !opacity-100 relative z-20 transition-colors duration-700", isDark ? "text-slate-500" : "text-slate-600")}>{label}</div>
-    </Link>
   );
 }
