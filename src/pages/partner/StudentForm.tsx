@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, AlertCircle, ChevronLeft, Music, Info, Star } from 'lucide-react';
+import { Save, ChevronLeft, Music, Info, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ export default function StudentForm() {
   const isNew = !id;
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { activeCampDayId } = useOutletContext<any>() || {};
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -39,18 +40,19 @@ export default function StudentForm() {
     first_name: '',
     last_name: '',
     age: '',
-    camp_day_id: '',
+    camp_day_id: isNew ? (activeCampDayId || '') : '',
     sibling_group_id: '',
-    race: '',
-    ethnicity: '',
-    gender: '',
-    household_income_tier: '',
-    zip_code: '',
     special_needs_notes: '',
     parent_email: '',
   });
 
   const [preferences, setPreferences] = useState<{ [rank: number]: string }>({});
+
+  useEffect(() => {
+    if (isNew && activeCampDayId && !formData.camp_day_id) {
+      setFormData(prev => ({ ...prev, camp_day_id: activeCampDayId }));
+    }
+  }, [activeCampDayId, isNew]);
 
   useEffect(() => {
     fetchFormOptions();
@@ -98,11 +100,6 @@ export default function StudentForm() {
         age: student.age.toString(),
         camp_day_id: student.camp_day_id || '',
         sibling_group_id: student.sibling_group_id || '',
-        race: student.race || '',
-        ethnicity: student.ethnicity || '',
-        gender: student.gender || '',
-        household_income_tier: student.household_income_tier || '',
-        zip_code: student.zip_code || '',
         special_needs_notes: student.special_needs_notes || '',
         parent_email: student.parent_email || '',
       });
@@ -162,11 +159,6 @@ export default function StudentForm() {
         age: parseInt(formData.age),
         camp_day_id: formData.camp_day_id || null,
         sibling_group_id: formData.sibling_group_id || null,
-        race: formData.race || null,
-        ethnicity: formData.ethnicity || null,
-        gender: formData.gender || null,
-        household_income_tier: formData.household_income_tier || null,
-        zip_code: formData.zip_code || null,
         special_needs_notes: formData.special_needs_notes || null,
         parent_email: formData.parent_email || null,
       };
@@ -318,117 +310,35 @@ export default function StudentForm() {
           </CardContent>
         </Card>
 
-        {/* Demographics Card */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden bg-slate-900 text-white">
-          <CardHeader className="bg-white/5 border-b border-white/10 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-primary">
-                <Info size={20} />
-                <CardTitle className="text-lg">Grant Reporting & Demographics</CardTitle>
-              </div>
-              <Badge className="bg-primary/20 text-primary border-primary/30 font-bold">Secure Access Only</Badge>
+        {/* Additional Info Card */}
+        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+            <div className="flex items-center gap-3 text-primary">
+              <Info size={20} />
+              <CardTitle className="text-lg">Additional Information</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 text-slate-300">
-              <AlertCircle size={20} className="text-primary shrink-0" />
-              <p className="text-xs leading-relaxed">
-                The following fields are <span className="text-white font-bold">required for federal grant compliance</span>. 
-                This data is anonymized for reporting and is never shared with lab instructors.
-              </p>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <div className="space-y-2">
-                <Label className="font-bold text-slate-100">Race <span className="text-primary">*</span></Label>
-                <Select value={formData.race} onValueChange={val => setFormData({...formData, race: val ?? ''})}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white">
-                    <SelectValue placeholder="Select race" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Black">Black or African American</SelectItem>
-                    <SelectItem value="White">White</SelectItem>
-                    <SelectItem value="Asian">Asian</SelectItem>
-                    <SelectItem value="Mixed">Mixed/Two or more</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-slate-100">Ethnicity <span className="text-primary">*</span></Label>
-                <Select value={formData.ethnicity} onValueChange={val => setFormData({...formData, ethnicity: val ?? ''})}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white">
-                    <SelectValue placeholder="Select ethnicity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Hispanic">Hispanic or Latino</SelectItem>
-                    <SelectItem value="Non-Hispanic">Non-Hispanic or Latino</SelectItem>
-                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-slate-100">Gender <span className="text-primary">*</span></Label>
-                <Select value={formData.gender} onValueChange={val => setFormData({...formData, gender: val ?? ''})}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Non-binary">Non-binary</SelectItem>
-                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-slate-100">Household Income Tier <span className="text-primary">*</span></Label>
-                <Select value={formData.household_income_tier} onValueChange={val => setFormData({...formData, household_income_tier: val ?? ''})}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white">
-                    <SelectValue placeholder="Select income tier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="<25k">Under $25,000</SelectItem>
-                    <SelectItem value="25k-50k">$25,000 - $50,000</SelectItem>
-                    <SelectItem value="50k-75k">$50,000 - $75,000</SelectItem>
-                    <SelectItem value="75k-100k">$75,000 - $100,000</SelectItem>
-                    <SelectItem value=">100k">Over $100,000</SelectItem>
-                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="parent_email" className="font-bold text-slate-100">Parent Email <span className="text-primary">*</span></Label>
-                <Input 
+                <Label htmlFor="parent_email" className="font-bold text-slate-700">Parent Email</Label>
+                <Input
                   id="parent_email"
-                  type="email" 
-                  required 
-                  className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white placeholder:text-slate-500"
+                  type="email"
+                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
                   placeholder="parent@example.com"
-                  value={formData.parent_email} 
-                  onChange={e => setFormData({...formData, parent_email: e.target.value})} 
+                  value={formData.parent_email}
+                  onChange={e => setFormData({...formData, parent_email: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="zip_code" className="font-bold text-slate-100">ZIP Code <span className="text-primary">*</span></Label>
-                <Input 
-                  id="zip_code"
-                  required 
-                  className="h-11 border-white/10 bg-white/5 focus:bg-white/10 transition-all text-white placeholder:text-slate-500"
-                  placeholder="e.g. 10001"
-                  value={formData.zip_code} 
-                  onChange={e => setFormData({...formData, zip_code: e.target.value})} 
-                />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="notes" className="font-bold text-slate-100">Special Needs / Accommodations</Label>
-                <textarea 
+                <Label htmlFor="notes" className="font-bold text-slate-700">Special Needs / Accommodations</Label>
+                <textarea
                   id="notes"
-                  rows={3} 
-                  className="w-full rounded-md border border-white/10 bg-white/5 p-3 text-white focus:bg-white/10 focus:outline-none transition-all resize-none placeholder:text-slate-500" 
+                  rows={3}
+                  className="w-full rounded-md border border-slate-200 bg-slate-50/30 p-3 focus:bg-white focus:outline-none transition-all resize-none placeholder:text-slate-400"
                   placeholder="Allergies, accessibility needs, etc."
-                  value={formData.special_needs_notes} 
+                  value={formData.special_needs_notes}
                   onChange={e => setFormData({...formData, special_needs_notes: e.target.value})}
                 ></textarea>
               </div>

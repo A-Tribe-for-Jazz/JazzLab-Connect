@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Trash2, Users, Music, Layers, UserCircle, Settings2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Plus, Users, Layers, Search, Settings2, Settings } from 'lucide-react';
+import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface Lab {
   id: string;
@@ -18,8 +17,10 @@ interface Lab {
 }
 
 export default function AdminLabs() {
+  const { isDark }: any = useOutletContext();
   const [labs, setLabs] = useState<Lab[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchLabs();
@@ -57,118 +58,251 @@ export default function AdminLabs() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete the lab "${name}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('labs').delete().eq('id', id);
-      if (error) throw error;
-      setLabs(labs.filter(l => l.id !== id));
-    } catch (error) {
-      console.error('Error deleting lab:', error);
-    }
-  };
+  // Search filter computations
+  const filteredLabs = labs.filter(lab => 
+    lab.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lab.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lab.instructors.some(ins => ins.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Program Labs</h1>
-          <p className="text-slate-500 font-medium max-w-2xl">
-            Configure the educational modules, session capacities, and instructor assignments.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button asChild className="rounded-full px-6 shadow-lg shadow-slate-900/20 font-bold">
-            <Link to="/admin/labs/new">
-              <Plus size={18} className="mr-2" />
-              Create New Lab
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className={cn(
+      "h-[calc(100dvh-5rem)] transition-all duration-700 overflow-hidden flex flex-col",
+      isDark ? "bg-black text-white" : "bg-white text-slate-900"
+    )}>
 
-      {loading ? (
-        <div className="p-20 text-center flex flex-col items-center justify-center space-y-4">
-          <div className="size-12 border-4 border-slate-900/20 border-t-slate-900 rounded-full animate-spin"></div>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Organizing Labs...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {labs.map((lab) => (
-            <Card key={lab.id} className="border-none shadow-xl shadow-slate-200/50 flex flex-col group hover:translate-y-[-4px] transition-all duration-300">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
-                <div className="flex justify-between items-start">
-                  <div className="size-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
-                    <Music size={24} />
+      <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
+        <section className="relative flex-1 min-h-0 flex flex-col">
+          <div
+            className={cn(
+              "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
+              isDark ? "bg-blue-500" : "bg-slate-300"
+            )}
+          />
+
+          {loading ? (
+            <div className="p-40 text-center flex flex-col items-center justify-center space-y-4">
+              <div className={cn(
+                "size-12 border-4 rounded-full animate-spin",
+                isDark ? "border-white/10 border-t-white" : "border-slate-200 border-t-slate-900"
+              )}></div>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading curriculum directory matrix...</p>
+            </div>
+          ) : (
+            <div className={cn(
+              "rounded-[1.25rem] border transition-colors duration-700 overflow-hidden relative flex flex-col flex-1 min-h-0",
+              isDark 
+                ? "bg-[#020617] border-white/10 shadow-2xl shadow-black/40" 
+                : "bg-white border-slate-200 shadow-xl shadow-slate-200/40"
+            )}>
+              {/* Unified High-Density Toolbar */}
+              <div className={cn(
+                "p-3 md:p-4 border-b",
+                isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/30"
+              )}>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="relative flex-1 w-full group/search">
+                    <Search
+                      className={cn(
+                        "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
+                        isDark
+                          ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400"
+                          : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
+                      )}
+                      size={20}
+                    />
+                    <Input
+                      placeholder="Search curriculum modules, descriptions, instructors..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={cn(
+                        "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-medium outline-none w-full",
+                        isDark
+                          ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
+                          : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
+                      )}
+                    />
                   </div>
-                  <Badge variant="outline" className="bg-white border-slate-200 text-slate-400 font-bold px-3 py-1 flex items-center gap-1.5 group-hover:text-primary group-hover:border-primary/30 transition-colors">
-                    <Users size={12} />
-                    {lab.capacity_per_session} Capacity
-                  </Badge>
-                </div>
-                <CardTitle className="text-xl font-black tracking-tight mt-4 text-slate-900 leading-tight">{lab.name}</CardTitle>
-                <CardDescription className="line-clamp-2 font-medium min-h-[40px] mt-1">{lab.description}</CardDescription>
-              </CardHeader>
-              
-              <CardContent className="flex-1 py-6 space-y-5">
-                <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                      <Layers size={14} /> Age Range
-                   </div>
-                   <Badge className="bg-slate-100 text-slate-900 border-none font-black hover:bg-slate-100">
-                      {lab.min_age} — {lab.max_age} Years
-                   </Badge>
-                </div>
-                
-                <Separator className="bg-slate-100" />
-                
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                      <UserCircle size={14} /> Instructors
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {lab.instructors.length > 0 ? (
-                      lab.instructors.map((name, i) => (
-                        <Badge key={i} variant="outline" className="bg-white border-slate-200 text-slate-600 font-bold">
-                          {name}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-xs font-medium text-slate-300 italic">No instructors assigned</span>
+
+                  <Button
+                    asChild
+                    className={cn(
+                      "rounded-xl h-10 px-5 font-semibold tracking-wide text-[13px] transition-all duration-300 border flex items-center gap-2 shrink-0 md:w-auto w-full justify-center shadow-sm",
+                      isDark
+                        ? "bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/50"
+                        : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
                     )}
-                  </div>
+                  >
+                    <Link to="/admin/labs/new">
+                      <Plus size={16} />
+                      <span>Add Lab</span>
+                    </Link>
+                  </Button>
                 </div>
-              </CardContent>
+              </div>
 
-              <CardFooter className="p-4 bg-slate-50/30 border-t border-slate-100 flex gap-3">
-                <Button asChild variant="outline" className="flex-1 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-primary hover:border-primary transition-all">
-                  <Link to={`/admin/labs/${lab.id}/edit`}>
-                    <Edit2 size={14} className="mr-2" /> Edit Lab
-                  </Link>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => handleDelete(lab.id, lab.name)}
-                  className="rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                >
-                  <Trash2 size={18} />
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              {/* Spreadsheet Data Grid */}
+              <div className="flex-1 overflow-auto min-h-0">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 z-40">
+                    <tr className={cn(
+                      "border-b transition-colors duration-700",
+                      isDark ? "border-white/10" : "border-slate-300"
+                    )}>
+                      <th className={cn(
+                        "py-3 font-semibold text-[13px] text-center w-[60px] border-r last:border-r-0 overflow-hidden",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>#</th>
+                      <th className={cn(
+                        "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 overflow-hidden w-[280px]",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>Lab Module</th>
+                      <th className={cn(
+                        "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 text-center w-[150px] overflow-hidden",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>Capacity</th>
+                      <th className={cn(
+                        "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 text-center w-[150px] overflow-hidden",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>Age Group</th>
+                      <th className={cn(
+                        "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 overflow-hidden w-[250px]",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>Instructor(s)</th>
+                      <th className={cn(
+                        "py-3 px-4 font-semibold text-[13px] text-center w-[160px] last:border-r-0 overflow-hidden",
+                        isDark 
+                          ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                          : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      )}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLabs.map((lab, index) => {
+                      return (
+                        <tr 
+                          key={lab.id}
+                          className={cn(
+                            "h-10 border-b transition-colors duration-300 group",
+                            isDark 
+                              ? "border-white/10 hover:bg-white/[0.02]" 
+                              : "border-slate-200 hover:bg-slate-50/30"
+                          )}
+                        >
+                          {/* # Index */}
+                          <td className={cn(
+                            "py-1 text-center font-medium opacity-40 border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            {String(index + 1).padStart(2, '0')}
+                          </td>
 
-          {labs.length === 0 && (
-            <div className="col-span-full h-64 flex flex-col items-center justify-center border-4 border-dashed border-slate-100 rounded-[2rem] space-y-4 opacity-50">
-               <Settings2 size={48} className="text-slate-300" />
-               <p className="font-bold text-slate-400 uppercase tracking-widest">No labs configured</p>
+                          {/* Lab Name */}
+                          <td className={cn(
+                            "py-1 px-4 border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            <span className={cn("font-semibold text-[13px]", isDark ? "text-white" : "text-slate-900")}>
+                              {lab.name}
+                            </span>
+                          </td>
+
+                          {/* Capacity */}
+                          <td className={cn(
+                            "py-1 px-4 text-center border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            <div className="flex items-center justify-center gap-1 text-[13px] font-semibold">
+                              <Users size={12} className="text-slate-400" />
+                              <span className={cn(isDark ? "text-slate-200" : "text-slate-700")}>{lab.capacity_per_session} seats</span>
+                            </div>
+                          </td>
+
+                          {/* Age Group */}
+                          <td className={cn(
+                            "py-1 px-4 text-center border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            <div className="flex items-center justify-center gap-1 text-[13px] font-semibold">
+                              <Layers size={12} className="text-slate-400" />
+                              <span className={cn(isDark ? "text-slate-200" : "text-slate-700")}>{lab.min_age} - {lab.max_age} yrs</span>
+                            </div>
+                          </td>
+
+                          {/* Instructor */}
+                          <td className={cn(
+                            "py-1 px-4 border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            {lab.instructors.length > 0 ? (
+                              <div className="flex items-center gap-1.5 text-[13px]">
+                                <div className={cn(
+                                  "size-7 rounded-full flex items-center justify-center text-[9px] font-semibold border uppercase shrink-0",
+                                  isDark ? "bg-slate-900 border-white/10 text-sky-400" : "bg-sky-50 border-sky-100 text-sky-700"
+                                )}>
+                                  {lab.instructors[0].split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <span className={cn("font-medium truncate", isDark ? "text-slate-200" : "text-slate-700")}>
+                                  {lab.instructors.join(', ')}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[13px] font-medium text-slate-400 dark:text-slate-600 italic">Unassigned</span>
+                            )}
+                          </td>
+
+                          {/* Actions Deck */}
+                          <td className="py-1 px-4 text-center overflow-hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button
+                                asChild
+                                className={cn(
+                                  "rounded-xl h-8 px-3 font-semibold tracking-wide text-[10px] transition-all duration-300 border flex items-center gap-1.5",
+                                  isDark
+                                    ? "bg-sky-500/15 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 shadow-md shadow-sky-500/5"
+                                    : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 shadow-sm"
+                                )}
+                              >
+                                <Link to={`/admin/labs/${lab.id}/edit`}>
+                                  <Settings size={11} />
+                                  Manage
+                                </Link>
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {filteredLabs.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-20 text-center">
+                          <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
+                            <Settings2 size={32} className="text-slate-400" />
+                            <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
+                              No curriculum labs found matching filters
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-        </div>
-      )}
+        </section>
+      </div>
     </div>
   );
 }

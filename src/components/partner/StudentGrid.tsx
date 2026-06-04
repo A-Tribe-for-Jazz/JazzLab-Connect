@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Loader2, Plus, Search, Filter, GraduationCap, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Search, Filter, Info, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import PartnerLoader from './PartnerLoader';
 import {
   Select,
   SelectContent,
@@ -15,33 +14,91 @@ import {
 } from "@/components/ui/select";
 import { DataTable } from "./students/data-table";
 import { getColumns, type StudentRow } from "./students/columns";
+import PartnerLoader from './PartnerLoader';
+import StudentDirectoryTour from './StudentDirectoryTour';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PHANTOM_PREFIX = 'phantom-';
+const isPhantom = (id: string) => id.startsWith(PHANTOM_PREFIX);
+const FLUSH_INTERVAL_MS = 5_000; // Batch-save every 5 seconds
+
+const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | null): StudentRow => ({
+  id: `${PHANTOM_PREFIX}${crypto.randomUUID()}`,
+  first_name: '',
+  last_name: '',
+  age: '',
+  last_grade_completed: '',
+  home_zip_code: '',
+  race_ethnicity: '',
+  gender: '',
+  total_program_hours: '',
+  camp_day_id: activeCampDayId || null,
+  notes: '',
+  organization_id: orgId,
+  sync_status: 'synced',
+  order_index: idx,
+});
 
 interface StudentGridProps {
   organizationId: string;
   isDark?: boolean;
+  activeCampDayId?: string | null;
 }
 
-export default function StudentGrid({ organizationId, isDark = false }: StudentGridProps) {
+export default function StudentGrid({ organizationId, isDark = false, activeCampDayId = null }: StudentGridProps) {
+  const { profile } = useAuth();
+  const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [campDays, setCampDays] = useState<{ id: string, date: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState(searchParams.get('filter') || 'all');
-  const debounceTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const activeCursorsRef = useRef<{ [cellKey: string]: string }>({});
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
-  // Always-fresh ref so debounce timers never use stale student state
+  // Auto-play Student Data guide if they haven't seen it yet
+  useEffect(() => {
+    if (!loading && students.length > 0) {
+      const hasSeen = localStorage.getItem('has_seen_dir_tour');
+      if (!hasSeen) {
+        setIsTourOpen(true);
+      }
+    }
+  }, [loading, students]);
+
+  // Refs ─────────────────────────────────────────────────────────────────────
+  const channelRef = useRef<any>(null);
+  const connectionIdRef = useRef(crypto.randomUUID());
   const studentsRef = useRef<StudentRow[]>([]);
+  const dirtyRowsRef = useRef(new Set<string>());
+  const pendingDeletesRef = useRef<string[]>([]);
+  const isFlushingRef = useRef(false);
+  const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const ownInsertsRef = useRef(new Set<string>()); // Track our own DB inserts to avoid Postgres listener duplicates
+
+  // Keep studentsRef always current for use inside callbacks
   useEffect(() => { studentsRef.current = students; }, [students]);
 
-  useEffect(() => {
-    fetchData();
-    return () => {
-      Object.values(debounceTimers.current).forEach(clearTimeout);
-    };
-  }, [organizationId]);
+  // ─── Cursor tracking (broadcast-based for speed) ────────────────────────
+  const handleCellFocus = useCallback((studentId: string, field: string) => {
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'cursor_move',
+      payload: { senderId: connectionIdRef.current, studentId, field },
+    });
+  }, []);
 
-  const fetchData = async () => {
+  const handleCellBlur = useCallback(() => {
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'cursor_clear',
+      payload: { senderId: connectionIdRef.current },
+    });
+  }, []);
+
+  // ─── Fetch initial data from DB ─────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     try {
       const [studentsRes, daysRes] = await Promise.all([
         supabase
@@ -52,45 +109,38 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         supabase
           .from('camp_day_organizations')
           .select('camp_day_id, camp_days(date)')
-          .eq('organization_id', organizationId)
+          .eq('organization_id', organizationId),
       ]);
 
       if (studentsRes.data) {
-        const existingStudents = studentsRes.data.map((s, idx) => ({ 
-          ...s, 
-          sync_status: 'synced', 
-          order_index: s.order_index ?? idx,
-          age: s.age ?? ''
-        })) as StudentRow[];
+        const existing = studentsRes.data
+          .filter(s => s.first_name?.trim() || s.last_name?.trim())
+          .map((s, idx) => ({
+            ...s,
+            sync_status: 'synced' as const,
+            order_index: s.order_index ?? idx,
+            age: s.age ?? '',
+            last_grade_completed: s.last_grade_completed ?? '',
+            home_zip_code: s.home_zip_code ?? '',
+            race_ethnicity: s.race_ethnicity ?? '',
+            gender: s.gender ?? '',
+            total_program_hours: s.total_program_hours ?? '',
+          })) as StudentRow[];
 
-        // Excel-style: Always provide at least 100 rows for frictionless data entry
-        const targetCount = Math.max(existingStudents.length + 20, 100);
+        const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
 
-        const paddedStudents = [...existingStudents];
-        while (paddedStudents.length < targetCount) {
-          paddedStudents.push({
-            id: crypto.randomUUID(),
-            first_name: '',
-            last_name: '',
-            age: '',
-            gender: '',
-            race: '',
-            ethnicity: '',
-            zip_code: '',
-            camp_day_id: null,
-            notes: '',
-            organization_id: organizationId,
-            sync_status: 'synced',
-            order_index: paddedStudents.length
-          } as StudentRow);
+        const targetCount = Math.max(filteredExisting.length + 20, 100);
+        const padded = [...filteredExisting];
+        while (padded.length < targetCount) {
+          padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
         }
-        setStudents(paddedStudents);
+        setStudents(padded);
       }
-      
+
       if (daysRes.data) {
         setCampDays(daysRes.data.map((od: any) => ({
           id: od.camp_day_id,
-          date: od.camp_days.date
+          date: od.camp_days.date,
         })));
       }
     } catch (error) {
@@ -98,185 +148,659 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId, activeCampDayId]);
 
-  const updateStudent = async (student: StudentRow) => {
-    // Only skip if the row is completely empty (no name at all)
-    const hasAnyData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
-    if (!hasAnyData) {
-      // Reset to neutral so the row doesn't stay stuck in 'saving'
-      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, sync_status: 'synced' } : s));
-      return;
-    }
+  // ─── Batch-flush dirty rows to Supabase ─────────────────────────────────
+  const flushToDB = useCallback(async () => {
+    if (isFlushingRef.current) return;
 
-    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, sync_status: 'saving' } : s));
+    const dirtyIds = [...dirtyRowsRef.current];
+    const deletes = [...pendingDeletesRef.current];
+    if (dirtyIds.length === 0 && deletes.length === 0) return;
+
+    isFlushingRef.current = true;
+    dirtyRowsRef.current.clear();
+    pendingDeletesRef.current = [];
+
+    const currentStudents = studentsRef.current;
+
     try {
-      const { sync_status, ...payload } = student;
-      // Safely convert age: '' | null | number -> number | null
-      const ageValue = payload.age === '' || payload.age === null || payload.age === undefined
-        ? null
-        : Number(payload.age);
+      // ── Prepare rows ────────────────────────────────────────────────────
+      const phantomRows: { phantomId: string; realId: string; insertPayload: any }[] = [];
+      const upsertRows: any[] = [];
+      const upsertIds: string[] = [];
 
-      const { error } = await supabase
-        .from('students')
-        .upsert({
+      for (const id of dirtyIds) {
+        const student = currentStudents.find(s => s.id === id);
+        if (!student) continue;
+
+        const fields = [
+          student.first_name,
+          student.last_name,
+          student.age,
+          student.last_grade_completed,
+          student.home_zip_code,
+          student.race_ethnicity,
+          student.gender,
+          student.total_program_hours
+        ];
+        const hasData = fields.some(f => f !== '' && f !== null && f !== undefined);
+        if (!hasData) continue;
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { sync_status, organization_id: _org, ...payload } = student;
+        const ageValue =
+          payload.age === '' || payload.age === null || payload.age === undefined
+            ? null
+            : Number(payload.age);
+
+        const hoursValue =
+          payload.total_program_hours === '' || payload.total_program_hours === null || payload.total_program_hours === undefined
+            ? null
+            : Number(payload.total_program_hours);
+
+        const dbPayload = {
           ...payload,
-          organization_id: organizationId,
           age: ageValue,
-        });
-      if (error) throw error;
-      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, sync_status: 'synced' } : s));
-    } catch (err: any) {
-      console.error('Error syncing student:', err?.message ?? err);
-      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, sync_status: 'error' } : s));
-    }
-  };
+          total_program_hours: hoursValue,
+        };
 
-  const handleFieldChange = (id: string, field: keyof StudentRow, value: any) => {
-    // Update local state immediately for responsive UI
-    setStudents(prev => {
-      const studentIndex = prev.findIndex(s => s.id === id);
-      if (studentIndex === -1) return prev;
-
-      const newStudents = [...prev];
-      newStudents[studentIndex] = { ...newStudents[studentIndex], [field]: value, sync_status: 'saving' as const };
-      
-      // Check if we are near the bottom of the current list (within last 5 rows)
-      // AND ensure we don't keep adding if we just added a bunch
-      if (studentIndex >= prev.length - 5) {
-        const extraRows: StudentRow[] = Array.from({ length: 50 }).map((_, i) => ({
-          id: crypto.randomUUID(),
-          first_name: '',
-          last_name: '',
-          age: '',
-          gender: '',
-          race: '',
-          ethnicity: '',
-          zip_code: '',
-          camp_day_id: campDays[0]?.id || null,
-          notes: '',
-          organization_id: organizationId,
-          sync_status: 'synced',
-          order_index: prev.length + i
-        }));
-        return [...newStudents, ...extraRows];
+        if (isPhantom(payload.id)) {
+          const realId = crypto.randomUUID();
+          phantomRows.push({
+            phantomId: payload.id,
+            realId,
+            insertPayload: {
+              ...dbPayload,
+              id: realId,
+              organization_id: organizationId
+            }
+          });
+        } else {
+          upsertRows.push({ ...dbPayload, organization_id: organizationId });
+          upsertIds.push(id);
+        }
       }
-      return newStudents;
+
+      // ── Batch upsert existing rows ──────────────────────────────────────
+      if (upsertRows.length > 0) {
+        const { error } = await supabase.from('students').upsert(upsertRows);
+        if (error) {
+          console.error('Batch upsert error:', error.message);
+          upsertIds.forEach(id => dirtyRowsRef.current.add(id));
+        } else {
+          setStudents(prev =>
+            prev.map(s => upsertIds.includes(s.id) ? { ...s, sync_status: 'synced' } : s)
+          );
+        }
+      }
+
+      // ── Batch insert new (phantom) rows ─────────────────────────────────
+      if (phantomRows.length > 0) {
+        // Register in ownInsertsRef BEFORE initiating the insert request to avoid race condition with WebSocket events
+        phantomRows.forEach(p => {
+          ownInsertsRef.current.add(p.realId);
+          setTimeout(() => ownInsertsRef.current.delete(p.realId), 10_000);
+        });
+
+        const payloads = phantomRows.map(p => p.insertPayload);
+        const { data, error } = await supabase
+          .from('students')
+          .insert(payloads)
+          .select();
+
+        if (error) {
+          console.error('Batch insert error:', error.message);
+          phantomRows.forEach(p => {
+            dirtyRowsRef.current.add(p.phantomId);
+            ownInsertsRef.current.delete(p.realId);
+          });
+        } else if (data) {
+          setStudents(prev => {
+            let next = [...prev];
+            phantomRows.forEach(p => {
+              const inserted = data.find(r => r.id === p.realId);
+              if (inserted) {
+                next = next.map(s =>
+                  s.id === p.phantomId
+                    ? {
+                        ...s,
+                        ...inserted,
+                        age: inserted.age ?? '',
+                        last_grade_completed: inserted.last_grade_completed ?? '',
+                        home_zip_code: inserted.home_zip_code ?? '',
+                        race_ethnicity: inserted.race_ethnicity ?? '',
+                        gender: inserted.gender ?? '',
+                        total_program_hours: inserted.total_program_hours ?? '',
+                        sync_status: 'synced' as const
+                      }
+                    : s
+                );
+              }
+            });
+            return next;
+          });
+
+          // Broadcast ID remaps
+          phantomRows.forEach(p => {
+            channelRef.current?.send({
+              type: 'broadcast',
+              event: 'id_remap',
+              payload: { senderId: connectionIdRef.current, oldId: p.phantomId, newId: p.realId },
+            });
+          });
+        }
+      }
+
+      // ── Batch deletes ──────────────────────────────────────────────────
+      const realDeletes = deletes.filter(id => !isPhantom(id));
+      if (realDeletes.length > 0) {
+        const { error } = await supabase.from('students').delete().in('id', realDeletes);
+        if (error) console.error('Batch delete error:', error.message);
+      }
+    } finally {
+      isFlushingRef.current = false;
+    }
+  }, [organizationId, activeCampDayId]);
+
+  // Register flush function in parent context to support flush-before-navigation
+  useEffect(() => {
+    if (childFlushRef) {
+      childFlushRef.current = flushToDB;
+      return () => {
+        childFlushRef.current = null;
+      };
+    }
+  }, [childFlushRef, flushToDB]);
+
+  // ─── Channel setup, periodic save, beforeunload ─────────────────────────
+  useEffect(() => {
+    fetchData();
+
+    const connId = connectionIdRef.current;
+
+    // Single Supabase channel: broadcast for instant sync + presence for disconnect
+    const channel = supabase.channel(`collab-org-${organizationId}-day-${activeCampDayId || 'none'}`, {
+      config: { presence: { key: connId } },
     });
 
-    // Debounce the DB write
-    if (debounceTimers.current[id]) clearTimeout(debounceTimers.current[id]);
-    debounceTimers.current[id] = setTimeout(() => {
-      const student = studentsRef.current.find(s => id === s.id);
-      if (student) updateStudent(student);
-    }, 800);
-  };
+    // ── Broadcast: cell edits (instant propagation) ───────────────────────
+    channel.on('broadcast', { event: 'cell_edit' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
 
-  const deleteStudent = async (id: string) => {
-    const student = students.find(s => s.id === id);
-    if (!student) return;
-    try {
-      const { error } = await supabase.from('students').delete().eq('id', id);
-      if (error) throw error;
-      setStudents(prev => prev.filter(s => s.id !== id));
-    } catch (error) {
-      console.error('Error deleting student:', error);
-    }
-  };
+      setStudents(prev => {
+        const idx = prev.findIndex(s => s.id === payload.studentId);
+        if (idx !== -1) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], [payload.field]: payload.value };
+          return next;
+        }
+        // Row from another user we haven't seen yet — replace an empty phantom slot
+        const phantomIdx = prev.findIndex(
+          s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
+        );
+        const newRow: StudentRow = {
+          ...makeEmptyRow(organizationId, phantomIdx !== -1 ? phantomIdx : prev.length, activeCampDayId),
+          id: payload.studentId,
+          [payload.field]: payload.value,
+        };
+        if (phantomIdx !== -1) {
+          const next = [...prev];
+          next[phantomIdx] = newRow;
+          return next;
+        }
+        return [...prev, newRow];
+      });
+    });
+
+    // ── Broadcast: row deletes ────────────────────────────────────────────
+    channel.on('broadcast', { event: 'row_delete' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
+      setStudents(prev => {
+        const filtered = prev.filter(s => s.id !== payload.studentId);
+        if (filtered.length === prev.length) return prev;
+        filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
+        return filtered;
+      });
+    });
+
+    // ── Broadcast: phantom → real ID remaps ───────────────────────────────
+    channel.on('broadcast', { event: 'id_remap' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
+      setStudents(prev =>
+        prev.map(s => (s.id === payload.oldId ? { ...s, id: payload.newId } : s))
+      );
+      // Also remap any active cursor entries
+      const cursorsCopy: { [key: string]: string } = {};
+      for (const [key, val] of Object.entries(activeCursorsRef.current)) {
+        cursorsCopy[key.replace(payload.oldId, payload.newId)] = val;
+      }
+      activeCursorsRef.current = cursorsCopy;
+    });
+
+    // ── Broadcast: cursor moves ───────────────────────────────────────────
+    channel.on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (cursors[key] === payload.senderId) delete cursors[key];
+      }
+      if (payload.studentId && payload.field) {
+        cursors[`${payload.studentId}_${payload.field}`] = payload.senderId;
+      }
+    });
+
+    // ── Broadcast: cursor clears ──────────────────────────────────────────
+    channel.on('broadcast', { event: 'cursor_clear' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (cursors[key] === payload.senderId) delete cursors[key];
+      }
+    });
+
+    // ── Presence: clean up stale cursors when a user disconnects ──────────
+    channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+      const leftSenders = new Set(
+        (leftPresences as any[]).map(p => p.senderId).filter(Boolean)
+      );
+      if (leftSenders.size === 0) return;
+      const cursors = activeCursorsRef.current;
+      for (const key of Object.keys(cursors)) {
+        if (leftSenders.has(cursors[key])) delete cursors[key];
+      }
+    });
+
+    // Subscribe to the channel
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ senderId: connId });
+      }
+    });
+
+    channelRef.current = channel;
+
+    // ── Postgres changes: catch external additions (StudentForm, CSV, admin) ──
+    const pgChannel = supabase
+      .channel(`pg-students-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (!newRow?.id) return;
+          // Skip our own inserts (the Postgres event arrives before React processes the ID remap)
+          if (ownInsertsRef.current.has(newRow.id)) return;
+          setStudents(prev => {
+            if (prev.some(s => s.id === newRow.id)) return prev;
+            const hasData = !!(newRow.first_name?.trim() || newRow.last_name?.trim());
+            if (!hasData) return prev;
+            const phantomIdx = prev.findIndex(
+              s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
+            );
+            const student: StudentRow = {
+              ...newRow,
+              age: newRow.age ?? '',
+              last_grade_completed: newRow.last_grade_completed ?? '',
+              home_zip_code: newRow.home_zip_code ?? '',
+              race_ethnicity: newRow.race_ethnicity ?? '',
+              gender: newRow.gender ?? '',
+              total_program_hours: newRow.total_program_hours ?? '',
+              sync_status: 'synced' as const,
+              order_index: phantomIdx !== -1 ? phantomIdx : prev.length,
+            };
+            if (phantomIdx !== -1) {
+               const next = [...prev];
+               next[phantomIdx] = student;
+               return next;
+            }
+            return [...prev, student];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const oldRow = payload.old as any;
+          if (!oldRow?.id) return;
+          // Skip our own deletes
+          if (pendingDeletesRef.current.includes(oldRow.id)) return;
+          setStudents(prev => {
+            if (!prev.some(s => s.id === oldRow.id)) return prev;
+            const filtered = prev.filter(s => s.id !== oldRow.id);
+            filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
+            return filtered;
+          });
+        }
+      )
+      .subscribe();
+
+    // ── Periodic batch save to DB ─────────────────────────────────────────
+    const saveInterval = setInterval(flushToDB, FLUSH_INTERVAL_MS);
+
+    // ── Warn on unsaved changes ───────────────────────────────────────────
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirtyRowsRef.current.size > 0 || pendingDeletesRef.current.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearInterval(saveInterval);
+      broadcastTimersRef.current.forEach(t => clearTimeout(t));
+      broadcastTimersRef.current.clear();
+      flushToDB();
+      supabase.removeChannel(channel);
+      supabase.removeChannel(pgChannel);
+      channelRef.current = null;
+    };
+  }, [organizationId, profile, fetchData, flushToDB]);
+
+  // ─── Field change: local + broadcast instantly, DB later ────────────────
+  const handleFieldChange = useCallback(
+    (id: string, field: keyof StudentRow, value: any) => {
+      // 1. Update ref SYNCHRONOUSLY so cleanup flush always has latest data
+      //    (useEffect that syncs studentsRef doesn't fire on unmount)
+      const refIdx = studentsRef.current.findIndex(s => s.id === id);
+      if (refIdx !== -1) {
+        const updated = [...studentsRef.current];
+        updated[refIdx] = { ...updated[refIdx], [field]: value };
+        studentsRef.current = updated;
+      }
+
+      // 2. Update React state for rendering
+      setStudents(prev => {
+        const idx = prev.findIndex(s => s.id === id);
+        if (idx === -1) return prev;
+
+        const next = [...prev];
+        next[idx] = { ...next[idx], [field]: value };
+
+        // Auto-expand when near the bottom
+        if (idx >= prev.length - 5) {
+          const extras = Array.from({ length: 50 }).map((_, i) =>
+            makeEmptyRow(organizationId, prev.length + i, activeCampDayId)
+          );
+          return [...next, ...extras];
+        }
+        return next;
+      });
+
+      // 2. Mark dirty for the next periodic save
+      dirtyRowsRef.current.add(id);
+
+      // 3. Debounced broadcast — coalesces rapid keystrokes into fewer messages
+      const broadcastKey = `${id}_${String(field)}`;
+      const pendingTimer = broadcastTimersRef.current.get(broadcastKey);
+      if (pendingTimer) clearTimeout(pendingTimer);
+      broadcastTimersRef.current.set(broadcastKey, setTimeout(() => {
+        broadcastTimersRef.current.delete(broadcastKey);
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'cell_edit',
+          payload: { senderId: connectionIdRef.current, studentId: id, field, value },
+        });
+      }, 150));
+    },
+    [organizationId, activeCampDayId]
+  );
+
+  // ─── Delete: local + broadcast instantly, DB in next flush ──────────────
+  const deleteStudent = useCallback(
+    (id: string) => {
+      // 1. Update local state
+      setStudents(prev => {
+        const filtered = prev.filter(s => s.id !== id);
+        if (filtered.length === prev.length) return prev;
+        filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
+        return filtered;
+      });
+
+      // 2. Schedule DB delete (phantom rows don't need one)
+      if (!isPhantom(id)) {
+        pendingDeletesRef.current.push(id);
+      }
+      dirtyRowsRef.current.delete(id); // no point saving a deleted row
+
+      // 3. Broadcast instantly
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'row_delete',
+        payload: { senderId: connectionIdRef.current, studentId: id },
+      });
+    },
+    [organizationId, activeCampDayId]
+  );
+
+  // ─── Filtered view ──────────────────────────────────────────────────────
+  // Snapshot which IDs match the active filter so rows don't vanish mid-edit.
+  // Only recomputed when the filter value itself changes, NOT on every keystroke.
+  const filterSnapshotRef = useRef<Set<string> | null>(null);
+  const lastFilterRef = useRef(filterStatus);
 
   const filteredStudents = useMemo(() => {
+    // Recompute the snapshot only when the filter selection changes
+    if (lastFilterRef.current !== filterStatus) {
+      lastFilterRef.current = filterStatus;
+      filterSnapshotRef.current = null;
+    }
+
+    if (filterStatus !== 'all' && (!filterSnapshotRef.current || filterSnapshotRef.current.size === 0)) {
+      const ids = new Set<string>();
+      students.forEach(student => {
+        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours } = student;
+        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours];
+        const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
+        const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
+
+        if (filterStatus === 'completed' && isAllFilled) ids.add(student.id);
+        if (filterStatus === 'incomplete_demo' && hasAnyData && !isAllFilled) ids.add(student.id);
+      });
+      filterSnapshotRef.current = ids;
+    }
+
     return students.filter(student => {
       const name = `${student.first_name || ''} ${student.last_name || ''}`.toLowerCase();
       const matchesSearch = name.includes(searchTerm.toLowerCase());
+      if (!matchesSearch) return false;
 
-      // Use the same logic as the status badge in columns.tsx
-      const hasData = !!(student.first_name?.trim() || student.last_name?.trim() || student.age !== '');
-      const isComplete = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== '');
-      
-      if (filterStatus === 'completed') return matchesSearch && isComplete;
-      if (filterStatus === 'incomplete_demo') return matchesSearch && (hasData && !isComplete);
-
-      return matchesSearch;
+      if (filterSnapshotRef.current) {
+        return filterSnapshotRef.current.has(student.id);
+      }
+      return true;
     });
   }, [students, searchTerm, filterStatus]);
 
-  const columns = useMemo(() => getColumns({
-    handleFieldChange,
-    handleKeyDown: () => {},
-    deleteStudent,
-    campDays,
-    isDark
-  }), [campDays, isDark]);
-
-  if (loading) return (
-    <PartnerLoader label="Powering Up Database..." isDark={isDark} />
+  const columns = useMemo(
+    () =>
+      getColumns({
+        handleFieldChange,
+        handleKeyDown: () => {},
+        deleteStudent,
+        campDays,
+        isDark,
+        activeCursorsRef,
+        handleCellFocus,
+        handleCellBlur,
+      }),
+    [handleFieldChange, deleteStudent, campDays, isDark, handleCellFocus, handleCellBlur]
   );
+
+  if (loading) return <PartnerLoader label="Powering Up Database..." isDark={isDark} />;
 
   return (
     <div className="partner-enter flex-1 min-h-0 flex flex-col">
       <div className="relative group flex-1 min-h-0 flex flex-col">
-        <div className={cn(
-          "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
-          isDark ? "bg-blue-500" : "bg-slate-300"
-        )} />
-        
-        <DataTable 
-          columns={columns} 
-          data={filteredStudents} 
-          isDark={isDark} 
+        <div
+          className={cn(
+            "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
+            isDark ? "bg-blue-500" : "bg-slate-300"
+          )}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filteredStudents}
+          isDark={isDark}
           toolbar={
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative flex-1 w-full group/search">
-                <Search className={cn(
-                  "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10", 
-                  isDark 
-                    ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400" 
-                    : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
-                )} size={20} />
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
+              {/* Left: Search */}
+              <div className="relative flex-1 max-w-xs w-full group/search">
+                <Search
+                  className={cn(
+                    "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
+                    isDark
+                      ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400"
+                      : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
+                  )}
+                  size={20}
+                />
                 <Input
+                  id="tour-search-dir"
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-medium outline-none",
-                    isDark 
-                      ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0" 
+                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
+                    isDark
+                      ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                       : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
                   )}
                 />
               </div>
 
-              <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v ?? 'all')}>
-                <SelectTrigger className={cn(
-                  "h-10 md:w-64 rounded-xl border-2 px-10 font-semibold text-[13px] transition-all duration-500 outline-none group/filter",
-                  isDark 
-                    ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus:border-sky-400/50 focus:bg-sky-400/5 focus:ring-0" 
-                    : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus:border-sky-500/30 focus:bg-sky-50/50 focus:ring-0"
-                )}>
-                  <div className="flex items-center gap-4">
-                    <Filter size={18} className={cn(
-                      "transition-colors duration-500",
-                      isDark 
-                        ? "text-sky-700 group-hover/filter:text-sky-400" 
-                        : "text-sky-300 group-hover/filter:text-sky-600"
-                    )} />
-                    <SelectValue placeholder="Status" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent
-                  side="bottom"
-                  sideOffset={6}
-                  alignItemWithTrigger={false}
-                  className={cn("rounded-2xl border-none p-2 shadow-2xl md:w-64", isDark ? "bg-slate-900 text-white" : "bg-white")}
-                >
-                  <SelectItem value="all" className="rounded-xl font-semibold text-[13px] py-4 px-6">All Students</SelectItem>
-                  <SelectItem value="incomplete_demo" className="rounded-xl font-semibold text-[13px] py-4 px-6 text-amber-500">Incomplete Profiles</SelectItem>
-                  <SelectItem value="completed" className="rounded-xl font-semibold text-[13px] py-4 px-6 text-emerald-500">Completed Profiles</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Middle: Guideline Info Note (Lighter Gradient) */}
+              <div className={cn(
+                "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
+                isDark
+                  ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
+                  : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
+              )}>
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
+                <span className="text-center">
+                  Fill out all fields for each student below. Click <span className="font-bold">"Delete"</span> to remove. A green checkmark under <span className="font-bold">"Complete"</span> confirms completion.
+                </span>
+              </div>
+
+              {/* Right: Filter Controls */}
+              <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
+                {/* Filter */}
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v ?? 'all')}>
+                  <SelectTrigger
+                    className={cn(
+                      "h-10 w-28 md:w-40 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between shadow-sm shrink-0",
+                      "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
+                      isDark
+                        ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
+                        : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Filter
+                        size={14}
+                        className={cn(
+                          "transition-colors duration-300 shrink-0",
+                          isDark
+                            ? "text-sky-500/70 group-hover/filter:text-sky-400"
+                            : "text-sky-500/70 group-hover/filter:text-sky-600"
+                        )}
+                      />
+                      <span className="truncate">
+                        {filterStatus === 'all' && 'All Students'}
+                        {filterStatus === 'incomplete_demo' && 'Incomplete'}
+                        {filterStatus === 'completed' && 'Completed'}
+                      </span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent
+                    side="bottom"
+                    sideOffset={8}
+                    className={cn(
+                      "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] md:w-40 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                      isDark
+                        ? "bg-slate-950/90 border-white/10 text-white"
+                        : "bg-white/95 border-slate-100 text-slate-900"
+                    )}
+                  >
+                    <SelectItem 
+                      value="all" 
+                      className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                        isDark 
+                          ? "focus:bg-white/5 focus:text-white" 
+                          : "focus:bg-slate-50 focus:text-slate-900"
+                      )}
+                    >
+                      All Students
+                    </SelectItem>
+                    <SelectItem 
+                      value="incomplete_demo" 
+                      className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-amber-500 focus:text-amber-500",
+                        isDark 
+                          ? "focus:bg-amber-500/10" 
+                          : "focus:bg-amber-50"
+                      )}
+                    >
+                      Incomplete
+                    </SelectItem>
+                    <SelectItem 
+                      value="completed" 
+                      className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5 text-emerald-500 focus:text-emerald-500",
+                        isDark 
+                          ? "focus:bg-emerald-500/10" 
+                          : "focus:bg-emerald-50"
+                      )}
+                    >
+                      Completed
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           }
         />
+      {/* Floating Guide Me / Tutorial Button */}
+      <button
+        onClick={() => setIsTourOpen(true)}
+        className={cn(
+          "fixed bottom-6 right-6 z-40 h-11 px-4 rounded-full border shadow-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 hover:scale-105 active:scale-95 select-none hover:shadow-2xl",
+          isDark
+            ? "bg-slate-900 border-white/10 text-sky-400 hover:bg-slate-800 hover:border-sky-400/50 shadow-black/60"
+            : "bg-white border-slate-200 text-sky-600 hover:bg-slate-50 hover:border-sky-500/30 shadow-slate-200/55"
+        )}
+        title="Play Student Data Guide"
+      >
+        <Play size={12} className="fill-current animate-pulse text-sky-400" />
+        <span>Guide Me</span>
+      </button>
+
+      {/* Render Portal Student Data Tour */}
+      {isTourOpen && (
+        <StudentDirectoryTour 
+          isDark={isDark} 
+          onClose={() => {
+            setIsTourOpen(false);
+            localStorage.setItem('has_seen_dir_tour', 'true');
+          }} 
+        />
+      )}
       </div>
     </div>
   );

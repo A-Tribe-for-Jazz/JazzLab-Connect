@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -10,7 +10,6 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminOrganizations from './pages/admin/Organizations';
 import AdminLabs from './pages/admin/Labs';
 import EditLab from './pages/admin/EditLab';
-import AdminSchedule from './pages/admin/Schedule';
 import AdminAssignment from './pages/admin/Assignment';
 import AdminReports from './pages/admin/Reports';
 import AdminUsers from './pages/admin/Users';
@@ -21,19 +20,48 @@ import StudentForm from './pages/partner/StudentForm';
 import CsvUpload from './pages/partner/CsvUpload';
 import PartnerOnboarding from './pages/partner/Onboarding';
 import PartnerStudents from './pages/partner/Students';
-import PartnerDemographics from './pages/partner/Demographics';
+import PartnerStaff from './pages/partner/Staff';
 import PartnerLabPicks from './pages/partner/LabPicks';
 import PartnerSchedule from './pages/partner/Schedule';
 
 import EducatorLayout from './components/layout/EducatorLayout';
 import EducatorRoster from './pages/educator/Roster';
 
+function RootRedirect() {
+  const { user, profile, loading, requiresPasswordSetup } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-xl font-medium text-gray-500">Loading JazzLab Connect...</div>
+      </div>
+    );
+  }
+
+  if (requiresPasswordSetup) {
+    return <Navigate to="/password-setup" replace />;
+  }
+
+  if (user && profile) {
+    switch (profile.role) {
+      case 'master_admin':
+        return <Navigate to="/admin/dashboard" replace />;
+      case 'partner':
+        return <Navigate to="/partner/dashboard" replace />;
+      case 'educator':
+        return <Navigate to="/educator/roster" replace />;
+    }
+  }
+
+  return <Navigate to="/signin" replace />;
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/signin" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
           <Route element={<ProtectedRoute />}>
@@ -45,14 +73,13 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['master_admin']} />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/organizations" element={<AdminOrganizations />} />
+              <Route path="/admin/partners" element={<AdminOrganizations />} />
               <Route path="/admin/labs" element={<AdminLabs />} />
               <Route path="/admin/labs/:id/edit" element={<EditLab />} />
               <Route path="/admin/labs/new" element={<EditLab />} />
-              <Route path="/admin/schedule" element={<AdminSchedule />} />
-              <Route path="/admin/assignment" element={<AdminAssignment />} />
-              <Route path="/admin/reports" element={<AdminReports />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/assignments" element={<AdminAssignment />} />
+              <Route path="/admin/schedules" element={<AdminReports />} />
+              <Route path="/admin/system-users" element={<AdminUsers />} />
             </Route>
           </Route>
 
@@ -62,7 +89,7 @@ function App() {
             <Route element={<PartnerLayout />}>
               <Route path="/partner/dashboard" element={<PartnerDashboard />} />
               <Route path="/partner/students" element={<PartnerStudents />} />
-              <Route path="/partner/demographics" element={<PartnerDemographics />} />
+              <Route path="/partner/staff" element={<PartnerStaff />} />
               <Route path="/partner/lab-picks" element={<PartnerLabPicks />} />
               <Route path="/partner/schedule" element={<PartnerSchedule />} />
               <Route path="/partner/upload" element={<CsvUpload />} />
@@ -78,11 +105,11 @@ function App() {
             </Route>
           </Route>
 
-          {/* Redirect root to login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Redirect root based on auth state */}
+          <Route path="/" element={<RootRedirect />} />
           
           {/* Catch all route */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/signin" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

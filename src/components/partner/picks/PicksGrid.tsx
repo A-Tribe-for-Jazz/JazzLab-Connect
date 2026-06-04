@@ -1,51 +1,251 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, Info, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import PartnerLoader from '../PartnerLoader';
 import { DataTable } from "../students/data-table";
 import { getColumns, type LabPickRow } from "./columns";
+import LabPreferencesTour from './LabPreferencesTour';
 
 interface PicksGridProps {
   organizationId: string;
   isDark?: boolean;
+  activeCampDayId?: string | null;
 }
 
-export default function PicksGrid({ organizationId, isDark = false }: PicksGridProps) {
+export default function PicksGrid({ organizationId, isDark = false, activeCampDayId = null }: PicksGridProps) {
+  const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<LabPickRow[]>([]);
-  const [labs, setLabs] = useState<{ id: string, name: string }[]>([]);
+  const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
-  // Always-fresh ref so handlers inside memoized columns never go stale
+  // Auto-start tutorial once loading completes if they haven't seen it yet
+  useEffect(() => {
+    if (!loading && students.length > 0) {
+      const hasSeen = localStorage.getItem('has_seen_lab_tour');
+      if (!hasSeen) {
+        setIsTourOpen(true);
+      }
+    }
+  }, [loading, students]);
+
+  // Always-fresh refs so handlers inside memoized columns never go stale
   const studentsRef = useRef<LabPickRow[]>(students);
   useEffect(() => { studentsRef.current = students; }, [students]);
 
+  const labsRef = useRef(labs);
+  useEffect(() => { labsRef.current = labs; }, [labs]);
+
+  // Track which students have a local save in-flight to suppress realtime echo
+  const savingStudentsRef = useRef<Set<string>>(new Set());
+
+  // Per-student save queue — serializes DB writes so rapid clicks don't overlap
+  const pendingSaveRef = useRef<Map<string, Promise<void>>>(new Map());
+
+  // Debounce map for preference realtime events — coalesces rapid delete+insert bursts
+  const prefDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const flushToDB = useCallback(async () => {
+    const promises = Array.from(pendingSaveRef.current.values());
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (childFlushRef) {
+      childFlushRef.current = flushToDB;
+      return () => {
+        childFlushRef.current = null;
+      };
+    }
+  }, [childFlushRef, flushToDB]);
+
   useEffect(() => {
     fetchData();
-  }, [organizationId]);
+
+    // ── Debounced preference re-fetch ────────────────────────────────────
+    // A single toggle triggers DELETE(all) + INSERT(many), each firing a
+    // realtime event.  We coalesce them so only one DB fetch occurs per
+    // student per burst.
+    const debouncedPrefChange = (studentId: string) => {
+      // Skip our own echoes
+      if (savingStudentsRef.current.has(studentId)) return;
+
+      // Only process students that belong to this org
+      const known = studentsRef.current.some(s => s.id === studentId);
+      if (!known) return;
+
+      // Clear any pending timer for this student
+      const existing = prefDebounceRef.current.get(studentId);
+      if (existing) clearTimeout(existing);
+
+      // Set a new timer — fetch once after the burst settles
+      const timer = setTimeout(async () => {
+        prefDebounceRef.current.delete(studentId);
+
+        const { data, error } = await supabase
+          .from('preferences')
+          .select('lab_id, rank')
+          .eq('student_id', studentId)
+          .order('rank');
+
+        if (error) {
+          console.error('Error fetching updated preferences:', error);
+          return;
+        }
+
+        setStudents(prev => prev.map(s =>
+          s.id === studentId ? { ...s, preferences: data || [], sync_status: 'synced' } : s
+        ));
+      }, 500);
+
+      prefDebounceRef.current.set(studentId, timer);
+    };
+
+    // ── Student realtime handler ─────────────────────────────────────────
+    const handleStudentRealtimeChange = async (studentId: string) => {
+      const { data: student, error } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, age, notes, organization_id, preferences(lab_id, rank)')
+        .eq('id', studentId)
+        .single();
+
+      if (error) {
+        // Student deleted — remove from list
+        setStudents(prev => {
+          const filtered = prev.filter(s => s.id !== studentId);
+          if (filtered.length < prev.length) {
+            filtered.push({
+              id: crypto.randomUUID(),
+              first_name: '',
+              last_name: '',
+              preferences: [],
+              sync_status: 'synced'
+            } as any);
+          }
+          return filtered;
+        });
+        return;
+      }
+
+      // Ignore students from other orgs
+      if (student.organization_id !== organizationId) return;
+
+      const isValid = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== null && student.age !== undefined && student.age !== '');
+
+      setStudents(prev => {
+        const idx = prev.findIndex(s => s.id === studentId);
+
+        if (!isValid) {
+          if (idx === -1) return prev;
+          const filtered = prev.filter(s => s.id !== studentId);
+          filtered.push({
+            id: crypto.randomUUID(),
+            first_name: '',
+            last_name: '',
+            preferences: [],
+            sync_status: 'synced'
+          } as any);
+          return filtered;
+        }
+
+        const parsedStudent = {
+          ...student,
+          preferences: (student.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
+          sync_status: 'synced' as const
+        };
+
+        const newStudents = [...prev];
+        if (idx !== -1) {
+          newStudents[idx] = parsedStudent;
+        } else {
+          const emptyRowIdx = prev.findIndex(s => !s.first_name?.trim() && !s.last_name?.trim());
+          if (emptyRowIdx !== -1) {
+            newStudents[emptyRowIdx] = parsedStudent;
+          } else {
+            newStudents.push(parsedStudent);
+          }
+        }
+        return newStudents;
+      });
+    };
+
+    // ── Realtime channels ────────────────────────────────────────────────
+    // Filter student changes to this org only
+    const channelStudents = supabase
+      .channel(`picks-students-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          const studentId = newRecord?.id || oldRecord?.id;
+          if (studentId) handleStudentRealtimeChange(studentId);
+        }
+      )
+      .subscribe();
+
+    // Preferences don't have org_id — we filter in the handler instead
+    const channelPrefs = supabase
+      .channel(`picks-prefs-org-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'preferences',
+        },
+        (payload) => {
+          const newRec = payload.new as any;
+          const oldRec = payload.old as any;
+          const studentId = newRec?.student_id || oldRec?.student_id;
+          if (studentId) debouncedPrefChange(studentId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      // Clear any pending debounce timers
+      prefDebounceRef.current.forEach(timer => clearTimeout(timer));
+      prefDebounceRef.current.clear();
+      supabase.removeChannel(channelStudents);
+      supabase.removeChannel(channelPrefs);
+    };
+  }, [organizationId, activeCampDayId]);
 
   const fetchData = async () => {
     try {
       const [labsRes, studentsRes] = await Promise.all([
-        supabase.from('labs').select('id, name').order('name'),
+        supabase.from('labs').select('id, name, min_age, max_age').order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name, preferences(lab_id, rank)')
+          .select('id, first_name, last_name, age, camp_day_id, notes, preferences(lab_id, rank)')
           .eq('organization_id', organizationId)
           .order('first_name')
       ]);
 
       if (labsRes.data) setLabs(labsRes.data);
       if (studentsRes.data) {
-        const existingStudents = studentsRes.data.map(s => ({
-          ...s,
-          preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
-          sync_status: 'synced'
-        })) as any[];
+        const existingStudents = studentsRes.data
+          .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
+          .filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId)
+          .map(s => ({
+            ...s,
+            preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
+            sync_status: 'synced'
+          })) as any[];
 
-        // Excel-style: 100 rows
         const targetCount = Math.max(existingStudents.length + 20, 100);
 
         const paddedStudents = [...existingStudents];
@@ -67,7 +267,8 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     }
   };
 
-  const handlePreferenceToggle = useCallback(async (studentId: string, labId: string) => {
+  const handlePreferenceToggle = useCallback((studentId: string, labId: string) => {
+    // 1. Read from ref — kept in sync synchronously below
     const student = studentsRef.current.find(s => s.id === studentId);
     if (!student) return;
 
@@ -75,56 +276,143 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     const existingIndex = newPrefs.findIndex(p => p.lab_id === labId);
 
     if (existingIndex !== -1) {
+      // Always allow deselection
       newPrefs.splice(existingIndex, 1);
       newPrefs = newPrefs.map((p, idx) => ({ ...p, rank: idx + 1 }));
     } else {
-      if (newPrefs.length >= 5) return;
+      // Block selection if student doesn't meet lab age requirement
+      const lab = labsRef.current.find(l => l.id === labId);
+      if (lab && lab.min_age != null && student.age !== '' && student.age != null) {
+        const age = Number(student.age);
+        const maxAge = lab.max_age ?? 999;
+        if (age < lab.min_age || age > maxAge) return;
+      }
+      if (newPrefs.length >= 10) return;
       newPrefs.push({ lab_id: labId, rank: newPrefs.length + 1 });
     }
 
-    setStudents(prev => prev.map(s =>
-      s.id === studentId ? { ...s, preferences: newPrefs, sync_status: 'saving' } : s
-    ));
+    // 2. Optimistic UI — update ref SYNCHRONOUSLY so the next rapid click
+    //    reads the correct preferences, then schedule React re-render
+    const updated = studentsRef.current.map(s =>
+      s.id === studentId ? { ...s, preferences: newPrefs, sync_status: 'saving' as const } : s
+    );
+    studentsRef.current = updated;
+    setStudents(updated);
 
-    try {
-      const { error: delError } = await supabase.from('preferences').delete().eq('student_id', studentId);
-      if (delError) throw delError;
+    // 3. Suppress realtime echo
+    savingStudentsRef.current.add(studentId);
 
-      if (newPrefs.length > 0) {
-        const { error: insError } = await supabase.from('preferences').insert(
-          newPrefs.map(p => ({ student_id: studentId, lab_id: p.lab_id, rank: p.rank }))
+    // 4. Queue DB save — chains behind any pending save for this student
+    //    so DELETE+INSERT operations never overlap
+    const previousSave = pendingSaveRef.current.get(studentId) || Promise.resolve();
+    const prefsToSave = [...newPrefs]; // capture for this save
+
+    const savePromise = previousSave.then(async () => {
+      try {
+        const { error: delError } = await supabase.from('preferences').delete().eq('student_id', studentId);
+        if (delError) throw delError;
+
+        if (prefsToSave.length > 0) {
+          const { error: insError } = await supabase.from('preferences').insert(
+            prefsToSave.map(p => ({ student_id: studentId, lab_id: p.lab_id, rank: p.rank }))
+          );
+          if (insError) throw insError;
+        }
+      } catch (error) {
+        console.error('Error saving preferences:', error);
+        const errUpdated = studentsRef.current.map(s =>
+          s.id === studentId ? { ...s, sync_status: 'error' as const } : s
         );
-        if (insError) throw insError;
+        studentsRef.current = errUpdated;
+        setStudents(errUpdated);
       }
+    });
 
-      setStudents(prev => prev.map(s =>
-        s.id === studentId ? { ...s, sync_status: 'synced' } : s
-      ));
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      setStudents(prev => prev.map(s =>
-        s.id === studentId ? { ...s, sync_status: 'error' } : s
-      ));
-    }
-  }, []); // stable — reads live state via studentsRef
+    pendingSaveRef.current.set(studentId, savePromise);
 
-  const handleClearPreferences = useCallback(async (studentId: string) => {
-    setStudents(prev => prev.map(s =>
-      s.id === studentId ? { ...s, preferences: [], sync_status: 'saving' } : s
-    ));
+    // Mark synced only after the LAST save in the chain completes
+    savePromise.finally(() => {
+      if (pendingSaveRef.current.get(studentId) === savePromise) {
+        pendingSaveRef.current.delete(studentId);
+        const syncedUpdated = studentsRef.current.map(s =>
+          s.id === studentId ? { ...s, sync_status: 'synced' as const } : s
+        );
+        studentsRef.current = syncedUpdated;
+        setStudents(syncedUpdated);
+        setTimeout(() => savingStudentsRef.current.delete(studentId), 2000);
+      }
+    });
+  }, []);
+
+  const handleClearPreferences = useCallback((studentId: string) => {
+    // Optimistic UI — sync ref immediately
+    const updated = studentsRef.current.map(s =>
+      s.id === studentId ? { ...s, preferences: [] as { lab_id: string; rank: number }[], sync_status: 'saving' as const } : s
+    );
+    studentsRef.current = updated;
+    setStudents(updated);
+
+    savingStudentsRef.current.add(studentId);
+
+    // Queue behind any pending save
+    const previousSave = pendingSaveRef.current.get(studentId) || Promise.resolve();
+
+    const savePromise = previousSave.then(async () => {
+      try {
+        const { error } = await supabase.from('preferences').delete().eq('student_id', studentId);
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error clearing preferences:', error);
+        const errUpdated = studentsRef.current.map(s =>
+          s.id === studentId ? { ...s, sync_status: 'error' as const } : s
+        );
+        studentsRef.current = errUpdated;
+        setStudents(errUpdated);
+      }
+    });
+
+    pendingSaveRef.current.set(studentId, savePromise);
+
+    savePromise.finally(() => {
+      if (pendingSaveRef.current.get(studentId) === savePromise) {
+        pendingSaveRef.current.delete(studentId);
+        const syncedUpdated = studentsRef.current.map(s =>
+          s.id === studentId ? { ...s, sync_status: 'synced' as const } : s
+        );
+        studentsRef.current = syncedUpdated;
+        setStudents(syncedUpdated);
+        setTimeout(() => savingStudentsRef.current.delete(studentId), 2000);
+      }
+    });
+  }, []);
+
+  const handleNoteSave = useCallback(async (studentId: string, notes: string) => {
+    // Optimistic UI
+    const updated = studentsRef.current.map(s =>
+      s.id === studentId ? { ...s, notes, sync_status: 'saving' as const } : s
+    );
+    studentsRef.current = updated;
+    setStudents(updated);
 
     try {
-      const { error } = await supabase.from('preferences').delete().eq('student_id', studentId);
+      const { error } = await supabase
+        .from('students')
+        .update({ notes })
+        .eq('id', studentId);
       if (error) throw error;
 
-      setStudents(prev => prev.map(s =>
-        s.id === studentId ? { ...s, sync_status: 'synced' } : s
-      ));
+      const synced = studentsRef.current.map(s =>
+        s.id === studentId ? { ...s, sync_status: 'synced' as const } : s
+      );
+      studentsRef.current = synced;
+      setStudents(synced);
     } catch (error) {
-      console.error('Error clearing preferences:', error);
-      setStudents(prev => prev.map(s =>
-        s.id === studentId ? { ...s, sync_status: 'error' } : s
-      ));
+      console.error('Error saving notes:', error);
+      const errUpdated = studentsRef.current.map(s =>
+        s.id === studentId ? { ...s, sync_status: 'error' as const } : s
+      );
+      studentsRef.current = errUpdated;
+      setStudents(errUpdated);
     }
   }, []);
 
@@ -139,8 +427,9 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     labs,
     handlePreferenceToggle,
     handleClearPreferences,
-    isDark
-  }), [labs, isDark, handlePreferenceToggle, handleClearPreferences]);
+    handleNoteSave,
+    isDark,
+  }), [labs, isDark, handlePreferenceToggle, handleClearPreferences, handleNoteSave]);
 
   if (loading) return (
     <PartnerLoader label="Configuring Lab Roster..." isDark={isDark} />
@@ -149,7 +438,6 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
   return (
     <div className="partner-enter flex-1 min-h-0 flex flex-col">
       <div className="relative group flex-1 min-h-0 flex flex-col">
-        {/* Outer glow — identical to StudentGrid */}
         <div className={cn(
           "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
           isDark ? "bg-blue-500" : "bg-slate-300"
@@ -160,9 +448,8 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
           data={filteredStudents}
           isDark={isDark}
           toolbar={
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              {/* Search — identical to StudentGrid */}
-              <div className="relative flex-1 w-full group/search">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+              <div className="relative flex-1 max-w-md w-full group/search">
                 <Search className={cn(
                   "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
                   isDark
@@ -170,11 +457,12 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
                     : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
                 )} size={20} />
                 <Input
-                  placeholder="Search students to assign picks..."
+                  id="tour-search"
+                  placeholder="Search student name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-base font-medium outline-none",
+                    "pl-16 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
                     isDark
                       ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
                       : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
@@ -182,20 +470,52 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
                 />
               </div>
 
-              {/* Hint pill — same h-10, rounded-xl, border-2 as StudentGrid filter */}
+
+
+              {/* Final Note Style: Lighter Gradient */}
               <div className={cn(
-                "h-10 hidden md:flex items-center gap-3 px-6 rounded-xl border-2 shrink-0",
+                "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
                 isDark
-                  ? "bg-black/40 border-white/10 text-slate-400"
-                  : "bg-slate-50 border-slate-200 text-slate-500"
+                  ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
+                  : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
               )}>
-                <SlidersHorizontal size={16} className="text-blue-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Select 1–5 In Order</span>
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
+                <span className="text-center">
+                  Select all eligible lab preferences per student by clicking cells <span className="font-bold">(1 = top choice)</span>. Age-restricted labs are blocked. Click <span className="font-bold">"Clear"</span> to reset. A green checkmark under <span className="font-bold">"Complete"</span> confirms completion.
+                </span>
               </div>
             </div>
           }
         />
       </div>
+
+      {/* Floating Play Guide / Tutorial Button */}
+      <button
+        onClick={() => setIsTourOpen(true)}
+        className={cn(
+          "fixed bottom-6 right-6 z-40 h-11 px-4 rounded-full border shadow-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 hover:scale-105 active:scale-95 select-none hover:shadow-2xl",
+          isDark
+            ? "bg-slate-900 border-white/10 text-sky-400 hover:bg-slate-800 hover:border-sky-400/50 shadow-black/60"
+            : "bg-white border-slate-200 text-sky-600 hover:bg-slate-50 hover:border-sky-500/30 shadow-slate-200/55"
+        )}
+        title="Play Guided Tutorial"
+      >
+        <Play size={12} className="fill-current animate-pulse text-sky-400" />
+        <span>Guide Me</span>
+      </button>
+
+      {/* Render Portal Tour Animation */}
+      {isTourOpen && (
+        <LabPreferencesTour
+          isDark={isDark}
+          onClose={() => {
+            setIsTourOpen(false);
+            localStorage.setItem('has_seen_lab_tour', 'true');
+          }}
+        />
+      )}
+
+
     </div>
   );
 }

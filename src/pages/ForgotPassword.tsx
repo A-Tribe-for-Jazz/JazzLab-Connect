@@ -108,11 +108,11 @@ export default function ForgotPassword() {
 
                   <div className="text-center pt-2">
                     <Link
-                      to="/login"
+                      to="/signin"
                       className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
                     >
                       <ArrowLeft className="size-4" />
-                      Back to login
+                      Back to sign in
                     </Link>
                   </div>
 
