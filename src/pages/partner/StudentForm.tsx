@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Save, ChevronLeft, Music, Info, Star } from 'lucide-react';
@@ -29,6 +29,7 @@ export default function StudentForm() {
   const isNew = !id;
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { activeCampDayId } = useOutletContext<any>() || {};
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -39,13 +40,19 @@ export default function StudentForm() {
     first_name: '',
     last_name: '',
     age: '',
-    camp_day_id: '',
+    camp_day_id: isNew ? (activeCampDayId || '') : '',
     sibling_group_id: '',
     special_needs_notes: '',
     parent_email: '',
   });
 
   const [preferences, setPreferences] = useState<{ [rank: number]: string }>({});
+
+  useEffect(() => {
+    if (isNew && activeCampDayId && !formData.camp_day_id) {
+      setFormData(prev => ({ ...prev, camp_day_id: activeCampDayId }));
+    }
+  }, [activeCampDayId, isNew]);
 
   useEffect(() => {
     fetchFormOptions();

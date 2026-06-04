@@ -20,6 +20,7 @@ import StudentForm from './pages/partner/StudentForm';
 import CsvUpload from './pages/partner/CsvUpload';
 import PartnerOnboarding from './pages/partner/Onboarding';
 import PartnerStudents from './pages/partner/Students';
+import PartnerStaff from './pages/partner/Staff';
 import PartnerLabPicks from './pages/partner/LabPicks';
 import PartnerSchedule from './pages/partner/Schedule';
 
@@ -88,6 +89,7 @@ function App() {
             <Route element={<PartnerLayout />}>
               <Route path="/partner/dashboard" element={<PartnerDashboard />} />
               <Route path="/partner/students" element={<PartnerStudents />} />
+              <Route path="/partner/staff" element={<PartnerStaff />} />
               <Route path="/partner/lab-picks" element={<PartnerLabPicks />} />
               <Route path="/partner/schedule" element={<PartnerSchedule />} />
               <Route path="/partner/upload" element={<CsvUpload />} />

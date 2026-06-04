@@ -787,7 +787,7 @@ function OrgDataDrawer({ org, isDark, onClose }: { org: any; isDark: boolean; on
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={cn("relative flex items-center h-full text-[13px] font-semibold transition-all duration-500 whitespace-nowrap",
                     activeTab === tab ? (isDark ? "text-white" : "text-blue-600") : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900"))}>
-                  <span>{tab === 'students' ? 'Student Directory' : 'Lab Preferences'}</span>
+                  <span>{tab === 'students' ? 'Student Data' : 'Lab Preferences'}</span>
                   {activeTab === tab && <div className={cn("absolute bottom-0 left-0 w-full h-[2.5px] rounded-t-full transition-all duration-300", isDark ? "bg-white" : "bg-blue-600")} />}
                 </button>
               ))}

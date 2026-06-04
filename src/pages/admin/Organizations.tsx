@@ -377,7 +377,7 @@ export default function AdminOrganizations() {
                   </thead>
                   <tbody>
                     {processedOrganizations.map((org, index) => {
-                      const campDay = org.camp_days[0];
+                      const campDay = org.camp_days[0]; // used for sort; display shows all below
                       const initials = org.contact_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 
                       return (
@@ -438,15 +438,24 @@ export default function AdminOrganizations() {
                             </div>
                           </td>
 
-                          {/* Day Allocation menu */}
+                          {/* Camp Dates */}
                           <td className={cn(
                             "py-1 px-4 border-r last:border-r-0 overflow-hidden",
                             isDark ? "border-white/20" : "border-slate-300"
                           )}>
-                            {campDay ? (
-                              <span className={cn("text-[13px] font-medium", isDark ? "text-slate-200" : "text-slate-700")}>
-                                {new Date(campDay.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                              </span>
+                            {org.camp_days.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                {org.camp_days.slice(0, 2).map(d => (
+                                  <span key={d.id} className={cn("text-[12px] font-medium leading-tight", isDark ? "text-slate-200" : "text-slate-700")}>
+                                    {new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                  </span>
+                                ))}
+                                {org.camp_days.length > 2 && (
+                                  <span className={cn("text-[11px] font-semibold", isDark ? "text-slate-500" : "text-slate-400")}>
+                                    +{org.camp_days.length - 2} more
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <div className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-500 dark:text-amber-400 animate-pulse">
                                 <SlidersHorizontal size={13} className="shrink-0" />
@@ -568,8 +577,12 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
     contactName: '',
     contactEmail: ''
   });
-  const [selectedDateString, setSelectedDateString] = useState<string>('unscheduled');
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+  const toggleDate = (date: string) => {
+    setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -588,38 +601,23 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
       if (orgError) throw orgError;
       if (!orgData) throw new Error('Failed to create organization record');
 
-      // If scheduled, select or create the camp day row
-      if (selectedDateString !== 'unscheduled') {
-        let targetCampDayId = '';
-        
+      // Link organization to each selected camp day
+      for (const dateStr of selectedDates) {
         const { data: existingDay } = await supabase
-          .from('camp_days')
-          .select('id')
-          .eq('date', selectedDateString)
-          .maybeSingle();
+          .from('camp_days').select('id').eq('date', dateStr).maybeSingle();
 
-        if (existingDay) {
-          targetCampDayId = existingDay.id;
-        } else {
-          // Create a new camp day
+        let targetCampDayId = existingDay?.id || '';
+        if (!targetCampDayId) {
           const { data: newDay, error: insertDayError } = await supabase
-            .from('camp_days')
-            .insert({ date: selectedDateString })
-            .select('id')
-            .single();
-
+            .from('camp_days').insert({ date: dateStr }).select('id').single();
           if (insertDayError) throw insertDayError;
           if (newDay) targetCampDayId = newDay.id;
         }
 
-        // Link organization to this camp day id
         if (targetCampDayId) {
           const { error: insertError } = await supabase
             .from('camp_day_organizations')
-            .insert({
-              organization_id: orgData.id,
-              camp_day_id: targetCampDayId
-            });
+            .insert({ organization_id: orgData.id, camp_day_id: targetCampDayId });
           if (insertError) throw insertError;
         }
       }
@@ -653,7 +651,7 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "sm:max-w-[760px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl",
+          "sm:max-w-[760px] border-none shadow-2xl p-0 rounded-2xl",
           isDark ? "bg-[#020617] text-white shadow-black" : "bg-white text-slate-900"
         )}
       >
@@ -721,30 +719,72 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Camp Date</Label>
-                
-                {/* Trigger Button that looks like a Shadcn Input */}
-                <button
-                  type="button"
-                  onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                  className={cn(
-                    "w-full h-10 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-between text-left outline-none",
-                    isDark 
-                      ? "bg-white/5 border-white/10 text-white hover:bg-white/10" 
-                      : "bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100"
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Camp Dates
+                  {selectedDates.length > 0 && (
+                    <span className="ml-1.5 text-sky-500">{selectedDates.length} selected</span>
                   )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-slate-400" />
-                    <span>
-                      {selectedDateString === 'unscheduled' 
-                        ? 'Standby / Unassigned' 
-                        : new Date(selectedDateString + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                      }
-                    </span>
-                  </div>
-                  <ChevronDown size={14} className="text-slate-400" />
-                </button>
+                </Label>
+                {(() => {
+                  const customDates = selectedDates.filter(d => !campDays.some((cd: any) => cd.date === d));
+                  const allRows = [
+                    ...campDays,
+                    ...customDates.map(d => ({ id: `custom-${d}`, date: d }))
+                  ].sort((a: any, b: any) => a.date.localeCompare(b.date));
+                  return (
+                    <div className={cn('rounded-xl border', isDark ? 'border-white/10' : 'border-slate-200')}>
+                      <div className="max-h-40 overflow-y-auto">
+                        {allRows.length === 0 ? (
+                          <p className={cn('px-3 py-2.5 text-xs', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                            No camp days yet. Add one below.
+                          </p>
+                        ) : allRows.map((day: any) => {
+                          const isChecked = selectedDates.includes(day.date);
+                          return (
+                            <label key={day.id} className={cn(
+                              'flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors border-b last:border-b-0',
+                              isDark ? 'border-white/5' : 'border-slate-100',
+                              isChecked ? isDark ? 'bg-sky-500/10' : 'bg-sky-50' : isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'
+                            )}>
+                              <input type="checkbox" checked={isChecked} onChange={() => toggleDate(day.date)} className="accent-sky-500 shrink-0" />
+                              <span className={cn('text-xs font-semibold', isDark ? 'text-slate-200' : 'text-slate-700')}>
+                                {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                              {customDates.includes(day.date) && (
+                                <span className={cn('ml-auto text-[9px] font-black uppercase tracking-wider', isDark ? 'text-sky-400' : 'text-sky-600')}>New</span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {/* Add custom date */}
+                      <div className={cn('border-t relative', isDark ? 'border-white/5' : 'border-slate-100')}>
+                        <button
+                          type="button"
+                          onClick={() => setIsPickerOpen(p => !p)}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-colors',
+                            isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                          )}
+                        >
+                          <Plus size={13} /> Add another date
+                        </button>
+                        {isPickerOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] rounded-2xl animate-in fade-in duration-200" onClick={() => setIsPickerOpen(false)} />
+                            <div className={cn('fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 rounded-2xl border p-4 shadow-2xl transition-all duration-200 animate-in fade-in zoom-in-95', isDark ? 'bg-[#020617] border-white/10 text-white shadow-black/80' : 'bg-white border-slate-200 text-slate-900 shadow-slate-200/50')}>
+                              <CalendarSheet
+                                selectedDateString=""
+                                onSelect={(dateStr) => { toggleDate(dateStr); setIsPickerOpen(false); }}
+                                isDark={isDark}
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -829,37 +869,6 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
           </DialogFooter>
         </form>
 
-        {/* Custom Popover Dropdown Calendar centered in popup overlay */}
-        {isCalendarOpen && (
-          <>
-            {/* Dimmed glassmorphism backdrop inside the popup card bounds */}
-            <div className="absolute inset-0 bg-black/20 dark:bg-black/35 backdrop-blur-[1px] z-40 rounded-2xl" onClick={() => setIsCalendarOpen(false)} />
-            
-            <div className={cn(
-              "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 rounded-2xl border p-4 shadow-2xl w-auto",
-              isDark ? "bg-[#020617] border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
-            )}>
-              <CalendarSheet
-                selectedDateString={selectedDateString}
-                onSelect={(dateStr) => { setSelectedDateString(dateStr); setIsCalendarOpen(false); }}
-                isDark={isDark}
-              />
-              
-              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedDateString('unscheduled'); setIsCalendarOpen(false); }}
-                  className={cn(
-                    "w-full text-center py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors",
-                    selectedDateString === 'unscheduled' ? "text-amber-500 bg-amber-500/5" : "text-amber-500"
-                  )}
-                >
-                  Standby / Unassigned
-                </button>
-              </div>
-            </div>
-          </>
-        )}
       </DialogContent>
     </Dialog>
   );
@@ -917,7 +926,7 @@ function OrgDataDrawer({
                     : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
                 )}
               >
-                <span>Student Directory</span>
+                <span>Student Data</span>
                 {activeTab === 'students' && (
                   <div className={cn(
                     "absolute bottom-0 left-0 w-full h-[2.5px] rounded-t-full transition-all duration-300",
@@ -992,10 +1001,11 @@ function ManageModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(org.name);
-  const [selectedDateString, setSelectedDateString] = useState<string>(
-    org.camp_days[0]?.date || 'unscheduled'
-  );
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<string[]>(org.camp_days.map(d => d.date));
+
+  const toggleDate = (date: string) => {
+    setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
+  };
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -1052,13 +1062,11 @@ function ManageModal({
       const { error: deleteError } = await supabase.from('camp_day_organizations').delete().eq('organization_id', org.id);
       if (deleteError) throw deleteError;
 
-      if (selectedDateString !== 'unscheduled') {
-        let targetCampDayId = '';
-        const { data: existingDay } = await supabase.from('camp_days').select('id').eq('date', selectedDateString).maybeSingle();
-        if (existingDay) {
-          targetCampDayId = existingDay.id;
-        } else {
-          const { data: newDay, error: insertDayError } = await supabase.from('camp_days').insert({ date: selectedDateString }).select('id').single();
+      for (const dateStr of selectedDates) {
+        const { data: existingDay } = await supabase.from('camp_days').select('id').eq('date', dateStr).maybeSingle();
+        let targetCampDayId = existingDay?.id || '';
+        if (!targetCampDayId) {
+          const { data: newDay, error: insertDayError } = await supabase.from('camp_days').insert({ date: dateStr }).select('id').single();
           if (insertDayError) throw insertDayError;
           if (newDay) targetCampDayId = newDay.id;
         }
@@ -1153,58 +1161,45 @@ function ManageModal({
                   </div>
                 </div>
 
-                {/* Camp Date */}
-                <div className="space-y-1.5 relative">
-                  <Label className={labelCls}>Camp Date</Label>
-                  <button
-                    type="button"
-                    onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                    className={cn(
-                      'w-full h-10 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-between text-left outline-none',
-                      isDark
-                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                        : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
+                {/* Camp Dates — multi-select checkboxes */}
+                <div className="space-y-1.5">
+                  <Label className={cn(labelCls, 'flex items-center gap-2')}>
+                    Camp Dates
+                    {selectedDates.length > 0 && (
+                      <span className="text-sky-500 normal-case font-bold">{selectedDates.length} selected</span>
                     )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} className="text-slate-400 shrink-0" />
-                      <span>
-                        {selectedDateString === 'unscheduled'
-                          ? 'Standby / Unassigned'
-                          : new Date(selectedDateString + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                        }
-                      </span>
-                    </div>
-                    <ChevronDown size={13} className={cn('text-slate-400 transition-transform', isCalendarOpen && 'rotate-180')} />
-                  </button>
-
-                  {isCalendarOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsCalendarOpen(false)} />
-                      <div className={cn(
-                        'absolute top-[calc(100%+4px)] left-0 w-auto z-50 rounded-2xl border p-3.5 shadow-2xl',
-                        isDark ? 'bg-[#020617] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-                      )}>
-                        <CalendarSheet
-                          selectedDateString={selectedDateString}
-                          onSelect={(dateStr) => { setSelectedDateString(dateStr); setIsCalendarOpen(false); }}
-                          isDark={isDark}
-                        />
-                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedDateString('unscheduled'); setIsCalendarOpen(false); }}
-                            className={cn(
-                              'w-full text-center py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors',
-                              selectedDateString === 'unscheduled' ? 'text-amber-500 bg-amber-500/5' : 'text-amber-500'
-                            )}
-                          >
-                            Standby / Unassigned
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  </Label>
+                  <div className={cn(
+                    'rounded-xl border overflow-hidden max-h-40 overflow-y-auto',
+                    isDark ? 'border-white/10' : 'border-slate-200'
+                  )}>
+                    {campDays.length === 0 ? (
+                      <p className={cn('px-3 py-2.5 text-xs', isDark ? 'text-slate-500' : 'text-slate-400')}>
+                        No camp days configured yet.
+                      </p>
+                    ) : campDays.map((day: any) => {
+                      const isChecked = selectedDates.includes(day.date);
+                      return (
+                        <label key={day.id} className={cn(
+                          'flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors border-b last:border-b-0',
+                          isDark ? 'border-white/5' : 'border-slate-100',
+                          isChecked
+                            ? isDark ? 'bg-sky-500/10' : 'bg-sky-50'
+                            : isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'
+                        )}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleDate(day.date)}
+                            className="accent-sky-500 shrink-0"
+                          />
+                          <span className={cn('text-xs font-semibold', isDark ? 'text-slate-200' : 'text-slate-700')}>
+                            {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Divider */}

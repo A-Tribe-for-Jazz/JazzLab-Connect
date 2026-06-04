@@ -8,7 +8,7 @@ import { useOutletContext } from 'react-router-dom';
 
 export default function PartnerStudents() {
   const { profile } = useAuth();
-  const { isDark }: any = useOutletContext();
+  const { isDark, activeCampDayId }: any = useOutletContext();
 
   return (
     <div className={cn(
@@ -18,7 +18,7 @@ export default function PartnerStudents() {
       <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
         <section className="relative flex-1 min-h-0 flex flex-col">
           {profile?.organization_id && (
-            <StudentGrid organizationId={profile.organization_id} isDark={isDark} />
+            <StudentGrid key={activeCampDayId} organizationId={profile.organization_id} isDark={isDark} activeCampDayId={activeCampDayId} />
           )}
         </section>
       </div>

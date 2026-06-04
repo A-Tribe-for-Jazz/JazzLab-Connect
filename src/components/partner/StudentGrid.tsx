@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Search, Filter, Info, Play } from 'lucide-react';
@@ -22,7 +22,7 @@ const PHANTOM_PREFIX = 'phantom-';
 const isPhantom = (id: string) => id.startsWith(PHANTOM_PREFIX);
 const FLUSH_INTERVAL_MS = 5_000; // Batch-save every 5 seconds
 
-const makeEmptyRow = (orgId: string, idx: number): StudentRow => ({
+const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | null): StudentRow => ({
   id: `${PHANTOM_PREFIX}${crypto.randomUUID()}`,
   first_name: '',
   last_name: '',
@@ -32,7 +32,7 @@ const makeEmptyRow = (orgId: string, idx: number): StudentRow => ({
   race_ethnicity: '',
   gender: '',
   total_program_hours: '',
-  camp_day_id: null,
+  camp_day_id: activeCampDayId || null,
   notes: '',
   organization_id: orgId,
   sync_status: 'synced',
@@ -42,10 +42,12 @@ const makeEmptyRow = (orgId: string, idx: number): StudentRow => ({
 interface StudentGridProps {
   organizationId: string;
   isDark?: boolean;
+  activeCampDayId?: string | null;
 }
 
-export default function StudentGrid({ organizationId, isDark = false }: StudentGridProps) {
+export default function StudentGrid({ organizationId, isDark = false, activeCampDayId = null }: StudentGridProps) {
   const { profile } = useAuth();
+  const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [campDays, setCampDays] = useState<{ id: string, date: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   const activeCursorsRef = useRef<{ [cellKey: string]: string }>({});
   const [isTourOpen, setIsTourOpen] = useState(false);
 
-  // Auto-play Student Directory guide if they haven't seen it yet
+  // Auto-play Student Data guide if they haven't seen it yet
   useEffect(() => {
     if (!loading && students.length > 0) {
       const hasSeen = localStorage.getItem('has_seen_dir_tour');
@@ -73,6 +75,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   const pendingDeletesRef = useRef<string[]>([]);
   const isFlushingRef = useRef(false);
   const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const ownInsertsRef = useRef(new Set<string>()); // Track our own DB inserts to avoid Postgres listener duplicates
 
   // Keep studentsRef always current for use inside callbacks
   useEffect(() => { studentsRef.current = students; }, [students]);
@@ -124,10 +127,12 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             total_program_hours: s.total_program_hours ?? '',
           })) as StudentRow[];
 
-        const targetCount = Math.max(existing.length + 20, 100);
-        const padded = [...existing];
+        const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
+
+        const targetCount = Math.max(filteredExisting.length + 20, 100);
+        const padded = [...filteredExisting];
         while (padded.length < targetCount) {
-          padded.push(makeEmptyRow(organizationId, padded.length));
+          padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
         }
         setStudents(padded);
       }
@@ -143,7 +148,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     } finally {
       setLoading(false);
     }
-  }, [organizationId]);
+  }, [organizationId, activeCampDayId]);
 
   // ─── Batch-flush dirty rows to Supabase ─────────────────────────────────
   const flushToDB = useCallback(async () => {
@@ -161,7 +166,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
 
     try {
       // ── Prepare rows ────────────────────────────────────────────────────
-      const phantomRows: { phantomId: string; insertPayload: any }[] = [];
+      const phantomRows: { phantomId: string; realId: string; insertPayload: any }[] = [];
       const upsertRows: any[] = [];
       const upsertIds: string[] = [];
 
@@ -201,9 +206,16 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         };
 
         if (isPhantom(payload.id)) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id: _id, ...insertPayload } = dbPayload;
-          phantomRows.push({ phantomId: payload.id, insertPayload: { ...insertPayload, organization_id: organizationId } });
+          const realId = crypto.randomUUID();
+          phantomRows.push({
+            phantomId: payload.id,
+            realId,
+            insertPayload: {
+              ...dbPayload,
+              id: realId,
+              organization_id: organizationId
+            }
+          });
         } else {
           upsertRows.push({ ...dbPayload, organization_id: organizationId });
           upsertIds.push(id);
@@ -223,42 +235,59 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         }
       }
 
-      // ── Individual inserts for phantom rows (need ID remap) ─────────────
-      for (const { phantomId, insertPayload } of phantomRows) {
+      // ── Batch insert new (phantom) rows ─────────────────────────────────
+      if (phantomRows.length > 0) {
+        // Register in ownInsertsRef BEFORE initiating the insert request to avoid race condition with WebSocket events
+        phantomRows.forEach(p => {
+          ownInsertsRef.current.add(p.realId);
+          setTimeout(() => ownInsertsRef.current.delete(p.realId), 10_000);
+        });
+
+        const payloads = phantomRows.map(p => p.insertPayload);
         const { data, error } = await supabase
           .from('students')
-          .insert(insertPayload)
-          .select()
-          .single();
+          .insert(payloads)
+          .select();
 
         if (error) {
-          console.error('Insert error:', error.message);
-          dirtyRowsRef.current.add(phantomId);
-          continue;
-        }
+          console.error('Batch insert error:', error.message);
+          phantomRows.forEach(p => {
+            dirtyRowsRef.current.add(p.phantomId);
+            ownInsertsRef.current.delete(p.realId);
+          });
+        } else if (data) {
+          setStudents(prev => {
+            let next = [...prev];
+            phantomRows.forEach(p => {
+              const inserted = data.find(r => r.id === p.realId);
+              if (inserted) {
+                next = next.map(s =>
+                  s.id === p.phantomId
+                    ? {
+                        ...s,
+                        ...inserted,
+                        age: inserted.age ?? '',
+                        last_grade_completed: inserted.last_grade_completed ?? '',
+                        home_zip_code: inserted.home_zip_code ?? '',
+                        race_ethnicity: inserted.race_ethnicity ?? '',
+                        gender: inserted.gender ?? '',
+                        total_program_hours: inserted.total_program_hours ?? '',
+                        sync_status: 'synced' as const
+                      }
+                    : s
+                );
+              }
+            });
+            return next;
+          });
 
-        if (data) {
-          setStudents(prev =>
-            prev.map(s =>
-              s.id === phantomId
-                ? {
-                    ...s,
-                    ...data,
-                    age: data.age ?? '',
-                    last_grade_completed: data.last_grade_completed ?? '',
-                    home_zip_code: data.home_zip_code ?? '',
-                    race_ethnicity: data.race_ethnicity ?? '',
-                    gender: data.gender ?? '',
-                    total_program_hours: data.total_program_hours ?? '',
-                    sync_status: 'synced' as const
-                  }
-                : s
-            )
-          );
-          channelRef.current?.send({
-            type: 'broadcast',
-            event: 'id_remap',
-            payload: { senderId: connectionIdRef.current, oldId: phantomId, newId: data.id },
+          // Broadcast ID remaps
+          phantomRows.forEach(p => {
+            channelRef.current?.send({
+              type: 'broadcast',
+              event: 'id_remap',
+              payload: { senderId: connectionIdRef.current, oldId: p.phantomId, newId: p.realId },
+            });
           });
         }
       }
@@ -272,7 +301,17 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     } finally {
       isFlushingRef.current = false;
     }
-  }, [organizationId]);
+  }, [organizationId, activeCampDayId]);
+
+  // Register flush function in parent context to support flush-before-navigation
+  useEffect(() => {
+    if (childFlushRef) {
+      childFlushRef.current = flushToDB;
+      return () => {
+        childFlushRef.current = null;
+      };
+    }
+  }, [childFlushRef, flushToDB]);
 
   // ─── Channel setup, periodic save, beforeunload ─────────────────────────
   useEffect(() => {
@@ -281,7 +320,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
     const connId = connectionIdRef.current;
 
     // Single Supabase channel: broadcast for instant sync + presence for disconnect
-    const channel = supabase.channel(`collab-org-${organizationId}`, {
+    const channel = supabase.channel(`collab-org-${organizationId}-day-${activeCampDayId || 'none'}`, {
       config: { presence: { key: connId } },
     });
 
@@ -301,7 +340,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
           s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
         );
         const newRow: StudentRow = {
-          ...makeEmptyRow(organizationId, phantomIdx !== -1 ? phantomIdx : prev.length),
+          ...makeEmptyRow(organizationId, phantomIdx !== -1 ? phantomIdx : prev.length, activeCampDayId),
           id: payload.studentId,
           [payload.field]: payload.value,
         };
@@ -320,7 +359,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
       setStudents(prev => {
         const filtered = prev.filter(s => s.id !== payload.studentId);
         if (filtered.length === prev.length) return prev;
-        filtered.push(makeEmptyRow(organizationId, filtered.length));
+        filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
         return filtered;
       });
     });
@@ -395,7 +434,8 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         (payload) => {
           const newRow = payload.new as any;
           if (!newRow?.id) return;
-          // Skip if already in local state (our own flush inserts)
+          // Skip our own inserts (the Postgres event arrives before React processes the ID remap)
+          if (ownInsertsRef.current.has(newRow.id)) return;
           setStudents(prev => {
             if (prev.some(s => s.id === newRow.id)) return prev;
             const hasData = !!(newRow.first_name?.trim() || newRow.last_name?.trim());
@@ -439,7 +479,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
           setStudents(prev => {
             if (!prev.some(s => s.id === oldRow.id)) return prev;
             const filtered = prev.filter(s => s.id !== oldRow.id);
-            filtered.push(makeEmptyRow(organizationId, filtered.length));
+            filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
             return filtered;
           });
         }
@@ -474,7 +514,16 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
   // ─── Field change: local + broadcast instantly, DB later ────────────────
   const handleFieldChange = useCallback(
     (id: string, field: keyof StudentRow, value: any) => {
-      // 1. Update local state immediately
+      // 1. Update ref SYNCHRONOUSLY so cleanup flush always has latest data
+      //    (useEffect that syncs studentsRef doesn't fire on unmount)
+      const refIdx = studentsRef.current.findIndex(s => s.id === id);
+      if (refIdx !== -1) {
+        const updated = [...studentsRef.current];
+        updated[refIdx] = { ...updated[refIdx], [field]: value };
+        studentsRef.current = updated;
+      }
+
+      // 2. Update React state for rendering
       setStudents(prev => {
         const idx = prev.findIndex(s => s.id === id);
         if (idx === -1) return prev;
@@ -485,7 +534,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         // Auto-expand when near the bottom
         if (idx >= prev.length - 5) {
           const extras = Array.from({ length: 50 }).map((_, i) =>
-            makeEmptyRow(organizationId, prev.length + i)
+            makeEmptyRow(organizationId, prev.length + i, activeCampDayId)
           );
           return [...next, ...extras];
         }
@@ -508,7 +557,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         });
       }, 150));
     },
-    [organizationId]
+    [organizationId, activeCampDayId]
   );
 
   // ─── Delete: local + broadcast instantly, DB in next flush ──────────────
@@ -518,7 +567,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
       setStudents(prev => {
         const filtered = prev.filter(s => s.id !== id);
         if (filtered.length === prev.length) return prev;
-        filtered.push(makeEmptyRow(organizationId, filtered.length));
+        filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
         return filtered;
       });
 
@@ -535,7 +584,7 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
         payload: { senderId: connectionIdRef.current, studentId: id },
       });
     },
-    [organizationId]
+    [organizationId, activeCampDayId]
   );
 
   // ─── Filtered view ──────────────────────────────────────────────────────
@@ -639,12 +688,12 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
               <div className={cn(
                 "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
                 isDark
-                  ? "bg-gradient-to-r from-amber-500/[0.02] to-transparent text-amber-200/80"
-                  : "bg-gradient-to-r from-amber-50/[0.3] to-transparent text-amber-600/80"
+                  ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
+                  : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
               )}>
-                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-amber-400" : "text-amber-500")} />
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
                 <span className="text-center">
-                  Fill out all fields for each student below. Click <span className="font-bold">"Delete"</span> to remove. A green checkmark under <span className="font-bold">"Ready?"</span> confirms completion.
+                  Fill out all fields for each student below. Click <span className="font-bold">"Delete"</span> to remove. A green checkmark under <span className="font-bold">"Complete"</span> confirms completion.
                 </span>
               </div>
 
@@ -736,13 +785,13 @@ export default function StudentGrid({ organizationId, isDark = false }: StudentG
             ? "bg-slate-900 border-white/10 text-sky-400 hover:bg-slate-800 hover:border-sky-400/50 shadow-black/60"
             : "bg-white border-slate-200 text-sky-600 hover:bg-slate-50 hover:border-sky-500/30 shadow-slate-200/55"
         )}
-        title="Play Student Directory Guide"
+        title="Play Student Data Guide"
       >
         <Play size={12} className="fill-current animate-pulse text-sky-400" />
         <span>Guide Me</span>
       </button>
 
-      {/* Render Portal Student Directory Tour */}
+      {/* Render Portal Student Data Tour */}
       {isTourOpen && (
         <StudentDirectoryTour 
           isDark={isDark} 

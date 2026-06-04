@@ -1,13 +1,11 @@
 import React from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, User as UserIcon, GraduationCap, Sun, Moon, Construction } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { GraduationCap, Sun, Moon, Construction } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function EducatorLayout() {
-  const { profile, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [isDark, setIsDark] = React.useState(false);
 
@@ -41,13 +39,6 @@ export default function EducatorLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className={cn("hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors duration-700", isDark ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700")}>
-              <UserIcon size={14} className="text-slate-400" />
-              <span>{profile?.full_name}</span>
-            </div>
-            
-            <Separator orientation="vertical" className={cn("h-6 hidden sm:block", isDark ? "bg-white/10" : "bg-slate-200")} />
-
             <button 
               onClick={() => setIsDark(!isDark)}
               className={cn(
@@ -58,15 +49,13 @@ export default function EducatorLayout() {
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={handleSignOut}
-              className={cn("rounded-full transition-colors", isDark ? "text-slate-400 hover:text-destructive hover:bg-white/5" : "text-slate-400 hover:text-destructive hover:bg-destructive/10")}
+              className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap"
               title="Sign Out"
             >
-              <LogOut size={18} />
-            </Button>
+              Sign Out
+            </button>
           </div>
         </div>
       </header>

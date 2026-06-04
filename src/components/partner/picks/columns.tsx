@@ -9,7 +9,7 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 export type LabPickRow = {
   id: string;
@@ -22,7 +22,7 @@ export type LabPickRow = {
 };
 
 interface ColumnProps {
-  labs: { id: string, name: string }[];
+  labs: { id: string; name: string; min_age: number | null; max_age: number | null }[];
   handlePreferenceToggle: (studentId: string, labId: string) => void;
   handleClearPreferences: (studentId: string) => void;
   handleNoteSave: (studentId: string, notes: string) => void;
@@ -30,7 +30,7 @@ interface ColumnProps {
 }
 
 const LAB_SHORT_NAMES: Record<string, string> = {
-  "Arts Collaboratorium": "Arts Collaboratorium",
+  "Arts Collaboratorium": "Mixed Media Lab",
   "Jazz Fab Lab": "Jazz Fab Lab",
   "Virtual Reality MusicMaking": "Virtual Reality MusicMaking",
   "Conga Drumming": "Conga Drumming",
@@ -38,32 +38,71 @@ const LAB_SHORT_NAMES: Record<string, string> = {
   "Remix the Code": "Remix the Code",
   "Pixel Beats Lab": "Pixel Beats Lab",
   "Eco Jazz Sound Lab": "Eco Jazz Sound Lab",
-  "The Vocal Resonance Lab with The Singing Buckeyes": "The Vocal Resonance Lab with The Singing Buckeyes",
-  "Young Producers Lab": "Young Producers Lab",
+  "The Vocal Resonance Lab with The Singing Buckeyes": "The Reverb Lab",
+  "Young Producers Lab": "Future Producers' Lab",
 };
 
 export const LAB_DETAILS: Record<string, { short: string; room: string; desc: string; icon: string; ageRequirement: string }> = {
-  "Arts Collaboratorium": { short: "Arts Collaboratorium", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "all ages" },
-  "Young Producers Lab": { short: "Young Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
-  "Future Producers Lab": { short: "Young Producers Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Arts Collaboratorium": { short: "Mixed Media Lab", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "All ages" },
+  "Young Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Future Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
   "Afro-Futuristic Studio": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "AI World-Building Lab": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "Pixel Beats Lab": { short: "Pixel Beats Lab", room: "112", desc: "Video game music coding", icon: "🎮", ageRequirement: "9+" },
-  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "The Vocal Resonance Lab with The Singing Buckeyes", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
-  "Vocal Resonance Lab": { short: "The Vocal Resonance Lab with The Singing Buckeyes", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "all ages" },
+  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
+  "Vocal Resonance Lab": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
   "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/ JavaScript", icon: "💻", ageRequirement: "11+" },
   "Eco Jazz Sound Lab": { short: "Eco Jazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
   "Virtual Reality MusicMaking": { short: "Virtual Reality MusicMaking", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
-  "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/ Rhythms", icon: "🥁", ageRequirement: "all ages" },
+  "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/ Rhythms", icon: "🥁", ageRequirement: "All ages" },
   "Jazz Fab Lab": { short: "Jazz Fab Lab", room: "130", desc: "Engineering Instruments", icon: "🛠️", ageRequirement: "7+" },
 };
+
+function BlockedCell({ minAge, maxAge, isDark }: {
+  minAge: number | null;
+  maxAge: number | null;
+  isDark: boolean;
+}) {
+  const [active, setActive] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const trigger = useCallback(() => {
+    if (active) return;
+    setActive(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setActive(false), 900);
+  }, [active]);
+
+  const ageLabel = `Age ${minAge}${maxAge ? `–${maxAge}` : '+'}`;
+
+  return (
+    <div
+      onClick={trigger}
+      className={cn(
+        'w-full h-10 flex items-center justify-center cursor-pointer select-none transition-colors duration-300',
+        active
+          ? isDark ? 'bg-rose-500/10' : 'bg-rose-50'
+          : isDark ? 'bg-white/[0.015]' : 'bg-slate-50/80'
+      )}
+    >
+      <span className={cn(
+        'font-bold',
+        active
+          ? cn('text-[9px] tracking-widest uppercase', isDark ? 'text-rose-400' : 'text-rose-500')
+          : cn('text-[11px]', isDark ? 'text-slate-700' : 'text-slate-300')
+      )}>
+        {active ? `${ageLabel} only` : '—'}
+      </span>
+    </div>
+  );
+}
 
 export const getColumns = ({
   labs,
   handlePreferenceToggle,
   handleClearPreferences,
   handleNoteSave,
-  isDark
+  isDark,
 }: ColumnProps): ColumnDef<LabPickRow>[] => {
   const baseColumns: ColumnDef<LabPickRow>[] = [
     {
@@ -136,11 +175,15 @@ export const getColumns = ({
     {
       accessorKey: "notes",
       header: () => (
-        <div className="flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center gap-0.5">
           <span className={cn(
             "font-bold text-[11px] tracking-wide",
             isDark ? "text-slate-400" : "text-slate-500"
           )}>Notes</span>
+          <span className={cn(
+            "text-[9px] font-medium",
+            isDark ? "text-slate-600" : "text-slate-400"
+          )}>(optional)</span>
         </div>
       ),
       cell: ({ row }) => <NotesCell row={row} handleNoteSave={handleNoteSave} isDark={isDark} />,
@@ -152,24 +195,10 @@ export const getColumns = ({
   const labColumns: ColumnDef<LabPickRow>[] = labs.map((lab, colIdx) => ({
     id: `lab-${lab.id}`,
     header: () => {
-      const details = LAB_DETAILS[lab.name] || { short: LAB_SHORT_NAMES[lab.name] || lab.name, room: "TBD", desc: "", ageRequirement: "all ages" };
+      const details = LAB_DETAILS[lab.name] || { short: LAB_SHORT_NAMES[lab.name] || lab.name, room: "TBD", desc: "", ageRequirement: "All ages" };
       
       return (
         <div className="flex flex-col justify-between py-1.5 h-full w-full select-none text-center leading-normal min-w-0 overflow-hidden">
-          {/* Age Req */}
-          <span className={cn(
-            "text-[9px] font-black tracking-wider whitespace-normal break-words inline-block w-full opacity-85",
-            isDark ? "text-sky-300" : "text-sky-700"
-          )}>
-            Age: {details.ageRequirement}
-          </span>
-          
-          {/* Divider */}
-          <div className={cn(
-            "my-1 border-t w-full",
-            isDark ? "border-white/10" : "border-slate-200"
-          )} />
-          
           {/* Lab Name */}
           <span className={cn(
             "font-black text-[10.5px] leading-tight px-0.5 whitespace-normal break-words inline-block w-full",
@@ -177,13 +206,13 @@ export const getColumns = ({
           )}>
             {details.short}
           </span>
-          
+
           {/* Divider */}
           <div className={cn(
             "my-1 border-t w-full",
             isDark ? "border-white/10" : "border-slate-200"
           )} />
-          
+
           {/* Brief Description */}
           <span className={cn(
             "text-[10px] font-semibold leading-tight px-0.5 italic whitespace-normal break-normal inline-block w-full",
@@ -191,15 +220,40 @@ export const getColumns = ({
           )}>
             {details.desc}
           </span>
+
+          {/* Divider */}
+          <div className={cn(
+            "my-1 border-t w-full",
+            isDark ? "border-white/10" : "border-slate-200"
+          )} />
+
+          {/* Age Req */}
+          <span className={cn(
+            "text-[10px] font-black tracking-wider whitespace-normal break-words inline-block w-full",
+            isDark ? "text-indigo-200/80" : "text-indigo-600/80"
+          )}>
+            Age: {details.ageRequirement}
+          </span>
         </div>
       );
     },
     cell: ({ row }) => {
-      const { first_name, last_name } = row.original;
+      const { first_name, last_name, age } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
       const pref = row.original.preferences?.find(p => p.lab_id === lab.id);
       const rank = pref?.rank;
+
+      // Age eligibility check
+      const studentAge = age !== '' && age != null ? Number(age) : null;
+      const minAge = lab.min_age;
+      const maxAge = lab.max_age ?? 999;
+      const meetsAge = studentAge === null || minAge == null || (studentAge >= minAge && studentAge <= maxAge);
+
+      // Show blocked cell if ineligible and not already selected
+      if (!meetsAge && !rank) {
+        return <BlockedCell minAge={minAge} maxAge={lab.max_age ?? null} isDark={isDark} />;
+      }
 
       return (
         <button
@@ -234,15 +288,21 @@ export const getColumns = ({
         <span className={cn(
           "font-bold text-[11px] tracking-wide",
           isDark ? "text-slate-400" : "text-slate-500"
-        )}>Ready?</span>
+        )}>Complete</span>
       </div>
     ),
     cell: ({ row }) => {
-      const { first_name, last_name, preferences, sync_status } = row.original;
+      const { first_name, last_name, age, preferences, sync_status } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
+      const studentAge = age !== '' && age != null ? Number(age) : null;
+      const eligibleCount = labs.filter(lab => {
+        if (lab.min_age == null || studentAge == null) return true;
+        return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+      }).length;
+
       const count = preferences?.length || 0;
-      const isComplete = count === 10;
+      const isComplete = eligibleCount > 0 && count >= eligibleCount;
       const hasSelections = count > 0;
 
       return (
@@ -267,7 +327,7 @@ export const getColumns = ({
         </div>
       );
     },
-    size: 50,
+    size: 75,
   };
 
   const actionColumn: ColumnDef<LabPickRow> = {

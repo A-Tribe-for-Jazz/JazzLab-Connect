@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Sun, Moon, LogOut } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
@@ -41,8 +41,6 @@ export default function AdminLayout() {
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
         hideBorder={false}
-        userName={profile?.full_name?.split(' ')[0]}
-        fullName={profile?.full_name}
       />
 
       {/* Main Content Area */}
@@ -76,14 +74,14 @@ export default function AdminLayout() {
   );
 }
 
-function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, userName, fullName }: any) {
+function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder }: any) {
   return (
     <header className={cn(
       "sticky top-0 z-50 h-16 flex items-center px-8 transition-all duration-700",
       !hideBorder && "border-b",
       isDark ? cn("bg-black/95 backdrop-blur-md", !hideBorder && "border-white/10") : cn("bg-white/95 backdrop-blur-md", !hideBorder && "border-slate-200")
     )}>
-       <div className="flex items-center justify-between w-full max-w-7xl mx-auto h-full">
+       <div className="flex items-center justify-between w-full h-full">
           {/* Logo on Left */}
           <Link to="/admin/dashboard" className="flex items-center w-48 h-full">
             <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
@@ -131,22 +129,8 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
              >
                {isDark ? <Sun size={16} /> : <Moon size={16} />}
              </button>
-             {userName && (
-               <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                   <button className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm shrink-0 focus:outline-none">
-                     {userName[0].toUpperCase()}
-                   </button>
-                 </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end" className="min-w-0">
-                   <DropdownMenuItem className="text-[13px] font-semibold pointer-events-none">
-                     {fullName}
-                   </DropdownMenuItem>
-                 </DropdownMenuContent>
-               </DropdownMenu>
-             )}
-             <button onClick={onSignOut} className="text-rose-500 hover:text-rose-600 transition-colors">
-               <LogOut size={15} />
+             <button onClick={onSignOut} className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap">
+               Sign Out
              </button>
           </div>
        </div>

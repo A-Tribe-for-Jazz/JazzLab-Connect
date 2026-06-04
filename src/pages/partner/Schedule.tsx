@@ -49,14 +49,15 @@ interface PlacementRow {
 
 export default function PartnerSchedule() {
   const { profile } = useAuth();
-  const { isDark }: any = useOutletContext();
+  const { isDark, activeCampDayId }: any = useOutletContext();
 
   const [loading, setLoading] = useState(true);
-  const [campDayDate, setCampDayDate] = useState('');
+  const [campDays, setCampDays] = useState<{ id: string; date: string }[]>([]);
+  const [selectedDayId, setSelectedDayId] = useState('');
   const [sessions, setSessions] = useState<TimeSlot[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [placements, setPlacements] = useState<PlacementRow[]>([]);
-  const [isFinalized, setIsFinalized] = useState(false);
+  const [validStudents, setValidStudents] = useState<any[]>([]);
+  const [allAssignments, setAllAssignments] = useState<any[]>([]);
   const [showDemo, setShowDemo] = useState(false);
 
   // Filter States
@@ -69,121 +70,108 @@ export default function PartnerSchedule() {
     }
   }, [profile]);
 
+  useEffect(() => {
+    if (activeCampDayId) {
+      setSelectedDayId(activeCampDayId);
+    }
+  }, [activeCampDayId]);
+
   const fetchData = async (orgId: string) => {
     try {
       setLoading(true);
 
-      // 1. Fetch organization's camp day
+      // 1. Fetch all of the org's camp days
       const { data: daysData } = await supabase
         .from('camp_day_organizations')
         .select('camp_day_id, camp_days(date)')
         .eq('organization_id', orgId);
 
-      let activeDayId = '';
-      if (daysData && daysData.length > 0) {
-        activeDayId = daysData[0].camp_day_id;
-        const campDaysField = daysData[0].camp_days;
-        const rawDate = Array.isArray(campDaysField) ? (campDaysField[0] as any)?.date : (campDaysField as any)?.date;
-        if (rawDate) {
-          const formatted = new Date(rawDate).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-          setCampDayDate(formatted);
-        }
-      }
+      const days = (daysData || [])
+        .map(d => {
+          const campDayField = d.camp_days;
+          const date = Array.isArray(campDayField)
+            ? (campDayField[0] as any)?.date
+            : (campDayField as any)?.date;
+          return { id: d.camp_day_id, date: date || '' };
+        })
+        .filter(d => d.date)
+        .sort((a, b) => a.date.localeCompare(b.date));
 
-      // 2. Fetch all time slots (sessions)
+      setCampDays(days);
+      if (days.length > 0) setSelectedDayId(prev => prev || activeCampDayId || days[0].id);
+
+      // 2. Fetch all time slots
       const { data: slotsData } = await supabase
-        .from('time_slots')
-        .select('*')
-        .order('start_time');
-
-      const activeSlots = slotsData || [];
-      setSessions(activeSlots);
+        .from('time_slots').select('*').order('start_time');
+      setSessions(slotsData || []);
 
       // 3. Fetch all labs
       const { data: labsData } = await supabase
-        .from('labs')
-        .select('*')
-        .order('name');
+        .from('labs').select('*').order('name');
       setLabs(labsData || []);
 
-      // 4. Fetch valid students in organization (must have First, Last, and Age filled)
+      // 4. Fetch valid students
       const { data: studentsData } = await supabase
-        .from('students')
-        .select('*')
-        .eq('organization_id', orgId);
-
-      const validStudents = (studentsData || []).filter(
+        .from('students').select('*').eq('organization_id', orgId);
+      const valid = (studentsData || []).filter(
         s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
       );
+      setValidStudents(valid);
 
-      // 5. Fetch placements/assignments
-      const studentIds = validStudents.map(s => s.id);
-      let assignmentsData: any[] = [];
+      // 5. Fetch ALL assignments for these students (filtered by day in useMemo)
+      const studentIds = valid.map(s => s.id);
       if (studentIds.length > 0) {
         const { data: assignmentsRes } = await supabase
           .from('assignments')
-          .select(`
-            id,
-            student_id,
-            pick_number,
-            lab_sessions (
-              id,
-              lab_id,
-              camp_day_id,
-              time_slot_id
-            )
-          `)
+          .select('id, student_id, pick_number, lab_sessions(id, lab_id, camp_day_id, time_slot_id)')
           .in('student_id', studentIds);
-        if (assignmentsRes) {
-          assignmentsData = assignmentsRes;
-        }
+        setAllAssignments(assignmentsRes || []);
       }
-
-      // Filter assignments for our active camp day
-      const activeAssignments = assignmentsData.filter(
-        a => a.lab_sessions?.camp_day_id === activeDayId
-      );
-
-      setIsFinalized(activeAssignments.length > 0);
-
-      // Map placements
-      const mapped = validStudents.map(student => {
-        const studentAssignments = activeAssignments.filter(a => a.student_id === student.id);
-        const sessionMap: { [timeSlotId: string]: { labId: string; labName: string; pickNumber: number | null } } = {};
-
-        studentAssignments.forEach(assign => {
-          const slotId = assign.lab_sessions?.time_slot_id;
-          const labId = assign.lab_sessions?.lab_id;
-          if (slotId && labId) {
-            const labName = labsData?.find(l => l.id === labId)?.name || 'Unknown Lab';
-            sessionMap[slotId] = {
-              labId,
-              labName,
-              pickNumber: assign.pick_number
-            };
-          }
-        });
-
-        return {
-          studentId: student.id,
-          studentName: `${student.first_name} ${student.last_name}`,
-          studentAge: student.age,
-          sessionAssignments: sessionMap
-        };
-      });
-
-      setPlacements(mapped);
     } catch (error) {
       console.error('Error fetching placements:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Derived: placements for the selected day
+  const placements = useMemo<PlacementRow[]>(() => {
+    if (!selectedDayId || !validStudents.length || !labs.length) return [];
+    const dayAssignments = allAssignments.filter(a => a.lab_sessions?.camp_day_id === selectedDayId);
+    return validStudents.map(student => {
+      const studentAssignments = dayAssignments.filter(a => a.student_id === student.id);
+      const sessionMap: { [timeSlotId: string]: { labId: string; labName: string; pickNumber: number | null } } = {};
+      studentAssignments.forEach(assign => {
+        const slotId = assign.lab_sessions?.time_slot_id;
+        const labId = assign.lab_sessions?.lab_id;
+        if (slotId && labId) {
+          const labName = labs.find(l => l.id === labId)?.name || 'Unknown Lab';
+          sessionMap[slotId] = { labId, labName, pickNumber: assign.pick_number };
+        }
+      });
+      return {
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        studentAge: student.age,
+        sessionAssignments: sessionMap
+      };
+    });
+  }, [selectedDayId, allAssignments, validStudents, labs]);
+
+  // Derived: whether the selected day has any assignments
+  const isFinalized = useMemo(() => {
+    if (!selectedDayId) return false;
+    return allAssignments.some(a => a.lab_sessions?.camp_day_id === selectedDayId);
+  }, [selectedDayId, allAssignments]);
+
+  // Derived: formatted label for selected day
+  const campDayLabel = useMemo(() => {
+    const day = campDays.find(d => d.id === selectedDayId);
+    if (!day) return '';
+    return new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+  }, [selectedDayId, campDays]);
 
   // Safe fallback mock sessions & labs if DB contains none
   const activeSessions = useMemo(() => {
@@ -396,14 +384,33 @@ export default function PartnerSchedule() {
       {/* Header section (Non-printable) */}
       <div className="print:hidden w-full mx-auto px-8 pt-8 pb-4 flex flex-col gap-1 border-b border-slate-100 dark:border-white/5">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             <h1 className={cn("text-3xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>
               Final Placements
             </h1>
-            <p className={cn("text-xs font-bold uppercase tracking-widest flex items-center gap-2 mt-1", isDark ? "text-slate-500" : "text-slate-400")}>
+            <p className={cn("text-xs font-bold uppercase tracking-widest flex items-center gap-2", isDark ? "text-slate-500" : "text-slate-400")}>
               <Calendar size={14} className={isDark ? "text-sky-700" : "text-sky-300"} />
-              Attending Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayDate || 'Unassigned Day')}
+              {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
             </p>
+            {/* Day selector — shown only when org has multiple camp days */}
+            {campDays.length > 1 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {campDays.map(day => (
+                  <button
+                    key={day.id}
+                    onClick={() => setSelectedDayId(day.id)}
+                    className={cn(
+                      'px-3 py-1 rounded-xl text-[11px] font-bold border transition-all',
+                      selectedDayId === day.id
+                        ? isDark ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-white border-slate-900'
+                        : isDark ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    )}
+                  >
+                    {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right-aligned Filter & Print controls beside sessions */}
@@ -491,7 +498,7 @@ export default function PartnerSchedule() {
           <div className="hidden print:block mb-8">
             <h1 className="text-2xl font-bold text-black uppercase tracking-tight">JazzLab Final Roster</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Camp Session Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayDate || 'Unassigned Day')}
+              Camp Session Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
             </p>
           </div>
 

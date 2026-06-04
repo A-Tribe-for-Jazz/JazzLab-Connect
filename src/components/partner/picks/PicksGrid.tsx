@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { Search, Info, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,11 +12,13 @@ import LabPreferencesTour from './LabPreferencesTour';
 interface PicksGridProps {
   organizationId: string;
   isDark?: boolean;
+  activeCampDayId?: string | null;
 }
 
-export default function PicksGrid({ organizationId, isDark = false }: PicksGridProps) {
+export default function PicksGrid({ organizationId, isDark = false, activeCampDayId = null }: PicksGridProps) {
+  const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<LabPickRow[]>([]);
-  const [labs, setLabs] = useState<{ id: string, name: string }[]>([]);
+  const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isTourOpen, setIsTourOpen] = useState(false);
@@ -30,9 +33,12 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     }
   }, [loading, students]);
 
-  // Always-fresh ref so handlers inside memoized columns never go stale
+  // Always-fresh refs so handlers inside memoized columns never go stale
   const studentsRef = useRef<LabPickRow[]>(students);
   useEffect(() => { studentsRef.current = students; }, [students]);
+
+  const labsRef = useRef(labs);
+  useEffect(() => { labsRef.current = labs; }, [labs]);
 
   // Track which students have a local save in-flight to suppress realtime echo
   const savingStudentsRef = useRef<Set<string>>(new Set());
@@ -42,6 +48,22 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
 
   // Debounce map for preference realtime events — coalesces rapid delete+insert bursts
   const prefDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const flushToDB = useCallback(async () => {
+    const promises = Array.from(pendingSaveRef.current.values());
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (childFlushRef) {
+      childFlushRef.current = flushToDB;
+      return () => {
+        childFlushRef.current = null;
+      };
+    }
+  }, [childFlushRef, flushToDB]);
 
   useEffect(() => {
     fetchData();
@@ -200,15 +222,15 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
       supabase.removeChannel(channelStudents);
       supabase.removeChannel(channelPrefs);
     };
-  }, [organizationId]);
+  }, [organizationId, activeCampDayId]);
 
   const fetchData = async () => {
     try {
       const [labsRes, studentsRes] = await Promise.all([
-        supabase.from('labs').select('id, name').order('name'),
+        supabase.from('labs').select('id, name, min_age, max_age').order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name, age, notes, preferences(lab_id, rank)')
+          .select('id, first_name, last_name, age, camp_day_id, notes, preferences(lab_id, rank)')
           .eq('organization_id', organizationId)
           .order('first_name')
       ]);
@@ -217,6 +239,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
       if (studentsRes.data) {
         const existingStudents = studentsRes.data
           .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
+          .filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId)
           .map(s => ({
             ...s,
             preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
@@ -253,9 +276,17 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     const existingIndex = newPrefs.findIndex(p => p.lab_id === labId);
 
     if (existingIndex !== -1) {
+      // Always allow deselection
       newPrefs.splice(existingIndex, 1);
       newPrefs = newPrefs.map((p, idx) => ({ ...p, rank: idx + 1 }));
     } else {
+      // Block selection if student doesn't meet lab age requirement
+      const lab = labsRef.current.find(l => l.id === labId);
+      if (lab && lab.min_age != null && student.age !== '' && student.age != null) {
+        const age = Number(student.age);
+        const maxAge = lab.max_age ?? 999;
+        if (age < lab.min_age || age > maxAge) return;
+      }
       if (newPrefs.length >= 10) return;
       newPrefs.push({ lab_id: labId, rank: newPrefs.length + 1 });
     }
@@ -397,7 +428,7 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
     handlePreferenceToggle,
     handleClearPreferences,
     handleNoteSave,
-    isDark
+    isDark,
   }), [labs, isDark, handlePreferenceToggle, handleClearPreferences, handleNoteSave]);
 
   if (loading) return (
@@ -445,12 +476,12 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
               <div className={cn(
                 "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
                 isDark
-                  ? "bg-gradient-to-r from-amber-500/[0.02] to-transparent text-amber-200/80"
-                  : "bg-gradient-to-r from-amber-50/[0.3] to-transparent text-amber-600/80"
+                  ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
+                  : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
               )}>
-                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-amber-400" : "text-amber-500")} />
+                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
                 <span className="text-center">
-                  Select all <span className="font-bold underline">10 unique preferences</span> per student by clicking lab cells (1 = top choice, 10 = lowest). Click <span className="font-bold">"Clear"</span> to reset. A green checkmark under <span className="font-bold">"Ready?"</span> confirms completion.
+                  Select all eligible lab preferences per student by clicking cells <span className="font-bold">(1 = top choice)</span>. Age-restricted labs are blocked. Click <span className="font-bold">"Clear"</span> to reset. A green checkmark under <span className="font-bold">"Complete"</span> confirms completion.
                 </span>
               </div>
             </div>
@@ -475,14 +506,16 @@ export default function PicksGrid({ organizationId, isDark = false }: PicksGridP
 
       {/* Render Portal Tour Animation */}
       {isTourOpen && (
-        <LabPreferencesTour 
-          isDark={isDark} 
+        <LabPreferencesTour
+          isDark={isDark}
           onClose={() => {
             setIsTourOpen(false);
             localStorage.setItem('has_seen_lab_tour', 'true');
-          }} 
+          }}
         />
       )}
+
+
     </div>
   );
 }

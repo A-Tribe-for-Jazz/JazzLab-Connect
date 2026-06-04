@@ -3,7 +3,7 @@ import { Check, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import { useState, useRef, useEffect, useCallback, startTransition } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export type StudentRow = {
   id: string;
@@ -61,9 +61,7 @@ function CollaborativeInput({
     const newVal = e.target.value;
     isLocalEdit.current = true;
     setLocalValue(newVal);             // instant — only this input re-renders
-    startTransition(() => {            // deferred — table re-render is non-urgent
-      onChange(e);
-    });
+    onChange(e);                        // sync — ensures dirty-marking before any navigation
   }, [onChange]);
 
   const isOtherEditing = !!activeCursorsRef.current[`${studentId}_${fieldName}`];
@@ -130,7 +128,7 @@ function CollaborativeSelect({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     isLocalEdit.current = true;
     setLocalValue(e.target.value);
-    startTransition(() => onChange(e.target.value));
+    onChange(e.target.value);           // sync — ensures dirty-marking before any navigation
   }, [onChange]);
 
   const visibleText = localValue || placeholder;
@@ -481,7 +479,7 @@ export const getColumns = ({
       id: "status",
       header: () => (
         <div className="flex items-center justify-center">
-          <span className={headerTextClass}>Ready?</span>
+          <span className={headerTextClass}>Complete</span>
         </div>
       ),
       cell: ({ row }) => {
