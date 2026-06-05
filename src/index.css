@@ -157,3 +157,7 @@
   animation: shake 0.2s ease-in-out infinite;
 }
 
+.animate-ping-slow {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
