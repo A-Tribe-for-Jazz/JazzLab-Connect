@@ -203,7 +203,7 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
                             "h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 transition-opacity duration-300",
                             isActive ? "animate-pulse opacity-100" : "opacity-0"
                           )} 
-                          style={{ animationDuration: '4s' }}
+                          style={{ animationDuration: '8s' }}
                         />
                         {formattedDate}
                       </button>
