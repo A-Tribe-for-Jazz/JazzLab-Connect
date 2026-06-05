@@ -200,7 +200,7 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
                       >
                         <span className={cn(
                           "h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 transition-opacity duration-300",
-                          isActive ? "animate-ping opacity-100" : "opacity-0"
+                          isActive ? "animate-pulse opacity-100" : "opacity-0"
                         )} />
                         {formattedDate}
                       </button>
