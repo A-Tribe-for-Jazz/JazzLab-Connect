@@ -71,7 +71,7 @@ export default function EditLab() {
       });
       const resData = await response.json();
       if (!response.ok) throw new Error(resData.error || 'Failed to send invite');
-      setInviteMessage({ type: 'success', text: `Invited ${inviteEmail}` });
+      setInviteMessage({ type: 'success', text: `Invited ${inviteName.trim() || inviteEmail}` });
       setInviteEmail('');
       setInviteName('');
     } catch (err: any) {

@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -44,6 +45,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -69,6 +71,9 @@
 @layer base {
   * {
     border-color: hsl(var(--border));
+  }
+  html {
+    background-color: hsl(var(--background));
   }
   body {
     background-color: hsl(var(--background));
@@ -157,7 +162,14 @@
   animation: shake 0.2s ease-in-out infinite;
 }
 
+@keyframes ping-large {
+  75%, 100% {
+    transform: scale(3.8);
+    opacity: 0;
+  }
+}
+
 .animate-ping-slow {
-  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  animation: ping-large 0.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 

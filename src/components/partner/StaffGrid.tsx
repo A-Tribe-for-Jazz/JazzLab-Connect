@@ -398,13 +398,7 @@ export default function StaffGrid({ organizationId, isDark = false }: StaffGridP
 
   return (
     <div className="partner-enter flex-1 min-h-0 flex flex-col">
-      <div className="relative group flex-1 min-h-0 flex flex-col">
-        <div
-          className={cn(
-            'absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none',
-            isDark ? 'bg-indigo-500' : 'bg-slate-300'
-          )}
-        />
+      <div className="relative flex-1 min-h-0 flex flex-col">
         <DataTable
           columns={columns}
           data={filteredStaff}
@@ -446,9 +440,7 @@ export default function StaffGrid({ organizationId, isDark = false }: StaffGridP
               >
                 <Info size={14} className={cn('shrink-0 opacity-70', isDark ? 'text-indigo-400' : 'text-indigo-500')} />
                 <span className="text-center">
-                  Enter your staff's <span className="font-bold">Name</span>,{' '}
-                  <span className="font-bold">Email</span>, and{' '}
-                  <span className="font-bold">Cell</span>. A green checkmark confirms all fields are complete.
+                  Please enter the name, email address, and cell phone number of each staff member who will be attending Jazz Lab.
                 </span>
               </div>
             </div>

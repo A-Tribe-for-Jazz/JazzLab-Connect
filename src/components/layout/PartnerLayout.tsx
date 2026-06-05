@@ -21,7 +21,7 @@ export default function PartnerLayout() {
 
   React.useEffect(() => {
     if (!profile?.organization_id) return;
-    
+
     const fetchCampDays = async () => {
       try {
         const { data, error } = await supabase
@@ -33,9 +33,9 @@ export default function PartnerLayout() {
             )
           `)
           .eq('organization_id', profile.organization_id);
-          
+
         if (error) throw error;
-        
+
         if (data) {
           const days = data
             .map((item: any) => {
@@ -44,9 +44,9 @@ export default function PartnerLayout() {
             })
             .filter((d: any) => d && d.id && d.date)
             .sort((a: any, b: any) => a.date.localeCompare(b.date));
-            
+
           setCampDays(days);
-          
+
           if (days.length > 0) {
             setActiveCampDayId(prev => prev || days[0].id);
           }
@@ -55,7 +55,7 @@ export default function PartnerLayout() {
         console.error('Error fetching camp days:', err);
       }
     };
-    
+
     fetchCampDays();
   }, [profile?.organization_id]);
 
@@ -78,7 +78,7 @@ export default function PartnerLayout() {
     { name: 'Student Data', path: '/partner/students', icon: Users },
     { name: 'Lab Preferences', path: '/partner/lab-picks', icon: Microscope },
     { name: 'Staff Data', path: '/partner/staff', icon: UserCheck },
-    { name: 'Final Placements', path: '/partner/schedule', icon: Calendar },
+    { name: 'Schedules', path: '/partner/schedule', icon: Calendar },
   ];
 
   return (
@@ -101,7 +101,7 @@ export default function PartnerLayout() {
         isDark ? "bg-black" : "bg-white"
       )}>
         <div className="flex-1 min-h-0 flex flex-col">
-           <Outlet context={{ isDark, activeCampDayId, setActiveCampDayId, campDays, childFlushRef }} />
+          <Outlet context={{ isDark, activeCampDayId, setActiveCampDayId, campDays, childFlushRef }} />
         </div>
       </main>
 
@@ -111,12 +111,12 @@ export default function PartnerLayout() {
           "py-6 text-center border-t transition-all duration-700 mt-auto",
           isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
         )}>
-           <p className={cn(
-             "text-[10px] font-black uppercase tracking-[0.3em] transition-colors duration-700",
-             isDark ? "text-slate-700" : "text-slate-300"
-           )}>
-             &copy; 2026 A Tribe for Jazz.
-           </p>
+          <p className={cn(
+            "text-[10px] font-black uppercase tracking-[0.3em] transition-colors duration-700",
+            isDark ? "text-slate-700" : "text-slate-300"
+          )}>
+            &copy; 2026 A Tribe for Jazz.
+          </p>
         </footer>
       )}
     </div>
@@ -156,104 +156,121 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
       !hideBorder && "border-b",
       isDark ? cn("bg-black/95 backdrop-blur-md", !hideBorder && "border-white/10") : cn("bg-white/95 backdrop-blur-md", !hideBorder && "border-slate-200")
     )}>
-       <div className="flex items-center justify-between w-full h-full">
-          <div className="flex items-center gap-4 w-72 h-full shrink-0">
-            <Link 
-              to="/partner/dashboard" 
-              onClick={(e) => handleNavClick(e, '/partner/dashboard')}
-              className="flex items-center"
-            >
-              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
-                <img src="/atfj-logo.png" alt="ATFJ" className="h-full w-full object-cover" />
-              </div>
-            </Link>
-            
-            {campDays && campDays.length > 1 && (
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={cn(
-                  "text-[13px] font-semibold tracking-tight transition-colors duration-500",
-                  isDark ? "text-slate-400" : "text-slate-500"
-                )}>
-                  Select Camp Day:
-                </span>
-                <div className={cn(
-                  "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner",
-                  isDark ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200/60"
-                )}>
-                  {campDays.map((day: any) => {
-                    const isActive = activeCampDayId === day.id;
-                    const formattedDate = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    return (
-                      <button
-                        key={day.id}
-                        onClick={() => handleCampDayChange(day.id)}
-                        className={cn(
-                          "px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
-                          isActive 
-                            ? (isDark 
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]" 
-                                : "bg-white text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.15)] border-emerald-200")
-                            : (isDark 
-                                ? "bg-transparent border-transparent text-slate-400 hover:text-white" 
-                                : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
-                        )}
-                      >
-                        <span className={cn(
-                          "h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 transition-opacity duration-300",
-                          isActive ? "animate-ping-slow opacity-100" : "opacity-0"
-                        )} />
-                        {formattedDate}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <nav className="flex items-center gap-8 h-full">
-             {navItems.map((item: any) => (
-               <NavLink
-                 key={item.name}
-                 to={item.path}
-                 onClick={(e) => handleNavClick(e, item.path)}
-                 className={({ isActive }) => cn(
-                   "relative flex items-center h-full text-[13px] font-semibold transition-all duration-500",
-                   isActive 
-                     ? (isDark ? "text-white" : "text-blue-600") 
-                     : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
-                 )}
-               >
-                 {({ isActive }) => (
-                   <>
-                     {item.name}
-                     {isActive && (
-                       <div className={cn(
-                         "absolute bottom-0 left-0 w-full h-[2px] rounded-t-full transition-all duration-300",
-                         isDark ? "bg-white" : "bg-blue-600"
-                       )} />
-                     )}
-                   </>
-                 )}
-               </NavLink>
-             ))}
-          </nav>
+      <div className="flex items-center justify-between w-full h-full">
+        <div className="flex items-center gap-4 w-72 h-full shrink-0">
+          <Link
+            to="/partner/dashboard"
+            onClick={(e) => handleNavClick(e, '/partner/dashboard')}
+            className="flex items-center"
+          >
+            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
+              <img src="/atfj-logo.png" alt="ATFJ" className="h-full w-full object-cover" />
+            </div>
+          </Link>
 
-          <div className="flex items-center justify-end gap-4 w-72 h-full">
-             <button
-               onClick={onToggleTheme}
-               className={cn(
-                 "transition-colors",
-                 isDark ? "text-slate-400 hover:text-amber-400" : "text-slate-400 hover:text-slate-900"
-               )}
-             >
-               {isDark ? <Sun size={16} /> : <Moon size={16} />}
-             </button>
-             <button onClick={onSignOut} className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap">
-               Sign Out
-             </button>
-          </div>
-       </div>
+          {campDays && campDays.length > 1 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={cn(
+                "text-[13px] font-semibold tracking-tight transition-colors duration-500",
+                isDark ? "text-slate-400" : "text-slate-500"
+              )}>
+                Select Camp Day:
+              </span>
+              <div className={cn(
+                "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner",
+                isDark ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200/60"
+              )}>
+                {campDays.map((day: any) => {
+                  const isActive = activeCampDayId === day.id;
+                  const formattedDate = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  return (
+                    <button
+                      key={day.id}
+                      onClick={() => handleCampDayChange(day.id)}
+                      className={cn(
+                        "px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
+                        isActive
+                          ? (isDark
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                            : "bg-white text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.15)] border-emerald-200")
+                          : (isDark
+                            ? "bg-transparent border-transparent text-slate-400 hover:text-white"
+                            : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
+                      )}
+                    >
+                      <span className="relative flex h-[10px] w-[10px] min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] shrink-0 items-center justify-center">
+                        <svg
+                          className={cn(
+                            "h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 transition-opacity duration-300",
+                            isActive ? "opacity-100" : "opacity-0"
+                          )}
+                          viewBox="0 0 8 8"
+                          fill="currentColor"
+                        >
+                          <circle cx="4" cy="4" r="3" />
+                        </svg>
+                        {isActive && (
+                          <svg
+                            className="absolute inset-0 m-auto h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 animate-ping-slow"
+                            viewBox="0 0 8 8"
+                            fill="currentColor"
+                          >
+                            <circle cx="4" cy="4" r="3" />
+                          </svg>
+                        )}
+                      </span>
+                      {formattedDate}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <nav className="flex items-center gap-8 h-full">
+          {navItems.map((item: any) => (
+            <NavLink
+              key={item.name}
+              to={item.path}
+              onClick={(e) => handleNavClick(e, item.path)}
+              className={({ isActive }) => cn(
+                "relative flex items-center h-full text-[13px] font-semibold transition-all duration-500",
+                isActive
+                  ? (isDark ? "text-white" : "text-blue-600")
+                  : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  {item.name}
+                  {isActive && (
+                    <div className={cn(
+                      "absolute bottom-0 left-0 w-full h-[2px] rounded-t-full transition-all duration-300",
+                      isDark ? "bg-white" : "bg-blue-600"
+                    )} />
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-end gap-4 w-72 h-full">
+          <button
+            onClick={onToggleTheme}
+            className={cn(
+              "transition-colors",
+              isDark ? "text-slate-400 hover:text-amber-400" : "text-slate-400 hover:text-slate-900"
+            )}
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button onClick={onSignOut} className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap">
+            Sign Out
+          </button>
+        </div>
+      </div>
     </header>
   );
 }

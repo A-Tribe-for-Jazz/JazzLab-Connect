@@ -437,11 +437,7 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
 
   return (
     <div className="partner-enter flex-1 min-h-0 flex flex-col">
-      <div className="relative group flex-1 min-h-0 flex flex-col">
-        <div className={cn(
-          "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
-          isDark ? "bg-blue-500" : "bg-slate-300"
-        )} />
+      <div className="relative flex-1 min-h-0 flex flex-col">
 
         <DataTable
           columns={columns}

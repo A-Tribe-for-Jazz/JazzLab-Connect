@@ -67,18 +67,12 @@ export default function AdminLabs() {
 
   return (
     <div className={cn(
-      "h-[calc(100dvh-5rem)] transition-all duration-700 overflow-hidden flex flex-col",
+      "h-[calc(100dvh-5rem)] overflow-hidden flex flex-col",
       isDark ? "bg-black text-white" : "bg-white text-slate-900"
     )}>
 
       <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
         <section className="relative flex-1 min-h-0 flex flex-col">
-          <div
-            className={cn(
-              "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
-              isDark ? "bg-blue-500" : "bg-slate-300"
-            )}
-          />
 
           {loading ? (
             <div className="p-40 text-center flex flex-col items-center justify-center space-y-4">

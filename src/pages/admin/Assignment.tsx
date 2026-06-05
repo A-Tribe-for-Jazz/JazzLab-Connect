@@ -112,10 +112,11 @@ export default function AdminAssignment() {
   // ─── Actions ──────────────────────────────────────────────────────────────────
 
   const runAlgorithm = async () => {
+    if (!selectedDayId) return;
     setRunning(true);
     setRunSuccess(false);
     try {
-      await runAssignmentAlgorithm();
+      await runAssignmentAlgorithm(selectedDayId);
       setRunSuccess(true);
       setLastRunTime(new Date());
       await fetchPlacements();

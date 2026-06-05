@@ -68,21 +68,23 @@ export default function AdminDashboard() {
     try {
       const [
         { count: orgCount },
-        { count: labCount },
+        labsRes,
         { data: assignData },
         { data: orgsData },
         { data: studentsData },
       ] = await Promise.all([
         supabase.from('organizations').select('*', { count: 'exact', head: true }),
-        supabase.from('labs').select('*', { count: 'exact', head: true }),
+        supabase.from('labs').select('id, min_age, max_age'),
         supabase.from('assignments').select('id, pick_number'),
         supabase.from('organizations').select('id, name'),
         supabase.from('students').select(`
-          id, organization_id, first_name, last_name,
+          id, organization_id, first_name, last_name, age,
           preferences (lab_id)
         `),
       ]);
 
+      const labsData = labsRes.data || [];
+      const labCount = labsData.length;
       const flagged = (assignData || []).filter(a => a.pick_number === null).length;
       const realStudents = (studentsData || []).filter(
         s => s.first_name?.trim() || s.last_name?.trim()
@@ -91,9 +93,17 @@ export default function AdminDashboard() {
       const formattedPipeline: PipelineOrg[] = (orgsData || []).map((org: any) => {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);
         const sCount = orgStudents.length;
-        const picksComplete = orgStudents.filter(
-          s => (s.preferences?.length || 0) === 5
-        ).length;
+        const picksComplete = orgStudents.filter(s => {
+          const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
+          const eligibleLabs = labsData.filter((lab: any) => {
+            if (lab.min_age == null || studentAge == null) return true;
+            return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+          });
+          const eligibleCount = eligibleLabs.length;
+          const requiredCount = Math.min(5, eligibleCount);
+          const selectedCount = s.preferences?.length || 0;
+          return selectedCount >= requiredCount;
+        }).length;
         return {
           id: org.id,
           name: org.name,
@@ -118,20 +128,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const runAlgorithm = async () => {
-    setRunning(true);
-    try {
-      await runAssignmentAlgorithm();
-      setLastRun(new Date());
-      await fetchData();
-      // Redirect to assignment page on success
-      navigate('/admin/assignments');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setRunning(false);
-    }
-  };
+
 
   return (
     <div className={cn(

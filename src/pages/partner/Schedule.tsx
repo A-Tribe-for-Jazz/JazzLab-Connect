@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOutletContext } from 'react-router-dom';
-import { Calendar, Search, Filter, Printer, Sparkles, X } from 'lucide-react';
+import { Calendar, Search, Filter, Printer, Sparkles, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +63,7 @@ export default function PartnerSchedule() {
   // Filter States
   const [activeLabId, setActiveLabId] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [orgName, setOrgName] = useState('');
 
   useEffect(() => {
     if (profile?.organization_id) {
@@ -79,6 +80,14 @@ export default function PartnerSchedule() {
   const fetchData = async (orgId: string) => {
     try {
       setLoading(true);
+
+      // Fetch organization name
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', orgId)
+        .single();
+      if (orgData) setOrgName(orgData.name);
 
       // 1. Fetch all of the org's camp days
       const { data: daysData } = await supabase
@@ -295,6 +304,13 @@ export default function PartnerSchedule() {
       });
   }, [displayPlacements, activeLabId, searchTerm]);
 
+  const selectedDayObj = useMemo(() => {
+    return campDays.find(d => d.id === selectedDayId);
+  }, [campDays, selectedDayId]);
+
+  const visitDate = selectedDayObj ? selectedDayObj.date : (showDemo && !isFinalized ? "2026-05-14" : "");
+  const activeOrgName = orgName || "ETSS";
+
   const handlePrint = () => {
     window.print();
   };
@@ -349,7 +365,7 @@ export default function PartnerSchedule() {
 
   return (
     <div className={cn(
-      "flex-1 flex flex-col min-h-0 min-w-0 transition-colors duration-700",
+      "h-[calc(100dvh-5rem)] transition-colors duration-700 overflow-hidden flex flex-col",
       isDark ? "bg-black text-white" : "bg-white text-slate-900"
     )}>
       {/* Sandbox Demo Banner (Non-printable) */}
@@ -381,215 +397,368 @@ export default function PartnerSchedule() {
         </div>
       )}
 
-      {/* Header section (Non-printable) */}
-      <div className="print:hidden w-full mx-auto px-8 pt-8 pb-4 flex flex-col gap-1 border-b border-slate-100 dark:border-white/5">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className={cn("text-3xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-              Final Placements
-            </h1>
-            <p className={cn("text-xs font-bold uppercase tracking-widest flex items-center gap-2", isDark ? "text-slate-500" : "text-slate-400")}>
-              <Calendar size={14} className={isDark ? "text-sky-700" : "text-sky-300"} />
-              {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
-            </p>
-            {/* Day selector — shown only when org has multiple camp days */}
-            {campDays.length > 1 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {campDays.map(day => (
-                  <button
-                    key={day.id}
-                    onClick={() => setSelectedDayId(day.id)}
+      {/* Main Grid Section */}
+      <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
+        <section className="relative flex-1 min-h-0 flex flex-col pt-0 pb-0">
+          <div className={cn(
+            "rounded-[1.25rem] border overflow-hidden relative flex flex-col flex-1 min-h-0",
+            isDark ? "border-white/10 bg-[#020617] shadow-2xl shadow-black/40" : "border-slate-200 bg-white shadow-xl shadow-slate-200/40"
+          )}>
+            {/* Unified High-Density Toolbar */}
+            <div className={cn(
+              "p-3 md:p-4 border-b shrink-0",
+              isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/30"
+            )}>
+              <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 w-full">
+                {/* Left: Search */}
+                <div className="relative flex-1 max-w-xs w-full group/search">
+                  <Search
                     className={cn(
-                      'px-3 py-1 rounded-xl text-[11px] font-bold border transition-all',
-                      selectedDayId === day.id
-                        ? isDark ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-white border-slate-900'
-                        : isDark ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
+                      isDark
+                        ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400"
+                        : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
                     )}
-                  >
-                    {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                    size={20}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search students..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={cn(
+                      "pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
+                      isDark
+                        ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/5 focus-visible:bg-sky-400/5 focus-visible:ring-0"
+                        : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
+                    )}
+                  />
+                </div>
 
-          {/* Right-aligned Filter & Print controls beside sessions */}
-          <div className="flex items-center gap-4">
-            <Select value={activeLabId} onValueChange={(v) => setActiveLabId(v ?? 'all')}>
-              <SelectTrigger className={cn(
-                "h-10 w-48 md:w-56 rounded-xl border-2 px-6 font-semibold text-[13px] transition-all duration-500 outline-none group/filter",
-                isDark
-                  ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus:border-sky-400/50 focus:bg-sky-400/5 focus:ring-0"
-                  : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus:border-sky-500/30 focus:bg-sky-50/50 focus:ring-0"
-              )}>
-                <div className="flex items-center gap-3">
-                  <Filter size={16} className={cn(
-                    "transition-colors duration-500",
-                    isDark
-                      ? "text-sky-700 group-hover/filter:text-sky-400"
-                      : "text-sky-300 group-hover/filter:text-sky-600"
-                  )} />
-                  <span className="truncate">
-                    {activeLabId === 'all' ? 'All Labs' : (activeLabs.find(l => l.id === activeLabId)?.name || 'All Labs')}
+                {/* Middle: Guideline Info Note */}
+                <div className={cn(
+                  "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start xl:self-auto flex-1 justify-center w-full xl:w-auto",
+                  isDark
+                    ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
+                    : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
+                )}>
+                  <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
+                  <span className="text-center">
+                    This table shows your organization's final assignments. Use filters to check specific labs, or click <span className="font-bold">"Print Roster"</span> to export.
                   </span>
                 </div>
-              </SelectTrigger>
-              <SelectContent
-                side="bottom"
-                sideOffset={6}
-                alignItemWithTrigger={false}
-                className={cn("rounded-2xl border-none p-2 shadow-2xl w-48 md:w-56", isDark ? "bg-slate-900 text-white" : "bg-white")}
-              >
-                <SelectItem value="all" className="rounded-xl font-semibold text-[13px] py-4 px-6">All Labs</SelectItem>
-                {activeLabs.map(lab => (
-                  <SelectItem key={lab.id} value={lab.id} className="rounded-xl font-semibold text-[13px] py-4 px-6">
-                    {lab.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
-            <Button
-              onClick={handlePrint}
-              variant="outline"
-              className={cn(
-                "h-10 rounded-xl px-5 font-semibold text-[13px] transition-all duration-500 border-2 flex items-center gap-2",
-                isDark
-                  ? "bg-sky-400/[0.03] border-white/10 text-white hover:bg-sky-400/50 hover:bg-sky-400/5 hover:border-sky-400/50"
-                  : "bg-sky-50/20 border-slate-200 text-slate-900 hover:bg-sky-50/50"
-              )}
-            >
-              <Printer size={16} />
-              <span>Print Roster</span>
-            </Button>
-          </div>
-        </div>
-      </div>
+                {/* Right: Selectors & Print Controls */}
+                <div className="flex flex-wrap items-center gap-3 shrink-0 self-stretch xl:self-auto justify-start xl:justify-end">
+                  {/* Camp Day Selector (shown if there are multiple days) */}
+                  {campDays.length > 1 && (
+                    <Select value={selectedDayId} onValueChange={(val) => setSelectedDayId(val || '')}>
+                      <SelectTrigger className={cn(
+                        "h-10 w-40 md:w-44 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between shadow-sm shrink-0",
+                        "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
+                        isDark
+                          ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
+                          : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
+                      )}>
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} className="transition-colors duration-300 shrink-0 text-sky-500/70" />
+                          <span className="truncate">
+                            {selectedDayObj
+                              ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                              : 'Select Day'}
+                          </span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className={cn(
+                        "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-44 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                        isDark ? "bg-slate-950/90 border-white/10 text-white shadow-black" : "bg-white/95 border-slate-100 text-slate-900"
+                      )}>
+                        {campDays.map(day => (
+                          <SelectItem key={day.id} value={day.id} className={cn(
+                            "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                            isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                          )}>
+                            {new Date(day.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
 
-      {/* Main Grid Section */}
-      <div className="flex-1 min-h-0 flex flex-col p-8 print:p-0">
-        <div className={cn(
-          "flex-1 min-h-0 flex flex-col rounded-3xl border-2 overflow-hidden print:border-none",
-          isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
-        )}>
-          {/* Full-width Search Bar (Non-printable) */}
-          <div className="print:hidden p-6 border-b border-slate-100 dark:border-white/5">
-            <div className="relative w-full">
-              <Search size={18} className={cn(
-                "absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-500 pointer-events-none",
-                isDark ? "text-slate-600" : "text-slate-400"
-              )} />
-              <input
-                type="text"
-                placeholder="Search students..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={cn(
-                  "w-full pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none",
-                  isDark
-                    ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
-                    : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Printable Header Context */}
-          <div className="hidden print:block mb-8">
-            <h1 className="text-2xl font-bold text-black uppercase tracking-tight">JazzLab Final Roster</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Camp Session Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
-            </p>
-          </div>
-
-          {/* Roster Data Table */}
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
-            <Table>
-              <TableHeader className={isDark ? "bg-white/[0.02]" : "bg-slate-50/50"}>
-                <TableRow className="hover:bg-transparent border-slate-100 dark:border-white/5">
-                  <TableHead className="px-8 py-4 font-bold text-center w-[36px] text-slate-400 dark:text-slate-500">#</TableHead>
-                  <TableHead className="px-8 py-4 font-bold text-left text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-wider min-w-[200px]">Student Name</TableHead>
-                  {activeSessions.map(session => (
-                    <TableHead key={session.id} className="px-8 py-4 font-bold text-left text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-wider min-w-[180px]">
-                      <div className="flex flex-col">
-                        <span>{session.name}</span>
-                        <span className="text-[9px] opacity-60 normal-case font-medium mt-0.5">
-                          {session.start_time.slice(0, 5)} - {session.end_time.slice(0, 5)}
+                  {/* Lab Selector */}
+                  <Select value={activeLabId} onValueChange={(val) => setActiveLabId(val || 'all')}>
+                    <SelectTrigger className={cn(
+                      "h-10 w-40 md:w-44 rounded-xl border px-4 font-semibold text-[13px] transition-all duration-300 outline-none group/filter flex items-center justify-between shadow-sm shrink-0",
+                      "[&_svg:last-child]:transition-all [&_svg:last-child]:duration-300 [&_svg:last-child]:opacity-40 group-hover/filter:[&_svg:last-child]:opacity-85 group-hover/filter:[&_svg:last-child]:translate-y-0.5",
+                      isDark
+                        ? "bg-slate-900/60 border-white/10 text-white hover:border-sky-500/30 hover:bg-slate-900/80 hover:shadow-[0_0_15px_rgba(14,165,233,0.1)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-400"
+                        : "bg-white border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-slate-50/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.05)] focus:border-sky-500/50 focus:ring-0 [&_svg:last-child]:text-slate-500"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <Filter size={14} className="transition-colors duration-300 shrink-0 text-sky-500/70" />
+                        <span className="truncate">
+                          {activeLabId === 'all' ? 'All Labs' : (activeLabs.find(l => l.id === activeLabId)?.name || 'All Labs')}
                         </span>
                       </div>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPlacements.map((row, idx) => (
-                  <TableRow
-                    key={row.studentId}
+                    </SelectTrigger>
+                    <SelectContent className={cn(
+                      "rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-44 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                      isDark ? "bg-slate-950/90 border-white/10 text-white shadow-black" : "bg-white/95 border-slate-100 text-slate-900"
+                    )}>
+                      <SelectItem value="all" className={cn(
+                        "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                        isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                      )}>All Labs</SelectItem>
+                      {activeLabs.map(lab => (
+                        <SelectItem key={lab.id} value={lab.id} className={cn(
+                          "rounded-xl font-semibold text-[13px] py-2.5 px-4 cursor-pointer transition-colors duration-200 my-0.5",
+                          isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                        )}>
+                          {lab.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Print Button */}
+                  <Button
+                    onClick={handlePrint}
+                    variant="outline"
                     className={cn(
-                      "transition-colors border-slate-100 dark:border-white/5",
-                      isDark ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/50"
+                      "h-10 rounded-xl px-4 font-semibold text-[13px] transition-all duration-300 border shadow-sm flex items-center gap-2 shrink-0",
+                      isDark
+                        ? "bg-slate-900 border-white/10 text-white hover:bg-slate-800 hover:border-white/20"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
                     )}
                   >
-                    <TableCell className="px-8 py-4 text-center text-[13px] font-black text-slate-300 dark:text-slate-700 w-[36px]">
-                      {String(idx + 1).padStart(2, '0')}
-                    </TableCell>
-                    <TableCell className="px-8 py-4">
-                      <div className="flex flex-col">
-                        <span className={cn("font-semibold text-[13px]", isDark ? "text-white" : "text-slate-900")}>
-                          {row.studentName}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
-                          {row.studentAge} Years Old
-                        </span>
-                      </div>
-                    </TableCell>
-                    {activeSessions.map(session => {
-                      const assignment = row.sessionAssignments[session.id];
-                      return (
-                        <TableCell key={session.id} className="px-8 py-4">
-                          {assignment ? (
-                            <div className="flex flex-col gap-1">
-                              <span className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-slate-900")}>
-                                {assignment.labName}
-                              </span>
-                              <span className={cn(
-                                "text-[9px] font-black uppercase tracking-widest self-start px-2 py-0.5 rounded-full border",
-                                assignment.pickNumber === 1 && (isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"),
-                                (assignment.pickNumber === 2 || assignment.pickNumber === 3) && (isDark ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"),
-                                (assignment.pickNumber === 4 || assignment.pickNumber === 5) && (isDark ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200"),
-                                ((assignment.pickNumber !== null && assignment.pickNumber > 5) || assignment.pickNumber === null) && (isDark ? "bg-white/5 text-slate-300 border-white/10" : "bg-slate-100 text-slate-600 border-slate-200")
-                              )}>
-                                {assignment.pickNumber === 1 ? '1st Choice' :
-                                  assignment.pickNumber === 2 ? '2nd Choice' :
-                                  assignment.pickNumber === 3 ? '3rd Choice' :
-                                  assignment.pickNumber === 4 ? '4th Choice' :
-                                  assignment.pickNumber === 5 ? '5th Choice' : 'Override'}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-600 italic text-[13px]">Unassigned</span>
-                          )}
-                        </TableCell>
-                      );
-                    })}
+                    <Printer size={15} />
+                    <span>Print Roster</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Printable Header Context */}
+            <div className="hidden print:block mb-8">
+              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">JazzLab Final Roster</h1>
+              <p className="text-xs text-slate-500 mt-1">
+                Camp Session Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Organization: {activeOrgName}
+              </p>
+            </div>
+
+            {/* Roster Data Table */}
+            <div className={cn(
+              "flex-1 overflow-auto min-h-0 border-r",
+              isDark ? "border-white/20" : "border-slate-300"
+            )}
+              style={{ contain: "strict" }}
+            >
+              <Table className="border-collapse" wrapperClassName="overflow-visible" style={{ width: "100%" }}>
+                <TableHeader className="sticky top-0 z-40">
+                  <TableRow className={cn(
+                    "border-b hover:bg-transparent",
+                    isDark ? "border-white/10" : "border-slate-300"
+                  )}>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] text-center w-[50px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-2",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>#</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Visit Date</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Organization/Camp</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[180px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Student FULL NAME</TableHead>
+                    
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Assigned Lab 1</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Lab 1 Time Slot</TableHead>
+                    
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Assigned Lab 2</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Lab 2 Time Slot</TableHead>
+                    
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Assigned Lab 3</TableHead>
+                    <TableHead className={cn(
+                      "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
+                      isDark
+                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
+                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                    )}>Lab 3 Time Slot</TableHead>
                   </TableRow>
-                ))}
-                {filteredPlacements.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2 + activeSessions.length} className="px-8 py-20 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-3 opacity-35">
-                        <Search size={32} className={isDark ? "text-slate-700" : "text-slate-400"} />
-                        <p className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-xs">
-                          No matching student assignments found
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredPlacements.map((row, idx) => {
+                    const s1 = activeSessions[0];
+                    const s2 = activeSessions[1];
+                    const s3 = activeSessions[2];
+
+                    const a1 = s1 ? row.sessionAssignments[s1.id] : null;
+                    const a2 = s2 ? row.sessionAssignments[s2.id] : null;
+                    const a3 = s3 ? row.sessionAssignments[s3.id] : null;
+
+                    return (
+                      <tr
+                        key={row.studentId}
+                        className={cn(
+                          "h-10 border-b group",
+                          isDark
+                            ? "hover:bg-white/[0.02] data-[state=selected]:bg-white/[0.05] border-white/10"
+                            : "hover:bg-slate-50/50 data-[state=selected]:bg-slate-50/70 border-slate-200",
+                          idx % 2 === 1 && (isDark ? "bg-white/[0.015]" : "bg-slate-50/40")
+                        )}
+                        style={{ height: 40 }}
+                      >
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center justify-center w-[50px] h-10">
+                            <span className={cn(
+                              "font-black text-[11px] tracking-tighter opacity-30",
+                              isDark ? "text-slate-400" : "text-slate-600"
+                            )}>{String(idx + 1).padStart(2, '0')}</span>
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-medium text-slate-600 dark:text-slate-400 truncate">
+                            {visitDate}
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={activeOrgName}>
+                            {activeOrgName}
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                            {row.studentName}
+                          </div>
+                        </td>
+
+                        {/* Rotation 1 */}
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                            {a1 ? a1.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                            {s1 ? `${s1.start_time.slice(0, 5)} - ${s1.end_time.slice(0, 5)}` : "—"}
+                          </div>
+                        </td>
+
+                        {/* Rotation 2 */}
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                            {a2 ? a2.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                            {s2 ? `${s2.start_time.slice(0, 5)} - ${s2.end_time.slice(0, 5)}` : "—"}
+                          </div>
+                        </td>
+
+                        {/* Rotation 3 */}
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                            {a3 ? a3.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "p-0 border-r last:border-r-0 relative overflow-hidden",
+                          isDark ? "border-white/10" : "border-slate-200"
+                        )}>
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                            {s3 ? `${s3.start_time.slice(0, 5)} - ${s3.end_time.slice(0, 5)}` : "—"}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredPlacements.length === 0 && (
+                    <tr className="hover:bg-transparent">
+                      <td colSpan={10} className="h-48 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          <div className={cn("p-4 rounded-[1.5rem]", isDark ? "bg-white/5" : "bg-slate-50")}>
+                            <Search size={32} className="text-slate-400" />
+                          </div>
+                          <p className="text-slate-500 font-bold italic text-sm">No matching student assignments found.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

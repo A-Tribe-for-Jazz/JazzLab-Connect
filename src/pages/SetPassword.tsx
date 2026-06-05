@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,13 @@ export default function SetPassword() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { profile, completePasswordSetup } = useAuth();
+  const [fullName, setFullName] = useState('');
+
+  React.useEffect(() => {
+    if (profile?.full_name && profile.full_name !== 'Invited User') {
+      setFullName(profile.full_name);
+    }
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,16 +48,31 @@ export default function SetPassword() {
       return;
     }
 
+    if (!fullName.trim()) {
+      setError('Full Name is required');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // 1. Update Auth password
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
       if (updateError) throw updateError;
 
-      setMessage('Password updated successfully!');
+      // 2. Update Profile Name
+      if (profile?.id) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: fullName.trim() })
+          .eq('id', profile.id);
+        if (profileError) throw profileError;
+      }
+
+      setMessage('Password and profile updated successfully!');
       
       // Small delay to show success message before redirecting
       setTimeout(() => {
@@ -65,8 +87,8 @@ export default function SetPassword() {
       }, 1500);
       
     } catch (err: any) {
-      console.error('Error setting password:', err);
-      setError(err.message || 'Failed to update password');
+      console.error('Error setting password and profile:', err);
+      setError(err.message || 'Failed to update details');
     } finally {
       setLoading(false);
     }
@@ -118,6 +140,24 @@ export default function SetPassword() {
 
                       {!message && (
                         <>
+                          <Field>
+                            <FieldLabel htmlFor="full-name">Full Name</FieldLabel>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <Input
+                                id="full-name"
+                                type="text"
+                                required
+                                placeholder="Your full name"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="pl-9"
+                              />
+                            </div>
+                          </Field>
+
                           <Field>
                             <FieldLabel htmlFor="new-password">New Password</FieldLabel>
                             <div className="relative">

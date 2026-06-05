@@ -76,7 +76,7 @@ export default function AdminOrganizations() {
   const fetchOrganizations = async () => {
     setLoading(true);
     try {
-      const [orgsRes, studentsRes, profilesRes, campDaysRes] = await Promise.all([
+      const [orgsRes, studentsRes, profilesRes, campDaysRes, labsRes] = await Promise.all([
         supabase
           .from('organizations')
           .select(`
@@ -92,6 +92,7 @@ export default function AdminOrganizations() {
             organization_id,
             first_name,
             last_name,
+            age,
             preferences (lab_id)
           `),
         supabase
@@ -101,17 +102,22 @@ export default function AdminOrganizations() {
         supabase
           .from('camp_days')
           .select('*')
-          .order('date')
+          .order('date'),
+        supabase
+          .from('labs')
+          .select('id, min_age, max_age')
       ]);
 
       if (orgsRes.error) throw orgsRes.error;
       if (studentsRes.error) throw studentsRes.error;
       if (profilesRes.error) throw profilesRes.error;
       if (campDaysRes.error) throw campDaysRes.error;
+      if (labsRes.error) throw labsRes.error;
 
       const orgsData = orgsRes.data || [];
       const studentsData = studentsRes.data || [];
       const profilesData = profilesRes.data || [];
+      const labsData = labsRes.data || [];
       setCampDays(campDaysRes.data || []);
 
       const realStudents = studentsData.filter(
@@ -122,9 +128,17 @@ export default function AdminOrganizations() {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);
         const sCount = orgStudents.length;
 
-        const missingPicksCount = orgStudents.filter(
-          s => (s.preferences?.length || 0) < 5
-        ).length;
+        const missingPicksCount = orgStudents.filter(s => {
+          const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
+          const eligibleLabs = labsData.filter((lab: any) => {
+            if (lab.min_age == null || studentAge == null) return true;
+            return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+          });
+          const eligibleCount = eligibleLabs.length;
+          const requiredCount = Math.min(5, eligibleCount);
+          const selectedCount = s.preferences?.length || 0;
+          return requiredCount > 0 && selectedCount < requiredCount;
+        }).length;
 
         const incompleteCount = missingPicksCount;
 
@@ -211,26 +225,20 @@ export default function AdminOrganizations() {
   };
 
   const renderSortArrow = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown size={12} className="ml-1.5 opacity-30 group-hover:opacity-70 transition-opacity animate-pulse" />;
+    if (sortField !== field) return <ArrowUpDown size={12} className="ml-1.5 opacity-30 group-hover:opacity-70" />;
     return sortAsc 
-      ? <ChevronUp size={12} className="ml-1.5 text-sky-500 animate-bounce" />
-      : <ChevronDown size={12} className="ml-1.5 text-sky-500 animate-bounce" />;
+      ? <ChevronUp size={12} className="ml-1.5 text-sky-500" />
+      : <ChevronDown size={12} className="ml-1.5 text-sky-500" />;
   };
 
   return (
     <div className={cn(
-      "h-[calc(100dvh-5rem)] transition-all duration-700 overflow-hidden flex flex-col",
+      "h-[calc(100dvh-5rem)] overflow-hidden flex flex-col",
       isDark ? "bg-black text-white" : "bg-white text-slate-900"
     )}>
 
       <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
         <section className="relative flex-1 min-h-0 flex flex-col">
-          <div
-            className={cn(
-              "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
-              isDark ? "bg-blue-500" : "bg-slate-300"
-            )}
-          />
 
           {loading ? (
             <div className="p-40 text-center flex flex-col items-center justify-center space-y-4">
@@ -1026,7 +1034,7 @@ function ManageModal({
       });
       const resData = await response.json();
       if (!response.ok) throw new Error(resData.error || 'Failed to send invite');
-      setInviteMessage({ type: 'success', text: `Invited ${inviteEmail}` });
+      setInviteMessage({ type: 'success', text: `Invited ${inviteName.trim() || inviteEmail}` });
       setInviteEmail('');
       setInviteName('');
     } catch (err: any) {

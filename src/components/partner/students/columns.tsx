@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, Loader2, AlertCircle, Trash2 } from "lucide-react";
+import { Check, Loader2, AlertCircle, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ export type StudentRow = {
   home_zip_code?: string;
   race_ethnicity?: string;
   gender?: string;
+  first_language?: string;
   total_program_hours?: number | '';
   camp_day_id: string | null;
   notes?: string;
@@ -68,7 +69,7 @@ function CollaborativeInput({
 
   return (
     <div className={cn(
-      "relative w-full h-10 flex items-center transition-all duration-200",
+      "relative w-full h-10 flex items-center",
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
     )}>
       <Input
@@ -87,17 +88,154 @@ function CollaborativeInput({
   );
 }
 
-// ─── CollaborativeSelect ────────────────────────────────────────────────────
-// Dynamically scales the font size of the selected value so it always fits
-// within the cell — short values stay full size, long ones shrink to fit.
-function getSelectFontSize(len: number): string {
-  if (len <= 12) return '13px';
-  if (len <= 20) return '11px';
-  if (len <= 28) return '10px';
-  if (len <= 36) return '9px';
-  return '8px';
+// ─── LanguageSelectWithOther ───────────────────────────────────────────────
+function LanguageSelectWithOther({
+  value,
+  placeholder,
+  onChange,
+  onFocus,
+  onBlur,
+  className,
+  isDark,
+  studentId,
+  activeCursorsRef,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  className: string;
+  isDark?: boolean;
+  studentId: string;
+  activeCursorsRef?: { current: { [key: string]: string } };
+}) {
+  const [localValue, setLocalValue] = useState(value);
+  const isLocalEdit = useRef(false);
+  const [showInput, setShowInput] = useState(false);
+
+  const predefined = ["English", "Spanish", "Amharic", "Nepali", "Somali", "Zomi"];
+
+  useEffect(() => {
+    if (!isLocalEdit.current) {
+      setLocalValue(value);
+      if (value && !predefined.includes(value)) {
+        setShowInput(true);
+      } else {
+        setShowInput(false);
+      }
+    }
+    isLocalEdit.current = false;
+  }, [value]);
+
+  const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    isLocalEdit.current = true;
+    if (val === "Other") {
+      setShowInput(true);
+      setLocalValue("");
+      onChange("");
+    } else {
+      setLocalValue(val);
+      onChange(val);
+    }
+  }, [onChange]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    isLocalEdit.current = true;
+    setLocalValue(val);
+    onChange(val);
+  }, [onChange]);
+
+  const handleReset = useCallback(() => {
+    isLocalEdit.current = true;
+    setShowInput(false);
+    setLocalValue("");
+    onChange("");
+  }, [onChange]);
+
+  const isOtherEditing = activeCursorsRef?.current ? !!activeCursorsRef.current[`${studentId}_first_language`] : false;
+
+  if (showInput) {
+    return (
+      <div className={cn(
+        "relative w-full h-10 flex items-center pr-8",
+        isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+      )}>
+        <Input
+          value={localValue}
+          placeholder="Type language..."
+          onChange={handleInputChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          className={cn(
+            className,
+            "bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 pr-6 w-full text-center"
+          )}
+        />
+        <button
+          onClick={handleReset}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors animate-in fade-in zoom-in duration-300"
+          type="button"
+          title="Reset to dropdown"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  const visibleText = localValue || placeholder;
+
+  return (
+    <div className={cn(
+      "group/select relative w-full h-10 flex items-center justify-center",
+      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+    )}>
+      {/* Underlying Display Wrapper */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-6 text-center">
+        <span className={cn(
+          "text-[12px] leading-tight font-semibold line-clamp-2 break-words",
+          !localValue
+            ? (isDark ? "text-slate-700" : "text-slate-300")
+            : (isDark ? "text-white" : "text-slate-900")
+        )}>
+          {visibleText}
+        </span>
+      </div>
+      <select
+        value={localValue}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onChange={handleSelectChange}
+        className={cn(
+          className,
+          "absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none focus:outline-none"
+        )}
+      >
+        <option value="" disabled hidden>{placeholder}</option>
+        {predefined.map(lang => (
+          <option key={lang} value={lang}>{lang}</option>
+        ))}
+        <option value="Other">Other...</option>
+      </select>
+      <svg
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover/select:opacity-40 group-focus-within/select:opacity-40 transition-opacity duration-200"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="2 4 6 8 10 4" />
+      </svg>
+    </div>
+  );
 }
 
+// ─── CollaborativeSelect ────────────────────────────────────────────────────
 function CollaborativeSelect({
   value,
   options,
@@ -131,21 +269,32 @@ function CollaborativeSelect({
     onChange(e.target.value);           // sync — ensures dirty-marking before any navigation
   }, [onChange]);
 
-  const visibleText = localValue || placeholder;
-  const fontSize = getSelectFontSize(visibleText.length);
+  const visibleText = localValue
+    ? (options.find(opt => opt.value === localValue)?.label || localValue)
+    : placeholder;
 
   return (
-    <div className="group/select relative w-full h-10 flex items-center">
+    <div className="group/select relative w-full h-10 flex items-center justify-center">
+      {/* Underlying Display Wrapper (handles wrapping and font sizing) */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-6 text-center">
+        <span className={cn(
+          "text-[12px] leading-tight font-semibold line-clamp-2 break-words",
+          !localValue
+            ? (isDark ? "text-slate-700" : "text-slate-300")
+            : (isDark ? "text-white" : "text-slate-900")
+        )}>
+          {visibleText}
+        </span>
+      </div>
+
       <select
         value={localValue}
         onFocus={onFocus}
         onBlur={onBlur}
         onChange={handleChange}
-        style={{ fontSize }}
         className={cn(
           className,
-          "appearance-none cursor-pointer pr-7 transition-[font-size] duration-150 outline-none focus:outline-none",
-          !localValue && (isDark ? "!text-slate-700" : "!text-slate-300")
+          "absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none focus:outline-none"
         )}
       >
         <option value="" disabled hidden>{placeholder}</option>
@@ -273,7 +422,7 @@ export const getColumns = ({
             onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
             onBlur={() => handleCellBlur && handleCellBlur()}
             className={cn(
-              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
               isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
             )}
             studentId={row.original.id}
@@ -300,7 +449,7 @@ export const getColumns = ({
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
           studentId={row.original.id}
@@ -328,7 +477,7 @@ export const getColumns = ({
             onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
             onBlur={() => handleCellBlur && handleCellBlur()}
             className={cn(
-              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
             )}
             studentId={row.original.id}
@@ -357,10 +506,8 @@ export const getColumns = ({
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
           className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center",
-            isDark
-              ? "text-white [&>option]:bg-slate-900 [&>option]:text-white"
-              : "text-slate-900 [&>option]:bg-white [&>option]:text-slate-900"
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
+            isDark ? "text-white" : "text-slate-900"
           )}
         />
       ),
@@ -382,7 +529,7 @@ export const getColumns = ({
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'home_zip_code')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center",
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
             isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
           )}
           studentId={row.original.id}
@@ -396,8 +543,8 @@ export const getColumns = ({
     {
       accessorKey: "race_ethnicity",
       header: () => (
-        <div className="flex items-center">
-          <span className={headerTextClass}>Race/ethnicity</span>
+        <div className="flex items-center justify-center w-full">
+          <span className={cn(headerTextClass, "text-center")}>Race/ethnicity</span>
         </div>
       ),
       cell: ({ row }) => (
@@ -410,10 +557,8 @@ export const getColumns = ({
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
           className={cn(
-            "h-10 px-3 font-semibold border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
-            isDark
-              ? "text-white [&>option]:bg-slate-900 [&>option]:text-white [&>option]:text-[13px]"
-              : "text-slate-900 [&>option]:bg-white [&>option]:text-slate-900 [&>option]:text-[13px]"
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+            isDark ? "text-white" : "text-slate-900"
           )}
         />
       ),
@@ -423,8 +568,8 @@ export const getColumns = ({
     {
       accessorKey: "gender",
       header: () => (
-        <div className="flex items-center">
-          <span className={headerTextClass}>Gender</span>
+        <div className="flex items-center justify-center w-full">
+          <span className={cn(headerTextClass, "text-center")}>Gender</span>
         </div>
       ),
       cell: ({ row }) => (
@@ -437,15 +582,39 @@ export const getColumns = ({
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
           className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full",
-            isDark
-              ? "text-white [&>option]:bg-slate-900 [&>option]:text-white"
-              : "text-slate-900 [&>option]:bg-white [&>option]:text-slate-900"
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+            isDark ? "text-white" : "text-slate-900"
           )}
         />
       ),
       meta: { isEditable: true },
       size: 120,
+    },
+    {
+      accessorKey: "first_language",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <span className={cn(headerTextClass, "text-center")}>First Language</span>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <LanguageSelectWithOther
+          value={row.original.first_language ?? ""}
+          placeholder=""
+          onChange={(val) => handleFieldChange(row.original.id, 'first_language', val)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_language')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
+          isDark={isDark}
+          studentId={row.original.id}
+          activeCursorsRef={activeCursorsRef}
+          className={cn(
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+            isDark ? "text-white" : "text-slate-900"
+          )}
+        />
+      ),
+      meta: { isEditable: true },
+      size: 150,
     },
     {
       accessorKey: "total_program_hours",
@@ -472,7 +641,7 @@ export const getColumns = ({
         />
       ),
       meta: { isEditable: true },
-      size: 200,
+      size: 120,
     },
 
     {
@@ -483,9 +652,9 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { sync_status, first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours } = row.original;
+        const { sync_status, first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
 
-        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours];
+        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
         const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
 
@@ -526,8 +695,8 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours } = row.original;
-        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours];
+        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
+        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
 
         if (!hasAnyData) return <div className="h-10 w-full" />;

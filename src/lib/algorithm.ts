@@ -1,132 +1,359 @@
 import { supabase } from './supabase';
 
-export async function runAssignmentAlgorithm() {
+function getPrefScore(rank: number): number {
+  if (rank === 1) return 100;
+  if (rank === 2) return 80;
+  if (rank === 3) return 60;
+  if (rank === 4) return 40;
+  if (rank === 5) return 20;
+  if (rank === 6) return 10;
+  if (rank === 7) return 5;
+  return 0;
+}
+
+// Generate valid permutations of size k from eligible labs
+function generatePermutations(eligibleLabs: any[], k: number): string[][] {
+  const results: string[][] = [];
+  function permute(current: string[]) {
+    if (current.length === k) {
+      results.push([...current]);
+      return;
+    }
+    for (const lab of eligibleLabs) {
+      if (!current.includes(lab.id)) {
+        current.push(lab.id);
+        permute(current);
+        current.pop();
+      }
+    }
+  }
+  permute([]);
+  return results;
+}
+
+export async function runAssignmentAlgorithm(campDayId: string) {
   try {
-    // 1. Fetch all required data
-    const [{ data: students }, { data: labs }, { data: sessions }, { data: preferences }, { data: orgDays }] = await Promise.all([
-      supabase.from('students').select('*'),
-      supabase.from('labs').select('*'),
-      supabase.from('lab_sessions').select('*'),
-      supabase.from('preferences').select('*'),
-      supabase.from('camp_day_organizations').select('*')
+    if (!campDayId) {
+      throw new Error("campDayId is required for running the assignment algorithm");
+    }
+
+    // 1. Fetch labs, time slots, and students attending this camp day
+    const [{ data: labs }, { data: timeSlotsData }, { data: students }] = await Promise.all([
+      supabase.from('labs').select('*').order('name'),
+      supabase.from('time_slots').select('*').order('start_time'),
+      supabase.from('students').select('*').eq('camp_day_id', campDayId)
     ]);
 
-    if (!students || !labs || !sessions || !preferences || !orgDays) {
-      throw new Error("Failed to fetch required data for algorithm");
+    if (!labs || !timeSlotsData || !students) {
+      throw new Error("Failed to fetch required core data for algorithm");
     }
 
-    // 2. Initialize state
-    const assignmentsToInsert: any[] = [];
-    const sessionCapacityMap: { [sessionId: string]: { used: number, max: number } } = {};
+    const activeLabs = labs;
+    const activeTimeSlots = timeSlotsData;
+
+    // Filter students with names (same as frontend behavior)
+    const activeStudents = students.filter(s => s.first_name?.trim() || s.last_name?.trim());
+    if (activeStudents.length === 0) {
+      return {
+        success: true,
+        totalAssigned: 0,
+        flaggedCount: 0,
+        top3Percentage: 0,
+        lowPicksPercentage: 0
+      };
+    }
+
+    const studentIds = activeStudents.map(s => s.id);
+
+    // Fetch preferences for these students
+    const { data: preferences, error: prefError } = await supabase
+      .from('preferences')
+      .select('*')
+      .in('student_id', studentIds);
+
+    if (prefError) throw prefError;
+
+    // 2. Ensure lab sessions exist for this camp day
+    const { data: existingSessions, error: sessError } = await supabase
+      .from('lab_sessions')
+      .select('*')
+      .eq('camp_day_id', campDayId);
+
+    if (sessError) throw sessError;
+
+    const sessions = existingSessions || [];
+    const missingSessionsToCreate: { lab_id: string; camp_day_id: string; time_slot_id: string }[] = [];
     
-    // Build capacity map
-    sessions.forEach(s => {
-      const lab = labs.find(l => l.id === s.lab_id);
-      sessionCapacityMap[s.id] = { used: 0, max: lab ? lab.capacity_per_session : 20 };
-    });
+    for (const lab of activeLabs) {
+      for (const slot of activeTimeSlots) {
+        const hasSession = sessions.some(s => s.lab_id === lab.id && s.time_slot_id === slot.id);
+        if (!hasSession) {
+          missingSessionsToCreate.push({
+            lab_id: lab.id,
+            camp_day_id: campDayId,
+            time_slot_id: slot.id
+          });
+        }
+      }
+    }
 
-    // Determine days each student attends based on their organization
-    const studentDaysMap: { [studentId: string]: string[] } = {};
-    students.forEach(st => {
-      const orgAttends = orgDays.filter(od => od.organization_id === st.organization_id).map(od => od.camp_day_id);
-      studentDaysMap[st.id] = orgAttends;
-    });
-
-    // 3. Sort students (Priority, then Age youngest first)
-    // Priority is mocked here (we'll assume standard for all in this mock, or random)
-    const sortedStudents = [...students].sort((a, b) => {
-      if (a.age !== b.age) return a.age - b.age; // Youngest first
-      return a.id.localeCompare(b.id); // Deterministic fallback
-    });
-
-    // 4. Time slots (Assume we know their IDs, or we fetch them. For simplicity, group sessions by time slot)
-    const timeSlots = [...new Set(sessions.map(s => s.time_slot_id))];
-
-    // 5. Execute Serial Dictatorship
-    let flaggedCount = 0;
-
-    for (const student of sortedStudents) {
-      const days = studentDaysMap[student.id] || [];
-      const studentPrefs = preferences.filter(p => p.student_id === student.id).sort((a, b) => a.rank - b.rank);
-      const top5LabIds = studentPrefs.map(p => p.lab_id);
+    if (missingSessionsToCreate.length > 0) {
+      const { data: createdSessions, error: createSessError } = await supabase
+        .from('lab_sessions')
+        .insert(missingSessionsToCreate)
+        .select('*');
       
-      let studentFlagged = false;
+      if (createSessError) throw createSessError;
+      if (createdSessions) {
+        sessions.push(...createdSessions);
+      }
+    }
 
-      for (const dayId of days) {
-        // Find 3 sessions for this day (1 per time slot)
-        const dailyAssignments = [];
+    // Build mapping from lab_id and slot_id to lab_session_id
+    const sessionLookup: { [key: string]: string } = {};
+    sessions.forEach(s => {
+      sessionLookup[`${s.lab_id}_${s.time_slot_id}`] = s.id;
+    });
 
-        for (const slotId of timeSlots) {
-          // Find all available sessions for this slot and day
-          const availableSessions = sessions.filter(s => s.camp_day_id === dayId && s.time_slot_id === slotId);
-          
-          let assignedSession = null;
-          let pickNum = null;
+    // 3. Build maps for preferences and domain generation
+    const studentPrefsMap: { [studentId: string]: { [labId: string]: number } } = {};
+    (preferences || []).forEach(p => {
+      if (!studentPrefsMap[p.student_id]) studentPrefsMap[p.student_id] = {};
+      studentPrefsMap[p.student_id][p.lab_id] = p.rank;
+    });
 
-          // Try to give them one of their top 5 that fits capacity and age
-          for (let rank = 0; rank < top5LabIds.length; rank++) {
-            const prefLabId = top5LabIds[rank];
-            const lab = labs.find(l => l.id === prefLabId);
-            
-            if (!lab || student.age < lab.min_age || student.age > lab.max_age) continue;
+    const k = activeTimeSlots.length; // Number of rotations
 
-            const targetSession = availableSessions.find(s => s.lab_id === prefLabId);
-            if (targetSession && sessionCapacityMap[targetSession.id].used < sessionCapacityMap[targetSession.id].max) {
-              assignedSession = targetSession;
-              pickNum = rank + 1;
-              break;
-            }
+    // Group students by age (or domain size) for MRV ordering
+    // We sort students youngest/most restricted first
+    const sortedStudents = [...activeStudents].sort((a, b) => {
+      // Younger is more restricted (has fewer eligible labs)
+      return (a.age ?? 0) - (b.age ?? 0);
+    });
+    // Build student preferences scores map for quick lookup
+    const studentPrefsScores: { [studentId: string]: { [tupleKey: string]: number } } = {};
+    for (const student of sortedStudents) {
+      studentPrefsScores[student.id] = {};
+      const eligible = activeLabs.filter(lab => {
+        if (lab.min_age == null) return true;
+        return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
+      });
+
+      let studentEligible = eligible;
+      if (studentEligible.length === 0) studentEligible = activeLabs;
+      while (studentEligible.length < k) {
+        studentEligible = [...studentEligible, ...studentEligible];
+      }
+
+      const rawTuples = generatePermutations(studentEligible, k);
+      const prefMap = studentPrefsMap[student.id] || {};
+
+      rawTuples.forEach(tuple => {
+        let score = 0;
+        tuple.forEach(labId => {
+          if (prefMap[labId] !== undefined) {
+            score += getPrefScore(prefMap[labId]);
+          }
+        });
+        const key = tuple.join('_');
+        studentPrefsScores[student.id][key] = score;
+      });
+    }
+
+    // 4. Run Backtracking solver with Randomized Restarts
+    const MAX_RESTARTS = 50;
+    let finalAssignment: { [studentId: string]: string[] } | null = null;
+
+    for (let restart = 0; restart < MAX_RESTARTS; restart++) {
+      const studentTuples: { [studentId: string]: string[][] } = {};
+      
+      for (const student of sortedStudents) {
+        const eligible = activeLabs.filter(lab => {
+          if (lab.min_age == null) return true;
+          return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
+        });
+
+        let studentEligible = eligible;
+        if (studentEligible.length === 0) studentEligible = activeLabs;
+        while (studentEligible.length < k) {
+          studentEligible = [...studentEligible, ...studentEligible];
+        }
+
+        const rawTuples = generatePermutations(studentEligible, k);
+        const prefMap = studentPrefsMap[student.id] || {};
+
+        const tupleWithScore = rawTuples.map(tuple => {
+          const key = tuple.join('_');
+          const baseScore = studentPrefsScores[student.id]?.[key] || 0;
+          const score = baseScore + Math.random() * 0.5;
+          return { tuple, score };
+        });
+
+        tupleWithScore.sort((a, b) => b.score - a.score);
+        studentTuples[student.id] = tupleWithScore.map(x => x.tuple);
+      }
+
+      // Shuffle students within the same age group to diversify search order
+      const ageGroups: { [age: number]: any[] } = {};
+      for (const st of sortedStudents) {
+        const age = st.age ?? 99;
+        if (!ageGroups[age]) ageGroups[age] = [];
+        ageGroups[age].push(st);
+      }
+
+      const shuffledStudents: any[] = [];
+      const sortedAges = Object.keys(ageGroups).map(Number).sort((a, b) => a - b);
+      for (const age of sortedAges) {
+        const grp = [...ageGroups[age]];
+        for (let i = grp.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [grp[i], grp[j]] = [grp[j], grp[i]];
+        }
+        shuffledStudents.push(...grp);
+      }
+
+      // Run CSP Backtracking Search
+      const assignment: { [studentId: string]: string[] } = {};
+      const capacities: { [slotId: string]: { [labId: string]: number } } = {};
+      activeTimeSlots.forEach(slot => {
+        capacities[slot.id] = {};
+        activeLabs.forEach(lab => {
+          capacities[slot.id][lab.id] = 0;
+        });
+      });
+
+      let backtrackCount = 0;
+      const BACKTRACK_LIMIT = 20000;
+
+      function backtrack(index: number): boolean {
+        if (index === shuffledStudents.length) return true;
+        
+        backtrackCount++;
+        if (backtrackCount > BACKTRACK_LIMIT) return false;
+
+        const student = shuffledStudents[index];
+        const tuples = studentTuples[student.id];
+
+        // LCV dynamic sorting
+        const scoredTuples = tuples.map(tuple => {
+          const [l1, l2, l3] = tuple;
+          const cap1 = capacities[activeTimeSlots[0].id][l1] || 0;
+          const cap2 = capacities[activeTimeSlots[1].id][l2] || 0;
+          const cap3 = capacities[activeTimeSlots[2].id][l3] || 0;
+
+          if (cap1 >= 20 || cap2 >= 20 || cap3 >= 20) {
+            return { tuple, val: -Infinity };
           }
 
-          // Fallback if no top 5 fits
-          if (!assignedSession) {
-            studentFlagged = true;
-            // Find lowest rank available that fits age
-            const validFallbacks = availableSessions.filter(s => {
-              const lab = labs.find(l => l.id === s.lab_id);
-              return lab && student.age >= lab.min_age && student.age <= lab.max_age && sessionCapacityMap[s.id].used < sessionCapacityMap[s.id].max;
-            });
-            
-            if (validFallbacks.length > 0) {
-              assignedSession = validFallbacks[0]; // Assign arbitrary available
-            } else {
-               // Assign absolute fallback ignoring capacity to prevent unassigned status
-               assignedSession = availableSessions[0];
-            }
+          const key = tuple.join('_');
+          const utility = studentPrefsScores[student.id]?.[key] || 0;
+          const capCost = cap1 + cap2 + cap3;
+          // Subtract capacity cost penalty to prefer less loaded labs
+          const val = utility - 15 * capCost;
+          return { tuple, val };
+        });
+
+        const validTuples = scoredTuples
+          .filter(x => x.val !== -Infinity)
+          .sort((a, b) => b.val - a.val)
+          .map(x => x.tuple);
+
+        for (const tuple of validTuples) {
+          const [l1, l2, l3] = tuple;
+
+          // Assign
+          assignment[student.id] = tuple;
+          for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+            const labId = tuple[slotIdx];
+            const slotId = activeTimeSlots[slotIdx].id;
+            capacities[slotId][labId]++;
           }
 
-          if (assignedSession) {
-            sessionCapacityMap[assignedSession.id].used++;
-            dailyAssignments.push({
-              student_id: student.id,
-              lab_session_id: assignedSession.id,
-              pick_number: pickNum
-            });
+          if (backtrack(index + 1)) return true;
+
+          // Unassign
+          delete assignment[student.id];
+          for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+            const labId = tuple[slotIdx];
+            const slotId = activeTimeSlots[slotIdx].id;
+            capacities[slotId][labId]--;
           }
         }
-        assignmentsToInsert.push(...dailyAssignments);
+
+        return false;
       }
-      
-      if (studentFlagged) flaggedCount++;
+
+      if (backtrack(0)) {
+        finalAssignment = assignment;
+        break;
+      }
     }
 
+    if (!finalAssignment) {
+      throw new Error("Failed to find a valid assignment satisfying all constraints after multiple attempts.");
+    }
+
+    // 5. Clear previous assignments for this camp day only
+    const sessionIds = sessions.map(s => s.id);
+    if (sessionIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('assignments')
+        .delete()
+        .in('lab_session_id', sessionIds);
+      if (deleteError) throw deleteError;
+    }
+
+    // Prepare new assignments list
+    const assignmentsToInsert: any[] = [];
+    Object.entries(finalAssignment).forEach(([studentId, tuple]) => {
+      const prefMap = studentPrefsMap[studentId] || {};
+      for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+        const labId = tuple[slotIdx];
+        const slotId = timeSlotsData[slotIdx].id;
+        const sessionId = sessionLookup[`${labId}_${slotId}`];
+        if (sessionId) {
+          assignmentsToInsert.push({
+            student_id: studentId,
+            lab_session_id: sessionId,
+            pick_number: prefMap[labId] !== undefined ? prefMap[labId] : null
+          });
+        }
+      }
+    });
+
     // 6. Bulk Insert
-    await supabase.from('assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all old assignments
-    
-    // Chunking to avoid large payload errors
     const chunkSize = 1000;
     for (let i = 0; i < assignmentsToInsert.length; i += chunkSize) {
       const chunk = assignmentsToInsert.slice(i, i + chunkSize);
-      const { error } = await supabase.from('assignments').insert(chunk);
-      if (error) throw error;
+      const { error: insertError } = await supabase.from('assignments').insert(chunk);
+      if (insertError) throw insertError;
     }
+
+    // 7. Calculate stats
+    let top3Count = 0;
+    let fallbackCount = 0;
+    assignmentsToInsert.forEach(a => {
+      if (a.pick_number !== null && a.pick_number <= 3) {
+        top3Count++;
+      } else if (a.pick_number === null) {
+        fallbackCount++;
+      }
+    });
+
+    const total = assignmentsToInsert.length || 1;
+    const top3Percentage = Math.round((top3Count / total) * 100);
+    const lowPicksPercentage = Math.round(((total - top3Count - fallbackCount) / total) * 100);
+
+    const flaggedStudentIds = new Set(
+      assignmentsToInsert.filter(a => a.pick_number === null).map(a => a.student_id)
+    );
 
     return {
       success: true,
       totalAssigned: assignmentsToInsert.length,
-      flaggedCount,
-      top3Percentage: 90, // Calculate properly in real implementation
-      lowPicksPercentage: 10
+      flaggedCount: flaggedStudentIds.size,
+      top3Percentage,
+      lowPicksPercentage
     };
 
   } catch (error) {

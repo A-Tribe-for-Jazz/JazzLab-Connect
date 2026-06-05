@@ -31,6 +31,7 @@ interface ColumnProps {
 
 const LAB_SHORT_NAMES: Record<string, string> = {
   "Arts Collaboratorium": "Mixed Media Lab",
+  "Mixed Media Lab": "Mixed Media Lab",
   "Jazz Fab Lab": "Jazz Fab Lab",
   "Virtual Reality MusicMaking": "Virtual Reality MusicMaking",
   "Conga Drumming": "Conga Drumming",
@@ -39,18 +40,23 @@ const LAB_SHORT_NAMES: Record<string, string> = {
   "Pixel Beats Lab": "Pixel Beats Lab",
   "Eco Jazz Sound Lab": "Eco Jazz Sound Lab",
   "The Vocal Resonance Lab with The Singing Buckeyes": "The Reverb Lab",
+  "The Reverb Lab": "The Reverb Lab",
   "Young Producers Lab": "Future Producers' Lab",
+  "Future Producers' Lab": "Future Producers' Lab",
 };
 
 export const LAB_DETAILS: Record<string, { short: string; room: string; desc: string; icon: string; ageRequirement: string }> = {
   "Arts Collaboratorium": { short: "Mixed Media Lab", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "All ages" },
+  "Mixed Media Lab": { short: "Mixed Media Lab", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "All ages" },
   "Young Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
   "Future Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Future Producers' Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
   "Afro-Futuristic Studio": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "AI World-Building Lab": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
   "Pixel Beats Lab": { short: "Pixel Beats Lab", room: "112", desc: "Video game music coding", icon: "🎮", ageRequirement: "9+" },
   "The Vocal Resonance Lab with The Singing Buckeyes": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
   "Vocal Resonance Lab": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
+  "The Reverb Lab": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
   "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/ JavaScript", icon: "💻", ageRequirement: "11+" },
   "Eco Jazz Sound Lab": { short: "Eco Jazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
   "Virtual Reality MusicMaking": { short: "Virtual Reality MusicMaking", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
@@ -302,7 +308,8 @@ export const getColumns = ({
       }).length;
 
       const count = preferences?.length || 0;
-      const isComplete = eligibleCount > 0 && count >= eligibleCount;
+      const requiredCount = Math.min(5, eligibleCount);
+      const isComplete = requiredCount > 0 && count >= requiredCount;
       const hasSelections = count > 0;
 
       return (

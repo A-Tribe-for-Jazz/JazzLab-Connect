@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Check, Share2, ArrowRight, RotateCcw, Play, Lock } from 'lucide-react';
+import { Check, Share2, Lock, AlertCircle } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ShareAccessModal from '../../components/partner/ShareAccessModal';
@@ -58,7 +58,7 @@ const STEPS: StepConfig[] = [
   },
   {
     number: 4,
-    title: 'Final Placements',
+    title: 'Schedules',
     to: '/partner/schedule',
     getSubtitle: (_, finalized) => {
       if (finalized) return 'Schedules are finalized! Click to view and download/print.';
@@ -143,6 +143,11 @@ export default function PartnerDashboard() {
         .from('organizations').select('name').eq('id', orgId).single();
       setOrganization(orgData);
 
+      // Fetch labs to calculate correct age-based eligibility
+      const { data: labsData } = await supabase
+        .from('labs')
+        .select('id, min_age, max_age');
+
       const { data: stData, error: stError } = await supabase
         .from('students')
         .select('id, first_name, last_name, age, camp_day_id, preferences (lab_id)')
@@ -160,11 +165,32 @@ export default function PartnerDashboard() {
       const coreComplete = realStudents.filter(
         s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
       );
-      const missingPicks = coreComplete.filter(s => (s.preferences?.length || 0) < 5).length;
+      
+      const missingPicks = coreComplete.filter(s => {
+        const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
+        const eligibleLabs = (labsData || []).filter(lab => {
+          if (lab.min_age == null || studentAge == null) return true;
+          return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+        });
+        const eligibleCount = eligibleLabs.length;
+        const requiredCount = Math.min(5, eligibleCount);
+        const selectedCount = s.preferences?.length || 0;
+        return requiredCount > 0 && selectedCount < requiredCount;
+      }).length;
+
       const fullyReady = realStudents.filter(s => {
         const hasCore = s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '';
-        const hasPicks = (s.preferences?.length || 0) === 5;
-        return hasCore && hasPicks;
+        if (!hasCore) return false;
+        
+        const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
+        const eligibleLabs = (labsData || []).filter(lab => {
+          if (lab.min_age == null || studentAge == null) return true;
+          return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+        });
+        const eligibleCount = eligibleLabs.length;
+        const requiredCount = Math.min(5, eligibleCount);
+        const selectedCount = s.preferences?.length || 0;
+        return requiredCount > 0 && selectedCount >= requiredCount;
       }).length;
 
       const { data: staffData } = await supabase
@@ -198,13 +224,13 @@ export default function PartnerDashboard() {
   };
 
   const getStepStatus = (stepNum: number): StepStatus => {
-    let isProgComplete = false;
-    if (stepNum === 1) isProgComplete = stats.count > 0 && stats.missingDemo === 0;
-    if (stepNum === 2) isProgComplete = stats.count > 0 && stats.missingDemo === 0 && stats.missingPicks === 0;
-    if (stepNum === 3) isProgComplete = stats.staffCount > 0 && stats.staffMissingInfo === 0;
-    if (stepNum === 4) isProgComplete = isFinalized;
-    if (isProgComplete) return 'completed';
     return stepStatuses[stepNum] || 'pending';
+  };
+
+  const isStepLocked = (stepNum: number): boolean => {
+    if (stepNum === 1) return false;
+    const prevStatus = getStepStatus(stepNum - 1);
+    return prevStatus !== 'completed';
   };
 
   const handleStartStep = (stepNum: number, to: string, e: React.MouseEvent) => {
@@ -248,12 +274,12 @@ export default function PartnerDashboard() {
   const getChecklistItems = (stepNum: number, status: StepStatus) => {
     if (stepNum === 1) return [
       { text: <>Enroll at least <strong>1 student</strong> in your roster</>, done: stats.count > 0 },
-      { text: <>Complete demographic profiles (<u><strong>Age, Grade, Zip, Gender, Ethnicity</strong></u>)</>, done: stats.count > 0 && stats.missingDemo === 0 },
+      { text: <>Complete demographic profiles (<u><strong>Age, Grade, Zip, Gender, Ethnicity, Language</strong></u>)</>, done: stats.count > 0 && stats.missingDemo === 0 },
       { text: <>Declare Demographics phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
     ];
     if (stepNum === 2) return [
       { text: <>Complete the <strong>Demographics roster setup</strong> (Step 1)</>, done: stats.count > 0 && stats.missingDemo === 0 },
-      { text: <>Rank the <strong>top 5 lab preferences</strong> for every student</>, done: stats.count > 0 && stats.missingPicks === 0 },
+      { text: <>Select <strong>all eligible labs</strong> for every student</>, done: stats.count > 0 && stats.missingPicks === 0 },
       { text: <>Declare Preferences phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
     ];
     if (stepNum === 3) return [
@@ -270,6 +296,8 @@ export default function PartnerDashboard() {
 
   const completedCount = STEPS.filter(s => getStepStatus(s.number) === 'completed').length;
   const allComplete = completedCount === STEPS.length;
+
+
 
   if (loading) return null;
 
@@ -298,10 +326,10 @@ export default function PartnerDashboard() {
               onClick={() => setShowShareModal(true)}
               variant="outline"
               className={cn(
-                'rounded-xl h-12 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto',
+                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto',
                 isDark
                   ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                  : 'bg-white border-slate-200/60 text-slate-600 hover:border-slate-300 hover:shadow-md'
+                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
               )}>
               <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
             </Button>
@@ -311,10 +339,10 @@ export default function PartnerDashboard() {
         {/* ── Timeline ────────────────────────────────────────────────────── */}
         <div className="max-w-4xl mx-auto relative space-y-12 py-6">
           {/* All absolute overlays in one wrapper so space-y-12 never shifts them */}
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none z-0">
             {/* Dashed vertical path line */}
             <div
-              className="absolute left-[24px] top-6 bottom-6 w-[2px] -translate-x-1/2"
+              className="absolute left-[128px] top-[8px] bottom-[-16px] w-[2px] -translate-x-1/2"
               style={{
                 backgroundImage: isDark
                   ? 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 6px, transparent 6px, transparent 12px)'
@@ -323,24 +351,24 @@ export default function PartnerDashboard() {
             />
 
             {/* Start label */}
-            <div className="absolute left-[24px] top-6 -translate-x-1/2 -translate-y-full flex flex-col items-center pb-1.5">
+            <div className="absolute left-[128px] top-[8px] -translate-x-1/2 -translate-y-full flex flex-col items-center pb-1.5">
               <span className={cn('text-[9px] font-black uppercase tracking-widest', isDark ? 'text-white/20' : 'text-slate-300')}>
                 Start
               </span>
             </div>
             {/* Start dot — centered exactly on the line's top tip */}
             <div className={cn(
-              'absolute left-[24px] top-6 -translate-x-1/2 -translate-y-1/2 size-2 rounded-full',
+              'absolute left-[128px] top-[8px] -translate-x-1/2 -translate-y-1/2 size-2 rounded-full',
               isDark ? 'bg-white/25' : 'bg-slate-300'
             )} />
 
             {/* Finish dot — centered exactly on the line's bottom tip */}
             <div className={cn(
-              'absolute left-[24px] bottom-6 -translate-x-1/2 translate-y-1/2 size-2 rounded-full transition-colors duration-700',
-              allComplete ? 'bg-emerald-500' : isDark ? 'bg-white/25' : 'bg-slate-300'
+              'absolute left-[128px] bottom-[-16px] -translate-x-1/2 translate-y-1/2 size-2 rounded-full transition-colors duration-700',
+            allComplete ? 'bg-emerald-500' : isDark ? 'bg-white/25' : 'bg-slate-300'
             )} />
             {/* Finish label */}
-            <div className="absolute left-[24px] bottom-6 -translate-x-1/2 translate-y-full flex flex-col items-center pt-1.5">
+            <div className="absolute left-[128px] bottom-[-16px] -translate-x-1/2 translate-y-full flex flex-col items-center pt-1.5">
               <span className={cn(
                 'text-[9px] font-black uppercase tracking-widest transition-colors duration-700',
                 allComplete ? 'text-emerald-500' : isDark ? 'text-white/20' : 'text-slate-300'
@@ -353,166 +381,169 @@ export default function PartnerDashboard() {
           {STEPS.map((step) => {
             const status = getStepStatus(step.number);
             const checklist = getChecklistItems(step.number, status);
+            const locked = isStepLocked(step.number);
 
             return (
               <div
                 key={step.number}
                 className={cn(
-                  'relative flex items-start group transition-opacity duration-300 pl-16',
-                  status === 'completed' ? 'opacity-100' : 'opacity-90 hover:opacity-100'
+                  'relative z-10 flex items-center group transition-all duration-300 pl-16 mb-6 last:mb-0',
+                  locked ? 'pointer-events-none' : 'opacity-100'
                 )}
               >
-                {/* Circle node on the line */}
-                <div className="absolute left-[24px] top-[26px] -translate-x-1/2 z-10">
-                  <div className={cn(
-                    'size-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center shadow-md relative',
-                    status === 'completed'
-                      ? 'bg-emerald-500 border-emerald-450 text-white'
-                      : status === 'in_progress'
-                        ? 'bg-amber-500 border-amber-400 text-white'
-                        : isDark ? 'bg-black border-white/20 text-slate-500' : 'bg-white border-slate-350 text-slate-400'
-                  )}>
-                    {status === 'completed'
-                      ? <Check size={15} strokeWidth={3.5} />
-                      : <span className="text-[12px] font-black">{step.number}</span>}
-                    {status === 'in_progress' && (
-                      <div className="absolute -inset-1.5 rounded-full border-2 border-amber-400 animate-ping opacity-60 pointer-events-none" />
-                    )}
-                  </div>
-                </div>
-
                 {/* Step content */}
                 <div className={cn(
-                  'flex-1 flex flex-col md:flex-row md:items-start justify-between gap-6 pb-8 border-b',
-                  isDark ? 'border-white/5' : 'border-slate-100'
+                  'flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-2xl border transition-all duration-300 w-full',
+                  status === 'completed'
+                    ? isDark ? 'bg-[#051a10] border-emerald-500/15' : 'bg-[#f0fbf5] border-emerald-100 shadow-xs'
+                    : status === 'in_progress'
+                      ? isDark ? 'bg-[#181206] border-amber-500/20' : 'bg-[#fdfbf2] border-amber-150 shadow-xs'
+                      : isDark ? 'bg-[#0d0d0f] border-white/5' : 'bg-white border-slate-200/80 shadow-xs'
                 )}>
-                  <div className="flex items-start gap-6 flex-1 min-w-0">
-                    {/* Large watermark number */}
-                    <span className={cn(
-                      'text-8xl font-black italic tracking-tighter leading-none select-none transition-colors duration-500 shrink-0',
-                      status === 'completed'
-                        ? isDark ? 'text-emerald-500/30' : 'text-emerald-500/20'
-                        : status === 'in_progress'
-                          ? isDark ? 'text-amber-500/70' : 'text-amber-500/60'
-                          : isDark ? 'text-white/5' : 'text-slate-900/[0.05]'
-                    )}>
-                      0{step.number}
-                    </span>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className={cn('text-[9px] font-black uppercase tracking-widest',
-                          status === 'completed' ? 'text-emerald-500' : status === 'in_progress' ? 'text-amber-500' : 'text-slate-400'
+                  {/* Inner content wrapper to apply layout but not card opacity directly (so watermark remains visible) */}
+                  <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
+                    <div className="flex items-start gap-6 flex-1 min-w-0">
+                      {/* Large watermark number */}
+                      <div className="flex flex-col items-center shrink-0 w-20">
+                        <span className={cn(
+                          'text-[10px] font-black uppercase tracking-widest select-none transition-colors duration-500 -mb-2',
+                          status === 'completed'
+                            ? isDark ? 'text-emerald-500/40' : 'text-emerald-500/30'
+                            : status === 'in_progress'
+                              ? isDark ? 'text-amber-500/80' : 'text-amber-500/70'
+                              : isDark ? 'text-white/25' : 'text-slate-900/[0.25]'
                         )}>
-                          {status === 'completed' ? 'Finished' : status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                          Step
                         </span>
+                        <span className={cn(
+                          'text-8xl font-black italic tracking-tighter leading-none select-none transition-colors duration-500',
+                          status === 'completed'
+                            ? isDark ? 'text-emerald-500/30' : 'text-emerald-500/20'
+                            : status === 'in_progress'
+                              ? isDark ? 'text-amber-500/70' : 'text-amber-500/60'
+                              : isDark ? 'text-white/[0.12]' : 'text-slate-900/[0.12]'
+                        )}>
+                          0{step.number}
+                        </span>
+                      </div>
+
+                      <div className={cn('space-y-3 flex-1 min-w-0', locked && 'opacity-40')}>
                         {status === 'pending' && step.number === 4 && (
-                          <span className="flex items-center gap-1 text-[9px] font-bold text-amber-550 pl-2">
+                          <div className="flex items-center gap-1 text-[9px] font-bold text-amber-550 mb-1">
                             <Lock size={10} /> Pending Finalization
-                          </span>
+                          </div>
+                        )}
+
+                        <h3 className={cn('text-lg font-black tracking-tight',
+                          status === 'completed'
+                            ? isDark ? 'text-emerald-400' : 'text-emerald-800'
+                            : isDark ? 'text-white' : 'text-slate-900'
+                        )}>
+                          {step.title}
+                        </h3>
+
+                        <p className={cn('text-sm font-semibold leading-relaxed max-w-xl', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                          {step.getSubtitle(stats, isFinalized)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className={cn(
+                      'flex items-center gap-4 shrink-0 pl-24 md:pl-0 mt-4 md:mt-0',
+                      locked && 'opacity-40'
+                    )}>
+                      <div className="flex items-center gap-3">
+                        {!locked && status === 'pending' && (
+                          <button
+                            onClick={e => handleStartStep(step.number, step.to, e)}
+                            className={cn(
+                              'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                              isDark
+                                ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300'
+                                : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
+                            )}>
+                            <span>Start Step</span>
+                          </button>
+                        )}
+
+                        {!locked && status === 'in_progress' && (
+                          <>
+                            <button
+                              onClick={e => handleMarkComplete(step.number, e)}
+                              className={cn(
+                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                                isDark
+                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
+                                  : 'bg-emerald-50 border-emerald-200/60 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300'
+                              )}>
+                              <span>Mark as Complete</span>
+                            </button>
+                            <button
+                              onClick={e => handleStartStep(step.number, step.to, e)}
+                              className={cn(
+                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                                isDark
+                                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
+                              )}>
+                              View/Edit
+                            </button>
+                          </>
+                        )}
+
+                        {!locked && status === 'completed' && (
+                          <>
+                            <button
+                              onClick={e => handleStartStep(step.number, step.to, e)}
+                              className={cn(
+                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                                isDark
+                                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
+                              )}>
+                              View/Edit
+                            </button>
+                            <div className={cn(
+                              'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] border flex items-center justify-center select-none shadow-sm',
+                              isDark
+                                ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400'
+                                : 'bg-emerald-50/50 border-emerald-200/60 text-emerald-700'
+                            )}>
+                              Finished
+                            </div>
+                          </>
                         )}
                       </div>
 
-                      <h3 className={cn('text-lg font-black tracking-tight',
-                        status === 'completed'
-                          ? isDark ? 'text-emerald-400' : 'text-emerald-800'
-                          : isDark ? 'text-white' : 'text-slate-900'
-                      )}>
-                        {step.title}
-                      </h3>
-
-                      <p className={cn('text-sm font-semibold leading-relaxed max-w-xl', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                        {step.getSubtitle(stats, isFinalized)}
-                      </p>
-
-                      {/* Checklist */}
-                      <div className="space-y-2.5 pt-3">
-                        {checklist.map((item, cIdx) => (
-                          <div key={cIdx} className="flex items-center gap-2 text-xs">
-                            <Check
-                              size={12}
-                              className={item.done ? 'text-emerald-500' : isDark ? 'text-slate-700' : 'text-slate-300'}
-                            />
-                            <span className={cn(
-                              item.done ? 'line-through opacity-40' : '',
-                              isDark ? 'text-slate-350' : 'text-slate-600'
-                            )}>
-                              {item.text}
-                            </span>
+                      {/* Status Indicator Icon */}
+                      <div className="flex items-center justify-center shrink-0 pl-4 border-l border-slate-200 dark:border-white/10">
+                        {locked ? (
+                          <div className={cn(
+                            'size-10 rounded-full border transition-all duration-300 flex items-center justify-center',
+                            isDark ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-50 border-slate-100 text-slate-400'
+                          )}>
+                            <Lock size={16} />
                           </div>
-                        ))}
+                        ) : status === 'completed' ? (
+                          <div className={cn(
+                            'size-10 rounded-full border transition-all duration-300 flex items-center justify-center',
+                            isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                          )}>
+                            <Check size={20} strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <div className={cn(
+                            'size-10 rounded-full border transition-all duration-300 flex items-center justify-center',
+                            status === 'in_progress'
+                              ? isDark ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 animate-pulse' : 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse'
+                              : isDark ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          )}>
+                            <AlertCircle size={20} strokeWidth={2.5} />
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-3 shrink-0 pl-24 md:pl-0 mt-4 md:mt-0">
-                    {status === 'pending' && (
-                      <>
-                        <button
-                          onClick={e => handleStartStep(step.number, step.to, e)}
-                          className={cn(
-                            'flex items-center gap-1.5 px-4.5 py-2 rounded-xl text-xs font-black uppercase transition-all duration-300 border shadow-sm',
-                            isDark
-                              ? 'bg-sky-500/20 border-sky-500/30 text-sky-400 hover:bg-sky-500/30'
-                              : 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
-                          )}>
-                          <Play size={10} fill="currentColor" />
-                          <span>Start Step</span>
-                          <ArrowRight size={12} className="ml-1" />
-                        </button>
-                        <button
-                          onClick={e => handleMarkComplete(step.number, e)}
-                          className="px-2 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-800">
-                          Skip
-                        </button>
-                      </>
-                    )}
-
-                    {status === 'in_progress' && (
-                      <>
-                        <button
-                          onClick={e => handleMarkComplete(step.number, e)}
-                          className={cn(
-                            'flex items-center gap-1.5 px-4.5 py-2 rounded-xl text-xs font-black uppercase transition-all border shadow-sm',
-                            isDark
-                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                              : 'bg-emerald-600 border-emerald-555 text-white hover:bg-emerald-500'
-                          )}>
-                          <Check size={11} strokeWidth={3} />
-                          <span>Complete</span>
-                        </button>
-                        <button
-                          onClick={e => handleStartStep(step.number, step.to, e)}
-                          className={cn('text-xs font-bold', isDark ? 'text-slate-450 hover:text-white' : 'text-slate-450 hover:text-slate-850')}>
-                          Resume
-                        </button>
-                      </>
-                    )}
-
-                    {status === 'completed' && (
-                      <>
-                        <button
-                          onClick={e => handleStartStep(step.number, step.to, e)}
-                          className={cn('text-xs font-bold mr-1', isDark ? 'text-slate-450 hover:text-white' : 'text-slate-450 hover:text-slate-850')}>
-                          View / Edit
-                        </button>
-                        <div className={cn(
-                          'flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black border',
-                          isDark
-                            ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400'
-                            : 'bg-emerald-500/5 text-emerald-555 border-emerald-555/15'
-                        )}>
-                          Finished
-                        </div>
-                        <button
-                          onClick={e => handleMarkIncomplete(step.number, e)}
-                          className="p-1.5 rounded text-slate-450 hover:text-slate-650 transition-colors"
-                          title="Reset Step Status">
-                          <RotateCcw size={12} />
-                        </button>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>

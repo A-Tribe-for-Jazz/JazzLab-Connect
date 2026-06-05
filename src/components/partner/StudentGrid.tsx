@@ -31,6 +31,7 @@ const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | nul
   home_zip_code: '',
   race_ethnicity: '',
   gender: '',
+  first_language: '',
   total_program_hours: '',
   camp_day_id: activeCampDayId || null,
   notes: '',
@@ -76,6 +77,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
   const isFlushingRef = useRef(false);
   const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const ownInsertsRef = useRef(new Set<string>()); // Track our own DB inserts to avoid Postgres listener duplicates
+  const stateFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Debounce React state updates
 
   // Keep studentsRef always current for use inside callbacks
   useEffect(() => { studentsRef.current = students; }, [students]);
@@ -124,13 +126,16 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
             home_zip_code: s.home_zip_code ?? '',
             race_ethnicity: s.race_ethnicity ?? '',
             gender: s.gender ?? '',
+            first_language: s.first_language ?? '',
             total_program_hours: s.total_program_hours ?? '',
           })) as StudentRow[];
 
         const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
 
-        const targetCount = Math.max(filteredExisting.length + 20, 100);
+        // Pad with 20 empty phantom rows for new entry — virtualization means
+        // we no longer need a large buffer since only visible rows render.
         const padded = [...filteredExisting];
+        const targetCount = filteredExisting.length + 20;
         while (padded.length < targetCount) {
           padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
         }
@@ -182,6 +187,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
           student.home_zip_code,
           student.race_ethnicity,
           student.gender,
+          student.first_language,
           student.total_program_hours
         ];
         const hasData = fields.some(f => f !== '' && f !== null && f !== undefined);
@@ -271,6 +277,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
                         home_zip_code: inserted.home_zip_code ?? '',
                         race_ethnicity: inserted.race_ethnicity ?? '',
                         gender: inserted.gender ?? '',
+                        first_language: inserted.first_language ?? '',
                         total_program_hours: inserted.total_program_hours ?? '',
                         sync_status: 'synced' as const
                       }
@@ -450,6 +457,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
               home_zip_code: newRow.home_zip_code ?? '',
               race_ethnicity: newRow.race_ethnicity ?? '',
               gender: newRow.gender ?? '',
+              first_language: newRow.first_language ?? '',
               total_program_hours: newRow.total_program_hours ?? '',
               sync_status: 'synced' as const,
               order_index: phantomIdx !== -1 ? phantomIdx : prev.length,
@@ -514,8 +522,8 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
   // ─── Field change: local + broadcast instantly, DB later ────────────────
   const handleFieldChange = useCallback(
     (id: string, field: keyof StudentRow, value: any) => {
-      // 1. Update ref SYNCHRONOUSLY so cleanup flush always has latest data
-      //    (useEffect that syncs studentsRef doesn't fire on unmount)
+      // 1. Update ref SYNCHRONOUSLY — CollaborativeInput shows value instantly
+      //    via its own local state, so this ref is the source of truth for flush.
       const refIdx = studentsRef.current.findIndex(s => s.id === id);
       if (refIdx !== -1) {
         const updated = [...studentsRef.current];
@@ -523,28 +531,37 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
         studentsRef.current = updated;
       }
 
-      // 2. Update React state for rendering
-      setStudents(prev => {
-        const idx = prev.findIndex(s => s.id === id);
-        if (idx === -1) return prev;
-
-        const next = [...prev];
-        next[idx] = { ...next[idx], [field]: value };
-
-        // Auto-expand when near the bottom
-        if (idx >= prev.length - 5) {
-          const extras = Array.from({ length: 50 }).map((_, i) =>
-            makeEmptyRow(organizationId, prev.length + i, activeCampDayId)
-          );
-          return [...next, ...extras];
-        }
-        return next;
-      });
-
-      // 2. Mark dirty for the next periodic save
+      // 2. Mark dirty immediately so periodic flush saves correctly
       dirtyRowsRef.current.add(id);
 
-      // 3. Debounced broadcast — coalesces rapid keystrokes into fewer messages
+      // 3. Debounce React state update — CollaborativeInput already shows the
+      //    value instantly via localValue state, so we only need to sync React
+      //    state for the status column + auto-expand. 200ms feels instant to users
+      //    but reduces re-renders from "every keypress" to "every 200ms".
+      if (stateFlushTimerRef.current) clearTimeout(stateFlushTimerRef.current);
+      stateFlushTimerRef.current = setTimeout(() => {
+        const latest = studentsRef.current; // always has most up-to-date values
+        setStudents(prev => {
+          const idx = prev.findIndex(s => s.id === id);
+          if (idx === -1) return prev;
+          const latestStudent = latest.find(s => s.id === id);
+          if (!latestStudent) return prev;
+
+          const next = [...prev];
+          next[idx] = { ...prev[idx], ...latestStudent };
+
+          // Auto-expand when near the bottom
+          if (idx >= prev.length - 5) {
+            const extras = Array.from({ length: 50 }).map((_, i) =>
+              makeEmptyRow(organizationId, prev.length + i, activeCampDayId)
+            );
+            return [...next, ...extras];
+          }
+          return next;
+        });
+      }, 200);
+
+      // 4. Debounced broadcast — coalesces rapid keystrokes into fewer messages
       const broadcastKey = `${id}_${String(field)}`;
       const pendingTimer = broadcastTimersRef.current.get(broadcastKey);
       if (pendingTimer) clearTimeout(pendingTimer);
@@ -603,8 +620,8 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
     if (filterStatus !== 'all' && (!filterSnapshotRef.current || filterSnapshotRef.current.size === 0)) {
       const ids = new Set<string>();
       students.forEach(student => {
-        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours } = student;
-        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, total_program_hours];
+        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = student;
+        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
         const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
 
@@ -645,13 +662,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
 
   return (
     <div className="partner-enter flex-1 min-h-0 flex flex-col">
-      <div className="relative group flex-1 min-h-0 flex flex-col">
-        <div
-          className={cn(
-            "absolute -inset-2 rounded-[4.5rem] blur-3xl opacity-0 transition-opacity duration-1000 group-hover:opacity-10 pointer-events-none",
-            isDark ? "bg-blue-500" : "bg-slate-300"
-          )}
-        />
+      <div className="relative flex-1 min-h-0 flex flex-col">
 
         <DataTable
           columns={columns}

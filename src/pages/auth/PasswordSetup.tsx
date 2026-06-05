@@ -1,26 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Lock, Loader2, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PasswordSetup() {
   const { completePasswordSetup, profile } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (profile?.full_name && profile.full_name !== 'Invited User') {
+      setFullName(profile.full_name);
+    }
+  }, [profile]);
+
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (!fullName.trim()) {
+      setError('Full name is required.');
+      setLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -35,8 +48,18 @@ export default function PasswordSetup() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      // 1. Update password in auth system
+      const { error: authErr } = await supabase.auth.updateUser({ password });
+      if (authErr) throw authErr;
+
+      // 2. Update name in public profiles table
+      if (profile?.id) {
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .update({ full_name: fullName.trim() })
+          .eq('id', profile.id);
+        if (profileErr) throw profileErr;
+      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -46,7 +69,7 @@ export default function PasswordSetup() {
         else navigate('/partner/dashboard');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Failed to update password.');
+      setError(err.message || 'Failed to update details.');
     } finally {
       setLoading(false);
     }
@@ -105,7 +128,23 @@ export default function PasswordSetup() {
           ) : (
             <form onSubmit={handleSetup} className="space-y-6">
               <div className="space-y-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Full Name
+                  </Label>
+                  <div className="relative group">
+                    <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10 pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="e.g. John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-10 h-10 border border-slate-200 rounded-xl font-semibold text-[13px] transition-all bg-transparent focus-visible:border-sky-500/30 focus-visible:bg-sky-500/[0.01] focus-visible:ring-0"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     New Password
                   </Label>
@@ -121,7 +160,7 @@ export default function PasswordSetup() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Confirm Password
                   </Label>
