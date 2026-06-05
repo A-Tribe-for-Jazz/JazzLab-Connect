@@ -198,13 +198,10 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
                                 : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
                         )}
                       >
-                        <span 
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 transition-opacity duration-300",
-                            isActive ? "animate-pulse opacity-100" : "opacity-0"
-                          )}
-                          style={isActive ? { animationDuration: '3s' } : undefined}
-                        />
+                        <span className={cn(
+                          "h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 transition-opacity duration-300",
+                          isActive ? "animate-ping-slow opacity-100" : "opacity-0"
+                        )} />
                         {formattedDate}
                       </button>
                     );
