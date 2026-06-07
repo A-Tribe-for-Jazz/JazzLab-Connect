@@ -355,7 +355,7 @@ export default function PasswordSetup() {
             <section className="space-y-1">
               <h4 className="font-bold text-slate-800 text-[13px]">4. Security & Safeguards</h4>
               <p>
-                User credentials, profiles, and student rosters are fully secured using industry-standard SSL/TLS transit protocols and AES-256 database encryption at rest.
+                User credentials, profiles, and student records are fully secured using industry-standard SSL/TLS transit protocols and AES-256 database encryption at rest.
               </p>
             </section>
           </div>
