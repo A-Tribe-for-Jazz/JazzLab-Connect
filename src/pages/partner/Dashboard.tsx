@@ -365,25 +365,22 @@ export default function PartnerDashboard() {
               ? 'bg-[#0f172a]/60 border-slate-800/85 hover:border-slate-800'
               : 'bg-white border-slate-200/80 hover:border-slate-350 shadow-xs'
           )}>
-            <div className="space-y-1.5">
+             <div className="space-y-2">
               <span className={cn('text-[10px] font-black uppercase tracking-wider', isDark ? 'text-sky-400/90' : 'text-sky-700/90')}>
                 Collaborative Setup
               </span>
-              <h3 className={cn('text-sm font-bold', isDark ? 'text-white' : 'text-slate-900')}>
-                Share Access
-              </h3>
-              <p className={cn('text-[11px] font-semibold leading-normal', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                Invite other team members or administrators to access this dashboard and help input student rosters and staff demographics.
+              <p className={cn('text-xs font-semibold leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-600')}>
+                Invite other team members or administrators to access this portal to view or edit data.
               </p>
             </div>
             <Button
               onClick={() => setShowShareModal(true)}
               variant="outline"
               className={cn(
-                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-xs border w-full md:w-auto justify-center',
+                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto justify-center',
                 isDark
                   ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:shadow-sm hover:bg-slate-50'
+                  : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow hover:bg-slate-50'
               )}>
               <Share2 size={16} className="mr-2 text-slate-400 shrink-0" /> Share Access
             </Button>
