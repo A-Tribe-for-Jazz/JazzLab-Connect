@@ -101,6 +101,26 @@ export default function PartnerDashboard() {
         }
       });
       setStepStatuses(saved);
+
+      // Scroll to the first incomplete (pending or in_progress) step card
+      let firstIncomplete = 1;
+      let foundIncomplete = false;
+      for (let num = 1; num <= 4; num++) {
+        if (saved[num] !== 'completed') {
+          firstIncomplete = num;
+          foundIncomplete = true;
+          break;
+        }
+      }
+
+      if (foundIncomplete) {
+        setTimeout(() => {
+          const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
+          if (stepEl) {
+            stepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
     }
   }, [profile, activeCampDayId]);
 
