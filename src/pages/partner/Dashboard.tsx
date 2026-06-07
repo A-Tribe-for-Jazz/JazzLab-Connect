@@ -252,6 +252,15 @@ export default function PartnerDashboard() {
     const next = { ...stepStatuses, [stepNum]: 'completed' as StepStatus };
     setStepStatuses(next);
     if (profile?.id) localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${stepNum}`, 'completed');
+
+    // Automatically scroll to place the next step box in the middle of the viewport
+    const nextStepNum = stepNum + 1;
+    setTimeout(() => {
+      const nextStepEl = document.getElementById(`step-card-${nextStepNum}`);
+      if (nextStepEl) {
+        nextStepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
   };
 
   const handleMarkIncomplete = (stepNum: number, e: React.MouseEvent) => {
@@ -387,6 +396,7 @@ export default function PartnerDashboard() {
             return (
               <div
                 key={step.number}
+                id={`step-card-${step.number}`}
                 className={cn(
                   'relative z-10 flex items-center group transition-all duration-300 pl-16 mb-6 last:mb-0',
                   locked ? 'pointer-events-none' : 'opacity-100'
