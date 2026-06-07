@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOutletContext } from 'react-router-dom';
 import { Calendar, Search, Filter, Printer, Sparkles, X, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatTimeString } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { getThemeClasses } from '../../lib/theme';
 import { Badge } from '@/components/ui/badge';
@@ -187,9 +187,9 @@ export default function PartnerSchedule() {
   const activeSessions = useMemo(() => {
     if (sessions.length > 0) return sessions;
     return [
-      { id: 'ds1', name: 'Session 1', start_time: '10:00:00', end_time: '10:55:00' },
-      { id: 'ds2', name: 'Session 2', start_time: '11:00:00', end_time: '11:55:00' },
-      { id: 'ds3', name: 'Session 3', start_time: '12:40:00', end_time: '13:35:00' }
+      { id: 'ds1', name: 'Session 1', start_time: '10:00:00', end_time: '10:50:00' },
+      { id: 'ds2', name: 'Session 2', start_time: '11:00:00', end_time: '11:50:00' },
+      { id: 'ds3', name: 'Session 3', start_time: '12:30:00', end_time: '13:20:00' }
     ];
   }, [sessions]);
 
@@ -681,7 +681,7 @@ export default function PartnerSchedule() {
                           theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
-                            {s1 ? `${s1.start_time.slice(0, 5)} - ${s1.end_time.slice(0, 5)}` : "—"}
+                            {s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "—"}
                           </div>
                         </td>
  
@@ -699,7 +699,7 @@ export default function PartnerSchedule() {
                           theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
-                            {s2 ? `${s2.start_time.slice(0, 5)} - ${s2.end_time.slice(0, 5)}` : "—"}
+                            {s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "—"}
                           </div>
                         </td>
  
@@ -717,7 +717,7 @@ export default function PartnerSchedule() {
                           theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
-                            {s3 ? `${s3.start_time.slice(0, 5)} - ${s3.end_time.slice(0, 5)}` : "—"}
+                            {s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "—"}
                           </div>
                         </td>
                       </tr>

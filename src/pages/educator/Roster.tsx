@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from '@/lib/utils';
+import { cn, formatTimeString } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -421,7 +421,7 @@ export default function EducatorRoster() {
         'Age': s.age,
         'Organization': s.orgName,
         'Attendance': isPresent ? 'PRESENT' : 'ABSENT',
-        'Check-In Time': isPresent && checkedInTime ? new Date(checkedInTime).toLocaleTimeString() : '-',
+        'Check-In Time': isPresent && checkedInTime ? new Date(checkedInTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : '-',
       };
     });
 
@@ -530,7 +530,7 @@ export default function EducatorRoster() {
             >
               <div className="relative z-10 space-y-1">
                 <div className={cn("text-[10px] font-black uppercase tracking-widest transition-colors duration-700", activeSessionId === s.id ? 'text-emerald-400' : 'text-slate-500')}>
-                  {s.start_time.slice(0, 5)} — {s.end_time.slice(0, 5)}
+                  {formatTimeString(s.start_time)} — {formatTimeString(s.end_time)}
                 </div>
                 <div className="text-lg font-black tracking-tight">{s.name}</div>
                 <Badge variant="outline" className={cn("mt-2 font-bold px-3 py-0.5 border-none transition-colors duration-700",
@@ -672,7 +672,7 @@ export default function EducatorRoster() {
                           </Button>
                           {isPresent && checkInTime && (
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                              <Clock size={10} /> Checked-in at {new Date(checkInTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                              <Clock size={10} /> Checked-in at {new Date(checkInTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}
                             </span>
                           )}
                         </div>
@@ -735,7 +735,7 @@ export default function EducatorRoster() {
                     <div className={cn("mt-6 pt-4 border-t flex items-center justify-between transition-colors duration-700", isDark ? "border-white/5" : "border-slate-50")} onClick={(e) => e.stopPropagation()}>
                       <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                         {isPresent && checkInTime ? (
-                          <span className="flex items-center gap-1"><Clock size={10} /> {new Date(checkInTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+                          <span className="flex items-center gap-1"><Clock size={10} /> {new Date(checkInTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                         ) : (
                           "Unchecked"
                         )}

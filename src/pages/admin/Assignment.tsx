@@ -475,7 +475,7 @@ export default function AdminAssignment() {
             <div className={cn("p-3 border-t shrink-0", isDark ? "border-white/10" : "border-slate-200")}>
               {lastRunTime && (
                 <p className={cn("text-[10px] font-medium mb-2 text-center", isDark ? "text-slate-500" : "text-slate-400")}>
-                  Last run: {lastRunTime.toLocaleTimeString()}
+                  Last run: {lastRunTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
                 </p>
               )}
               <ActionButtons className="flex-col w-full" />

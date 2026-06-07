@@ -11,9 +11,9 @@ INSERT INTO camp_days (id, date) VALUES
 
 -- 2. Insert 3 Time Slots
 INSERT INTO time_slots (id, start_time, end_time, name) VALUES
-  ('22222222-2222-2222-2222-222222222221', '10:00:00', '10:55:00', 'Session 1'),
-  ('22222222-2222-2222-2222-222222222222', '11:00:00', '11:55:00', 'Session 2'),
-  ('22222222-2222-2222-2222-222222222223', '12:40:00', '13:35:00', 'Session 3');
+  ('22222222-2222-2222-2222-222222222221', '10:00:00', '10:50:00', 'Session 1'),
+  ('22222222-2222-2222-2222-222222222222', '11:00:00', '11:50:00', 'Session 2'),
+  ('22222222-2222-2222-2222-222222222223', '12:30:00', '13:20:00', 'Session 3');
 
 -- 3. Insert 10 Organizations
 INSERT INTO organizations (id, name, contact_name, contact_email, contact_phone) VALUES
