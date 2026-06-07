@@ -88,8 +88,8 @@ function CollaborativeInput({
   );
 }
 
-// ─── LanguageSelectWithOther ───────────────────────────────────────────────
-function LanguageSelectWithOther({
+// ─── SelectWithOther ─────────────────────────────────────────────────────────
+function SelectWithOther({
   value,
   placeholder,
   onChange,
@@ -99,6 +99,9 @@ function LanguageSelectWithOther({
   isDark,
   studentId,
   activeCursorsRef,
+  fieldName,
+  predefined,
+  inputPlaceholder,
 }: {
   value: string;
   placeholder: string;
@@ -109,12 +112,13 @@ function LanguageSelectWithOther({
   isDark?: boolean;
   studentId: string;
   activeCursorsRef?: { current: { [key: string]: string } };
+  fieldName: string;
+  predefined: string[];
+  inputPlaceholder: string;
 }) {
   const [localValue, setLocalValue] = useState(value);
   const isLocalEdit = useRef(false);
   const [showInput, setShowInput] = useState(false);
-
-  const predefined = ["English", "Spanish", "Amharic", "Nepali", "Somali", "Zomi"];
 
   useEffect(() => {
     if (!isLocalEdit.current) {
@@ -126,7 +130,7 @@ function LanguageSelectWithOther({
       }
     }
     isLocalEdit.current = false;
-  }, [value]);
+  }, [value, predefined]);
 
   const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -155,7 +159,7 @@ function LanguageSelectWithOther({
     onChange("");
   }, [onChange]);
 
-  const isOtherEditing = activeCursorsRef?.current ? !!activeCursorsRef.current[`${studentId}_first_language`] : false;
+  const isOtherEditing = activeCursorsRef?.current ? !!activeCursorsRef.current[`${studentId}_${fieldName}`] : false;
 
   if (showInput) {
     return (
@@ -165,7 +169,7 @@ function LanguageSelectWithOther({
       )}>
         <Input
           value={localValue}
-          placeholder="Type language..."
+          placeholder={inputPlaceholder}
           onChange={handleInputChange}
           onFocus={onFocus}
           onBlur={onBlur}
@@ -215,8 +219,8 @@ function LanguageSelectWithOther({
         )}
       >
         <option value="" disabled hidden>{placeholder}</option>
-        {predefined.map(lang => (
-          <option key={lang} value={lang}>{lang}</option>
+        {predefined.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
         ))}
         <option value="Other">Other...</option>
       </select>
@@ -235,125 +239,48 @@ function LanguageSelectWithOther({
   );
 }
 
-// ─── CollaborativeSelect ────────────────────────────────────────────────────
-function CollaborativeSelect({
-  value,
-  options,
-  placeholder,
-  onChange,
-  onFocus,
-  onBlur,
-  className,
-  isDark,
-}: {
-  value: string;
-  options: { label: string; value: string }[];
-  placeholder: string;
-  onChange: (value: string) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  className: string;
-  isDark?: boolean;
-}) {
-  const [localValue, setLocalValue] = useState(value);
-  const isLocalEdit = useRef(false);
-
-  useEffect(() => {
-    if (!isLocalEdit.current) setLocalValue(value);
-    isLocalEdit.current = false;
-  }, [value]);
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    isLocalEdit.current = true;
-    setLocalValue(e.target.value);
-    onChange(e.target.value);           // sync — ensures dirty-marking before any navigation
-  }, [onChange]);
-
-  const visibleText = localValue
-    ? (options.find(opt => opt.value === localValue)?.label || localValue)
-    : placeholder;
-
-  return (
-    <div className="group/select relative w-full h-10 flex items-center justify-center">
-      {/* Underlying Display Wrapper (handles wrapping and font sizing) */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-6 text-center">
-        <span className={cn(
-          "text-[12px] leading-tight font-semibold line-clamp-2 break-words",
-          !localValue
-            ? (isDark ? "text-slate-700" : "text-slate-300")
-            : (isDark ? "text-white" : "text-slate-900")
-        )}>
-          {visibleText}
-        </span>
-      </div>
-
-      <select
-        value={localValue}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        onChange={handleChange}
-        className={cn(
-          className,
-          "absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none focus:outline-none"
-        )}
-      >
-        <option value="" disabled hidden>{placeholder}</option>
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-      {/* Chevron icon */}
-      <svg
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 opacity-0 group-hover/select:opacity-40 group-focus-within/select:opacity-40 transition-opacity duration-200"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="2 4 6 8 10 4" />
-      </svg>
-    </div>
-  );
-}
-
-const RACE_ETHNICITY_OPTIONS = [
-  { value: "American Indian or Alaska Native", label: "American Indian or Alaska Native" },
-  { value: "Asian", label: "Asian" },
-  { value: "Black or African American", label: "Black or African American" },
-  { value: "Hispanic or Latino", label: "Hispanic or Latino" },
-  { value: "Native Hawaiian or Pacific Islander", label: "Native Hawaiian or Pacific Islander" },
-  { value: "White", label: "White" },
-  { value: "Two or more races", label: "Two or more races" },
-  { value: "Other", label: "Other" },
+const GRADE_PREDEFINED = [
+  "Pre-K",
+  "Kindergarten",
+  "1st Grade",
+  "2nd Grade",
+  "3rd Grade",
+  "4th Grade",
+  "5th Grade",
+  "6th Grade",
+  "7th Grade",
+  "8th Grade",
+  "9th Grade",
+  "10th Grade",
+  "11th Grade",
+  "12th Grade",
+  "College/Post-Secondary"
 ];
 
-const GENDER_OPTIONS = [
-  { value: "Male", label: "Male" },
-  { value: "Female", label: "Female" },
-  { value: "Non-binary", label: "Non-binary" },
-  { value: "Transgender", label: "Transgender" },
-  { value: "Other", label: "Other" },
+const RACE_PREDEFINED = [
+  "American Indian or Alaska Native",
+  "Asian",
+  "Black or African American",
+  "Hispanic or Latino",
+  "Native Hawaiian or Pacific Islander",
+  "White",
+  "Two or more races"
 ];
 
-const GRADE_OPTIONS = [
-  { value: "Pre-K", label: "Pre-K" },
-  { value: "Kindergarten", label: "Kindergarten" },
-  { value: "1st Grade", label: "1st Grade" },
-  { value: "2nd Grade", label: "2nd Grade" },
-  { value: "3rd Grade", label: "3rd Grade" },
-  { value: "4th Grade", label: "4th Grade" },
-  { value: "5th Grade", label: "5th Grade" },
-  { value: "6th Grade", label: "6th Grade" },
-  { value: "7th Grade", label: "7th Grade" },
-  { value: "8th Grade", label: "8th Grade" },
-  { value: "9th Grade", label: "9th Grade" },
-  { value: "10th Grade", label: "10th Grade" },
-  { value: "11th Grade", label: "11th Grade" },
-  { value: "12th Grade", label: "12th Grade" },
-  { value: "College/Post-Secondary", label: "College/Post-Secondary" },
-  { value: "Other", label: "Other" },
+const GENDER_PREDEFINED = [
+  "Male",
+  "Female",
+  "Non-binary",
+  "Transgender"
+];
+
+const LANGUAGE_PREDEFINED = [
+  "English",
+  "Spanish",
+  "Amharic",
+  "Nepali",
+  "Somali",
+  "Zomi"
 ];
 
 interface ColumnProps {
@@ -495,14 +422,18 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <CollaborativeSelect
+        <SelectWithOther
           value={row.original.last_grade_completed ?? ""}
-          options={GRADE_OPTIONS}
           placeholder=""
           onChange={(val) => handleFieldChange(row.original.id, 'last_grade_completed', val)}
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_grade_completed')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
+          studentId={row.original.id}
+          activeCursorsRef={activeCursorsRef}
+          fieldName="last_grade_completed"
+          predefined={GRADE_PREDEFINED}
+          inputPlaceholder="Type grade..."
           className={cn(
             "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
             isDark ? "text-white" : "text-slate-900"
@@ -546,14 +477,18 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <CollaborativeSelect
+        <SelectWithOther
           value={row.original.race_ethnicity ?? ""}
-          options={RACE_ETHNICITY_OPTIONS}
           placeholder=""
           onChange={(val) => handleFieldChange(row.original.id, 'race_ethnicity', val)}
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'race_ethnicity')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
+          studentId={row.original.id}
+          activeCursorsRef={activeCursorsRef}
+          fieldName="race_ethnicity"
+          predefined={RACE_PREDEFINED}
+          inputPlaceholder="Type race/ethnicity..."
           className={cn(
             "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
             isDark ? "text-white" : "text-slate-900"
@@ -571,14 +506,18 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <CollaborativeSelect
+        <SelectWithOther
           value={row.original.gender ?? ""}
-          options={GENDER_OPTIONS}
           placeholder=""
           onChange={(val) => handleFieldChange(row.original.id, 'gender', val)}
           onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'gender')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
+          studentId={row.original.id}
+          activeCursorsRef={activeCursorsRef}
+          fieldName="gender"
+          predefined={GENDER_PREDEFINED}
+          inputPlaceholder="Type gender..."
           className={cn(
             "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
             isDark ? "text-white" : "text-slate-900"
@@ -596,7 +535,7 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => (
-        <LanguageSelectWithOther
+        <SelectWithOther
           value={row.original.first_language ?? ""}
           placeholder=""
           onChange={(val) => handleFieldChange(row.original.id, 'first_language', val)}
@@ -605,6 +544,9 @@ export const getColumns = ({
           isDark={isDark}
           studentId={row.original.id}
           activeCursorsRef={activeCursorsRef}
+          fieldName="first_language"
+          predefined={LANGUAGE_PREDEFINED}
+          inputPlaceholder="Type language..."
           className={cn(
             "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
             isDark ? "text-white" : "text-slate-900"
