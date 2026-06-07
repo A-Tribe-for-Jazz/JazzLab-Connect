@@ -459,7 +459,7 @@ export default function PartnerDashboard() {
                           <button
                             onClick={e => handleStartStep(step.number, step.to, e)}
                             className={cn(
-                              'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                              'rounded-xl h-10 w-44 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center justify-center',
                               isDark
                                 ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300'
                                 : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
@@ -471,24 +471,24 @@ export default function PartnerDashboard() {
                         {!locked && status === 'in_progress' && (
                           <>
                             <button
+                              onClick={e => handleStartStep(step.number, step.to, e)}
+                              className={cn(
+                                'rounded-xl h-10 w-44 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center justify-center',
+                                isDark
+                                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                                  : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
+                              )}>
+                              View/Edit
+                            </button>
+                            <button
                               onClick={e => handleMarkComplete(step.number, e)}
                               className={cn(
-                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                                'rounded-xl h-10 w-44 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center justify-center',
                                 isDark
                                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
                                   : 'bg-emerald-50 border-emerald-200/60 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300'
                               )}>
                               <span>Mark as Complete</span>
-                            </button>
-                            <button
-                              onClick={e => handleStartStep(step.number, step.to, e)}
-                              className={cn(
-                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
-                                isDark
-                                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
-                              )}>
-                              View/Edit
                             </button>
                           </>
                         )}
@@ -498,15 +498,15 @@ export default function PartnerDashboard() {
                             <button
                               onClick={e => handleStartStep(step.number, step.to, e)}
                               className={cn(
-                                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border',
+                                'rounded-xl h-10 w-44 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center justify-center',
                                 isDark
                                   ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
+                                  : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:bg-slate-50 hover:text-slate-900'
                               )}>
                               View/Edit
                             </button>
                             <div className={cn(
-                              'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] border flex items-center justify-center select-none shadow-sm',
+                              'rounded-xl h-10 w-44 font-semibold tracking-wide text-[13px] border flex items-center justify-center select-none shadow-sm',
                               isDark
                                 ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400'
                                 : 'bg-emerald-50/50 border-emerald-200/60 text-emerald-700'
