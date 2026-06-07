@@ -13,10 +13,9 @@ interface PicksGridProps {
   organizationId: string;
   isDark?: boolean;
   activeCampDayId?: string | null;
-  navActions?: React.ReactNode;
 }
 
-export default function PicksGrid({ organizationId, isDark = false, activeCampDayId = null, navActions }: PicksGridProps) {
+export default function PicksGrid({ organizationId, isDark = false, activeCampDayId = null }: PicksGridProps) {
   const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<LabPickRow[]>([]);
   const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
@@ -466,12 +465,6 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
                   )}
                 />
               </div>
-
-              {navActions && (
-                <div className="flex items-center justify-center gap-3 shrink-0">
-                  {navActions}
-                </div>
-              )}
             </div>
           }
         />

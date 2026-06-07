@@ -44,10 +44,9 @@ interface StudentGridProps {
   organizationId: string;
   isDark?: boolean;
   activeCampDayId?: string | null;
-  navActions?: React.ReactNode;
 }
 
-export default function StudentGrid({ organizationId, isDark = false, activeCampDayId = null, navActions }: StudentGridProps) {
+export default function StudentGrid({ organizationId, isDark = false, activeCampDayId = null }: StudentGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -696,12 +695,6 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
                 />
               </div>
 
-              {/* Middle: Navigation Actions */}
-              {navActions && (
-                <div className="flex items-center justify-center gap-3 shrink-0">
-                  {navActions}
-                </div>
-              )}
 
               {/* Right: Filter Controls */}
               <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
