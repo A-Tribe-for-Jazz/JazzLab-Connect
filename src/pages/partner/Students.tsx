@@ -28,24 +28,9 @@ export default function PartnerStudents() {
     )}>
       {/* Page Action Header */}
       <div className={cn(
-        "w-full px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b shrink-0 gap-4 transition-colors duration-700",
+        "w-full px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-end border-b shrink-0 gap-4 transition-colors duration-700",
         isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
       )}>
-        <div className="space-y-1">
-          <h1 className={cn(
-            "text-xl font-black tracking-tight",
-            isDark ? "text-white" : "text-slate-900"
-          )}>
-            Student Data
-          </h1>
-          <p className={cn(
-            "text-xs font-semibold",
-            isDark ? "text-slate-400" : "text-slate-500"
-          )}>
-            Step 1 of 4: Student Demographics
-          </p>
-        </div>
-
         <div className="flex items-center gap-3">
           <button
             onClick={(e) => handleNavClick(e, '/partner/dashboard')}

@@ -74,7 +74,7 @@ export default function PartnerLayout() {
   };
 
   const navItems = [
-    { name: 'Overview', path: '/partner/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', path: '/partner/dashboard', icon: LayoutDashboard },
     { name: 'Student Data', path: '/partner/students', icon: Users },
     { name: 'Lab Preferences', path: '/partner/lab-picks', icon: Microscope },
     { name: 'Staff Data', path: '/partner/staff', icon: UserCheck },
