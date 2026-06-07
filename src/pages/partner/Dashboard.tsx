@@ -394,7 +394,7 @@ export default function PartnerDashboard() {
               >
                 {/* Step content */}
                 <div className={cn(
-                  'flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-2xl border transition-all duration-300 w-full',
+                  'flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 rounded-2xl border transition-all duration-300 w-full',
                   status === 'completed'
                     ? isDark ? 'bg-[#051a10] border-emerald-500/15' : 'bg-[#f0fbf5] border-emerald-100 shadow-xs'
                     : status === 'in_progress'
@@ -403,7 +403,7 @@ export default function PartnerDashboard() {
                 )}>
                   {/* Inner content wrapper to apply layout but not card opacity directly (so watermark remains visible) */}
                   <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
-                    <div className="flex items-start gap-6 flex-1 min-w-0">
+                    <div className="flex items-center gap-6 flex-1 min-w-0">
                       {/* Large watermark number */}
                       <div className="flex flex-col items-center shrink-0 w-20">
                         <span className={cn(
