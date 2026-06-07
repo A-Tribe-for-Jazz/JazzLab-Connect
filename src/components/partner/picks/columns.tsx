@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { User, CheckCircle2, AlertCircle, Check, Eraser, Loader2, FileText } from "lucide-react";
+import { User, CheckCircle2, AlertCircle, Check, Eraser, Loader2, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,14 +91,22 @@ function BlockedCell({ minAge, maxAge, isDark }: {
           : isDark ? 'bg-white/[0.015]' : 'bg-slate-50/80'
       )}
     >
-      <span className={cn(
-        'font-bold',
-        active
-          ? cn('text-[9px] tracking-widest uppercase', isDark ? 'text-rose-400' : 'text-rose-500')
-          : cn('text-[11px]', isDark ? 'text-slate-700' : 'text-slate-300')
-      )}>
-        {active ? `${ageLabel} only` : '—'}
-      </span>
+      {active ? (
+        <span className={cn(
+          'font-bold text-[9px] tracking-widest uppercase',
+          isDark ? 'text-rose-400' : 'text-rose-500'
+        )}>
+          {ageLabel} only
+        </span>
+      ) : (
+        <X
+          size={12}
+          strokeWidth={3}
+          className={cn(
+            isDark ? 'text-rose-500/40' : 'text-rose-400/50'
+          )}
+        />
+      )}
     </div>
   );
 }
