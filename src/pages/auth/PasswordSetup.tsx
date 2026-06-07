@@ -337,7 +337,7 @@ export default function PasswordSetup() {
             <section className="space-y-1">
               <h4 className="font-bold text-slate-800 text-[13px]">1. Data We Collect</h4>
               <p>
-                We collect names, email addresses, student demographic details (age, grade, race/ethnicity, gender, primary language), and lab preferences selections.
+                We collect partner and staff details (names, titles, email addresses, and phone numbers), student demographic details (first and last name, age, last grade completed, home zip code, race/ethnicity, gender, and first language), student program hours (where applicable), and student lab preferences.
               </p>
             </section>
             <section className="space-y-1">
