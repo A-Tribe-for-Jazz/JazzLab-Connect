@@ -367,7 +367,7 @@ export default function PartnerDashboard() {
           )}>
              <div className="space-y-2">
               <span className={cn('text-[10px] font-black uppercase tracking-wider', isDark ? 'text-sky-400/90' : 'text-sky-700/90')}>
-                Collaborative Setup
+                Team Collaboration
               </span>
               <p className={cn('text-xs font-semibold leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-600')}>
                 Invite other team members or administrators to access this portal to view or edit data.
