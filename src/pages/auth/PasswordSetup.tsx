@@ -349,7 +349,7 @@ export default function PasswordSetup() {
             <section className="space-y-1">
               <h4 className="font-bold text-slate-800 text-[13px]">3. Information Sharing Restrictions</h4>
               <p>
-                A Tribe for Jazz and Jazz Lab Connect does not sell, rent, or share personally identifiable information of students or staff with third parties. Data access is strictly restricted to authorized program coordinators.
+                Jazz Lab Connect does not sell, rent, or share personally identifiable information of students or staff with third parties. Data access is strictly restricted to authorized program coordinators.
               </p>
             </section>
             <section className="space-y-1">
