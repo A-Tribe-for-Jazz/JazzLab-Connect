@@ -78,7 +78,6 @@ export default function PartnerDashboard() {
   const [organization, setOrganization] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [shareButtonStyle, setShareButtonStyle] = useState<'outline' | 'filled_sky' | 'tint_sky' | 'ghost'>('outline');
   const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
   const [stats, setStats] = useState<Stats>({
     target: 50,
@@ -339,31 +338,7 @@ export default function PartnerDashboard() {
     )}>
       <div className="w-full px-8 pt-16 space-y-12 partner-enter">
 
-        {/* Button Style Customizer Selector */}
-        <div className="flex justify-end w-full -mb-6 z-20 relative">
-          <div className={cn(
-            'flex items-center gap-1 p-1 rounded-xl text-[11px] font-bold border transition-colors',
-            isDark ? 'bg-slate-950/40 border-white/5' : 'bg-slate-100 border-slate-200 shadow-xs'
-          )}>
-            <span className={cn('px-2.5 text-slate-400 font-extrabold uppercase tracking-widest text-[9px]')}>Share Button Style:</span>
-            {(['outline', 'filled_sky', 'tint_sky', 'ghost'] as const).map((style) => (
-              <button
-                key={style}
-                onClick={() => setShareButtonStyle(style)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg transition-all capitalize',
-                  shareButtonStyle === style
-                    ? isDark
-                      ? 'bg-white/10 text-white shadow-xs'
-                      : 'bg-white text-slate-800 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-655 hover:bg-slate-200/40 dark:hover:bg-white/5'
-                )}
-              >
-                {style.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* ── Banner Header ────────────────────────────────────────────────── */}
         <div className={cn(
@@ -376,17 +351,9 @@ export default function PartnerDashboard() {
           <div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
 
           <div className="lg:col-span-2 space-y-4 relative z-10">
-            <div className="space-y-2">
-              <span className={cn(
-                'text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',
-                isDark ? 'bg-sky-500/10 border-sky-500/20 text-sky-400' : 'bg-sky-50 border-sky-100 text-sky-700'
-              )}>
-                Partner Portal
-              </span>
-              <h1 className={cn('text-3xl font-black tracking-tight mt-2', isDark ? 'text-white' : 'text-slate-900')}>
-                Welcome back, {profile?.full_name || 'Partner'}
-              </h1>
-            </div>
+            <h1 className={cn('text-3xl font-black tracking-tight', isDark ? 'text-white' : 'text-slate-900')}>
+              Welcome back, {profile?.full_name || 'Partner'}
+            </h1>
             <p className={cn('text-sm font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
               Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
             </p>
@@ -411,29 +378,12 @@ export default function PartnerDashboard() {
             </div>
             <Button
               onClick={() => setShowShareModal(true)}
-              variant={shareButtonStyle === 'ghost' ? 'ghost' : 'outline'}
+              variant="outline"
               className={cn(
-                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto justify-center',
-                shareButtonStyle === 'outline' && (
-                  isDark
-                    ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                    : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
-                ),
-                shareButtonStyle === 'filled_sky' && (
-                  isDark
-                    ? 'bg-sky-500 border-sky-500 text-white hover:bg-sky-400'
-                    : 'bg-sky-500 border-sky-500 text-white hover:bg-sky-600'
-                ),
-                shareButtonStyle === 'tint_sky' && (
-                  isDark
-                    ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300'
-                    : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
-                ),
-                shareButtonStyle === 'ghost' && (
-                  isDark
-                    ? 'bg-transparent border-transparent text-slate-400 hover:bg-white/5 hover:text-white'
-                    : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-100/50 hover:text-slate-900'
-                )
+                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-xs border w-full md:w-auto justify-center',
+                isDark
+                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:shadow-sm hover:bg-slate-50'
               )}>
               <Share2 size={16} className="mr-2 text-slate-400 shrink-0" /> Share Access
             </Button>
