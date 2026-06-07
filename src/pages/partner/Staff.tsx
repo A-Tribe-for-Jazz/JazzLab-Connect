@@ -38,7 +38,7 @@ export default function PartnerStaff() {
         <div className="flex items-center gap-3 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
           <Info size={16} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
           <p className="leading-relaxed">
-            Please enter the name, email address, and cell phone number of each staff member who will be attending Jazz Lab.
+            Please enter the name, title, email address, and cell phone number (optional) of each staff member who will be attending Jazz Lab.
           </p>
         </div>
 

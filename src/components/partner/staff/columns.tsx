@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback, startTransition } from 'react
 export type StaffRow = {
   id: string;
   name: string;
+  title: string;
   email: string;
   cell: string;
   organization_id?: string;
@@ -149,6 +150,29 @@ export const getColumns = ({
       size: 220,
     },
     {
+      accessorKey: 'title',
+      header: () => (
+        <div className="flex items-center">
+          <span className={headerTextClass}>Title</span>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <CollaborativeInput
+          value={row.original.title}
+          placeholder=""
+          onChange={(e) => handleFieldChange(row.original.id, 'title', e.target.value)}
+          onFocus={() => handleCellFocus?.(row.original.id, 'title')}
+          onBlur={() => handleCellBlur?.()}
+          className={inputCls}
+          staffId={row.original.id}
+          fieldName="title"
+          activeCursorsRef={activeCursorsRef}
+        />
+      ),
+      meta: { isEditable: true },
+      size: 160,
+    },
+    {
       accessorKey: 'email',
       header: () => (
         <div className="flex items-center">
@@ -204,10 +228,11 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { sync_status, name, email, cell } = row.original;
-        const fields = [name, email, cell];
-        const hasAnyData = fields.some((f) => f !== '' && f !== null && f !== undefined);
-        const isAllFilled = fields.every((f) => f !== '' && f !== null && f !== undefined);
+        const { sync_status, name, title, email, cell } = row.original;
+        const requiredFields = [name, title, email];
+        const allFields = [name, title, email, cell];
+        const hasAnyData = allFields.some((f) => f !== '' && f !== null && f !== undefined);
+        const isAllFilled = requiredFields.every((f) => f !== '' && f !== null && f !== undefined);
 
         return (
           <div className="flex items-center justify-center h-10">
@@ -237,8 +262,8 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { name, email, cell } = row.original;
-        const hasAnyData = [name, email, cell].some((f) => f !== '' && f !== null && f !== undefined);
+        const { name, title, email, cell } = row.original;
+        const hasAnyData = [name, title, email, cell].some((f) => f !== '' && f !== null && f !== undefined);
         if (!hasAnyData) return <div className="h-10 w-full" />;
         return (
           <div className="h-full w-full relative min-h-[40px]">

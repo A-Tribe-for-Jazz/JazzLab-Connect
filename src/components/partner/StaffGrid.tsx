@@ -17,6 +17,7 @@ const FLUSH_INTERVAL_MS = 5_000;
 const makeEmptyRow = (orgId: string, idx: number): StaffRow => ({
   id: `${PHANTOM_PREFIX}${crypto.randomUUID()}`,
   name: '',
+  title: '',
   email: '',
   cell: '',
   organization_id: orgId,
@@ -74,12 +75,13 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
 
       if (data) {
         const existing = data
-          .filter((s) => s.name?.trim() || s.email?.trim() || s.cell?.trim())
+          .filter((s) => s.name?.trim() || s.title?.trim() || s.email?.trim() || s.cell?.trim())
           .map((s, idx) => ({
             ...s,
             sync_status: 'synced' as const,
             order_index: s.order_index ?? idx,
             name: s.name ?? '',
+            title: s.title ?? '',
             email: s.email ?? '',
             cell: s.cell ?? '',
           })) as StaffRow[];
@@ -118,7 +120,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
       for (const id of dirtyIds) {
         const member = currentStaff.find((s) => s.id === id);
         if (!member) continue;
-        const hasData = [member.name, member.email, member.cell].some(
+        const hasData = [member.name, member.title, member.email, member.cell].some(
           (f) => f !== '' && f !== null && f !== undefined
         );
         if (!hasData) continue;
@@ -173,7 +175,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
               if (inserted) {
                 next = next.map((s) =>
                   s.id === p.phantomId
-                    ? { ...s, ...inserted, name: inserted.name ?? '', email: inserted.email ?? '', cell: inserted.cell ?? '', sync_status: 'synced' as const }
+                    ? { ...s, ...inserted, name: inserted.name ?? '', title: inserted.title ?? '', email: inserted.email ?? '', cell: inserted.cell ?? '', sync_status: 'synced' as const }
                     : s
                 );
               }
@@ -230,7 +232,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
           return next;
         }
         const phantomIdx = prev.findIndex(
-          (s) => isPhantom(s.id) && !s.name?.trim() && !s.email?.trim() && !s.cell?.trim()
+          (s) => isPhantom(s.id) && !s.name?.trim() && !s.title?.trim() && !s.email?.trim() && !s.cell?.trim()
         );
         const newRow: StaffRow = {
           ...makeEmptyRow(organizationId, phantomIdx !== -1 ? phantomIdx : prev.length),
@@ -378,7 +380,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
   const filteredStaff = useMemo(
     () =>
       staff.filter((s) =>
-        `${s.name || ''} ${s.email || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
+        `${s.name || ''} ${s.title || ''} ${s.email || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
       ),
     [staff, searchTerm]
   );

@@ -52,8 +52,8 @@ const STEPS: StepConfig[] = [
     title: 'Staff Data',
     to: '/partner/staff',
     getSubtitle: (s, _) => {
-      if (s.staffCount === 0) return 'No staff added yet. Add your staff with their name, email, and cell number.';
-      if (s.staffMissingInfo > 0) return `${s.staffMissingInfo} staff member${s.staffMissingInfo !== 1 ? 's' : ''} missing contact details.`;
+      if (s.staffCount === 0) return 'No staff added yet. Add your staff with their name, title, and email.';
+      if (s.staffMissingInfo > 0) return `${s.staffMissingInfo} staff member${s.staffMissingInfo !== 1 ? 's' : ''} missing profile details.`;
       return 'All staff profiles completed!';
     }
   },
@@ -196,13 +196,13 @@ export default function PartnerDashboard() {
 
       const { data: staffData } = await supabase
         .from('staff_members')
-        .select('id, name, email, cell')
+        .select('id, name, title, email, cell')
         .eq('organization_id', orgId);
 
-      const realStaff = (staffData || []).filter(s => s.name?.trim() || s.email?.trim() || s.cell?.trim());
+      const realStaff = (staffData || []).filter(s => s.name?.trim() || s.title?.trim() || s.email?.trim() || s.cell?.trim());
       const staffCount = realStaff.length;
       const staffMissingInfo = realStaff.filter(
-        s => !s.name?.trim() || !s.email?.trim() || !s.cell?.trim()
+        s => !s.name?.trim() || !s.title?.trim() || !s.email?.trim()
       ).length;
 
       setStats({ target: 50, count, missingDemo, missingPicks, fullyReady, staffCount, staffMissingInfo });
@@ -285,7 +285,7 @@ export default function PartnerDashboard() {
     ];
     if (stepNum === 3) return [
       { text: <>Add at least <strong>1 staff member</strong></>, done: stats.staffCount > 0 },
-      { text: <>Complete all staff profiles (<u><strong>Name, Email, Cell Number</strong></u>)</>, done: stats.staffCount > 0 && stats.staffMissingInfo === 0 },
+      { text: <>Complete all staff profiles (<u><strong>Name, Title, Email</strong></u>)</>, done: stats.staffCount > 0 && stats.staffMissingInfo === 0 },
       { text: <>Declare Staff phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
     ];
     if (stepNum === 4) return [
