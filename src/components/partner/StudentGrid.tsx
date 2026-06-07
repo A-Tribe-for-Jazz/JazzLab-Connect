@@ -775,7 +775,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
             </div>
           }
         />
-      {/* Floating Guide Me / Tutorial Button */}
+      {/* Floating Guide Me / Tutorial Button (Hidden for now)
       <button
         onClick={() => setIsTourOpen(true)}
         className={cn(
@@ -789,6 +789,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
         <Play size={12} className="fill-current animate-pulse text-sky-400" />
         <span>Guide Me</span>
       </button>
+      */}
 
       {/* Render Portal Student Data Tour */}
       {isTourOpen && (

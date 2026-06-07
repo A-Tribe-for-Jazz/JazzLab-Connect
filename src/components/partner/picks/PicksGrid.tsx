@@ -470,7 +470,7 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
         />
       </div>
 
-      {/* Floating Play Guide / Tutorial Button */}
+      {/* Floating Play Guide / Tutorial Button (Hidden for now)
       <button
         onClick={() => setIsTourOpen(true)}
         className={cn(
@@ -484,6 +484,7 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
         <Play size={12} className="fill-current animate-pulse text-sky-400" />
         <span>Guide Me</span>
       </button>
+      */}
 
       {/* Render Portal Tour Animation */}
       {isTourOpen && (
