@@ -641,7 +641,8 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
           body: JSON.stringify({
             email: formData.contactEmail,
             role: 'partner',
-            organizationId: orgData.id
+            organizationId: orgData.id,
+            fullName: formData.contactName
           })
         });
       }
