@@ -200,7 +200,7 @@ export const getColumns = ({
       accessorKey: 'cell',
       header: () => (
         <div className="flex items-center">
-          <span className={headerTextClass}>Cell</span>
+          <span className={headerTextClass}>Phone Number (optional)</span>
         </div>
       ),
       cell: ({ row }) => (
@@ -218,7 +218,7 @@ export const getColumns = ({
         />
       ),
       meta: { isEditable: true },
-      size: 160,
+      size: 200,
     },
     {
       id: 'status',
