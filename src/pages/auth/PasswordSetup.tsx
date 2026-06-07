@@ -247,16 +247,6 @@ export default function PasswordSetup() {
                   </form>
                 )}
 
-                {/* Encryption Security Badge */}
-                <div className="p-3 rounded-xl border border-sky-500/10 bg-sky-500/[0.02] flex items-start gap-2.5 select-none">
-                  <ShieldCheck size={16} className="text-sky-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] font-bold text-sky-900 uppercase tracking-wider">End-to-End Encryption</p>
-                    <p className="text-[10px] font-semibold text-slate-500 leading-normal">
-                      Protected by secure end-to-end encryption to safeguard your credentials and organizational data.
-                    </p>
-                  </div>
-                </div>
 
               </div>
             </div>
