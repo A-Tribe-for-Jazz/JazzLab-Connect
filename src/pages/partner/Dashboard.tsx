@@ -166,7 +166,10 @@ export default function PartnerDashboard() {
         }
       }
 
-      if (foundIncomplete) {
+      const hasScrolledBefore = sessionStorage.getItem(`dashboard_scrolled_${profile.id}`);
+      if (!hasScrolledBefore) {
+        sessionStorage.setItem(`dashboard_scrolled_${profile.id}`, 'true');
+      } else if (foundIncomplete) {
         setTimeout(() => {
           const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
           if (stepEl) {
