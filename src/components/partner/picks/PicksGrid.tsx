@@ -33,14 +33,14 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
   const [isTourOpen, setIsTourOpen] = useState(false);
 
   // Auto-start tutorial once loading completes if they haven't seen it yet
-  useEffect(() => {
-    if (!loading && students.length > 0) {
-      const hasSeen = localStorage.getItem('has_seen_lab_tour');
-      if (!hasSeen) {
-        setIsTourOpen(true);
-      }
-    }
-  }, [loading, students]);
+  // useEffect(() => {
+  //   if (!loading && students.length > 0) {
+  //     const hasSeen = localStorage.getItem('has_seen_lab_tour');
+  //     if (!hasSeen) {
+  //       setIsTourOpen(true);
+  //     }
+  //   }
+  // }, [loading, students]);
 
   // Always-fresh refs so handlers inside memoized columns never go stale
   const studentsRef = useRef<LabPickRow[]>(students);

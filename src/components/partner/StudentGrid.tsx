@@ -69,14 +69,14 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   const [isTourOpen, setIsTourOpen] = useState(false);
 
   // Auto-play Student Data guide if they haven't seen it yet
-  useEffect(() => {
-    if (!loading && students.length > 0) {
-      const hasSeen = localStorage.getItem('has_seen_dir_tour');
-      if (!hasSeen) {
-        setIsTourOpen(true);
-      }
-    }
-  }, [loading, students]);
+  // useEffect(() => {
+  //   if (!loading && students.length > 0) {
+  //     const hasSeen = localStorage.getItem('has_seen_dir_tour');
+  //     if (!hasSeen) {
+  //       setIsTourOpen(true);
+  //     }
+  //   }
+  // }, [loading, students]);
 
   // Refs ─────────────────────────────────────────────────────────────────────
   const channelRef = useRef<any>(null);
