@@ -21,6 +21,35 @@ export default function PartnerLabPicks() {
     navigate(path);
   };
 
+  const navButtons = (
+    <>
+      <button
+        onClick={(e) => handleNavClick(e, '/partner/dashboard')}
+        className={cn(
+          "rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2",
+          isDark
+            ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
+            : "bg-white border-slate-200/60 text-slate-655 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
+        )}
+      >
+        <ArrowLeft size={16} />
+        Back to Dashboard
+      </button>
+      <button
+        onClick={(e) => handleNavClick(e, '/partner/staff')}
+        className={cn(
+          "rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2",
+          isDark
+            ? "bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
+            : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
+        )}
+      >
+        Next: Staff Data
+        <ArrowRight size={16} />
+      </button>
+    </>
+  );
+
   return (
     <div className={cn(
       "h-[calc(100dvh-5rem)] transition-colors duration-700 overflow-hidden flex flex-col",
@@ -43,40 +72,15 @@ export default function PartnerLabPicks() {
       <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
         <section className="relative flex-1 min-h-0 flex flex-col">
           {profile?.organization_id && (
-            <PicksGrid key={activeCampDayId} organizationId={profile.organization_id} isDark={isDark} activeCampDayId={activeCampDayId} />
+            <PicksGrid
+              key={activeCampDayId}
+              organizationId={profile.organization_id}
+              isDark={isDark}
+              activeCampDayId={activeCampDayId}
+              navActions={navButtons}
+            />
           )}
         </section>
-      </div>
-
-      {/* Bottom Navigation Bar */}
-      <div className={cn(
-        "w-full px-8 py-3 flex items-center justify-end border-t shrink-0 gap-3 transition-colors duration-700",
-        isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
-      )}>
-        <button
-          onClick={(e) => handleNavClick(e, '/partner/dashboard')}
-          className={cn(
-            "rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2",
-            isDark
-              ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
-              : "bg-white border-slate-200/60 text-slate-655 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
-          )}
-        >
-          <ArrowLeft size={16} />
-          Back to Dashboard
-        </button>
-        <button
-          onClick={(e) => handleNavClick(e, '/partner/staff')}
-          className={cn(
-            "rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2",
-            isDark
-              ? "bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
-              : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
-          )}
-        >
-          Next: Staff Data
-          <ArrowRight size={16} />
-        </button>
       </div>
     </div>
   );

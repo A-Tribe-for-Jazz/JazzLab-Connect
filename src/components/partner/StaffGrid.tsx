@@ -26,9 +26,10 @@ const makeEmptyRow = (orgId: string, idx: number): StaffRow => ({
 interface StaffGridProps {
   organizationId: string;
   isDark?: boolean;
+  navActions?: React.ReactNode;
 }
 
-export default function StaffGrid({ organizationId, isDark = false }: StaffGridProps) {
+export default function StaffGrid({ organizationId, isDark = false, navActions }: StaffGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -429,6 +430,11 @@ export default function StaffGrid({ organizationId, isDark = false }: StaffGridP
                 />
               </div>
 
+              {navActions && (
+                <div className="flex items-center justify-center gap-3 shrink-0">
+                  {navActions}
+                </div>
+              )}
             </div>
           }
         />
