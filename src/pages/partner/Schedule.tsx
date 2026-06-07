@@ -424,7 +424,7 @@ export default function PartnerSchedule() {
                   />
                   <input
                     type="text"
-                    placeholder="Search students..."
+                    placeholder="Search student..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className={cn(
@@ -464,7 +464,10 @@ export default function PartnerSchedule() {
                       )}>
                         <div className="flex items-center gap-2">
                           <Calendar size={14} className="transition-colors duration-300 shrink-0 text-sky-500/70" />
-                          <span className="truncate">
+                          <span 
+                            className="truncate" 
+                            title={selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select Day'}
+                          >
                             {selectedDayObj
                               ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
                               : 'Select Day'}
@@ -486,7 +489,7 @@ export default function PartnerSchedule() {
                       </SelectContent>
                     </Select>
                   )}
-
+ 
                   {/* Lab Selector */}
                   <Select value={activeLabId} onValueChange={(val) => setActiveLabId(val || 'all')}>
                     <SelectTrigger className={cn(
@@ -498,7 +501,10 @@ export default function PartnerSchedule() {
                     )}>
                       <div className="flex items-center gap-2">
                         <Filter size={14} className="transition-colors duration-300 shrink-0 text-sky-500/70" />
-                        <span className="truncate">
+                        <span 
+                          className="truncate"
+                          title={activeLabId === 'all' ? 'All Labs' : (activeLabs.find(l => l.id === activeLabId)?.name || 'All Labs')}
+                        >
                           {activeLabId === 'all' ? 'All Labs' : (activeLabs.find(l => l.id === activeLabId)?.name || 'All Labs')}
                         </span>
                       </div>
@@ -646,7 +652,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-[13px] font-medium text-slate-600 dark:text-slate-400 truncate">
+                          <div className="flex items-center h-10 px-4 text-[13px] font-medium text-slate-600 dark:text-slate-400 truncate" title={visitDate}>
                             {visitDate}
                           </div>
                         </td>
@@ -662,7 +668,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={row.studentName}>
                             {row.studentName}
                           </div>
                         </td>
@@ -672,7 +678,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={a1 ? a1.labName : 'Unassigned'}>
                             {a1 ? a1.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
@@ -680,7 +686,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate" title={s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "—"}>
                             {s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "—"}
                           </div>
                         </td>
@@ -690,7 +696,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={a2 ? a2.labName : 'Unassigned'}>
                             {a2 ? a2.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
@@ -698,7 +704,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate" title={s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "—"}>
                             {s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "—"}
                           </div>
                         </td>
@@ -708,7 +714,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={a3 ? a3.labName : 'Unassigned'}>
                             {a3 ? a3.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
@@ -716,7 +722,7 @@ export default function PartnerSchedule() {
                           "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
                           theme.border
                         )}>
-                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
+                          <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate" title={s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "—"}>
                             {s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "—"}
                           </div>
                         </td>

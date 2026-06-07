@@ -41,8 +41,7 @@ const STEPS: StepConfig[] = [
     title: 'Lab Preferences',
     to: '/partner/lab-picks',
     getSubtitle: (s, _) => {
-      if (s.count === 0) return 'Add students first.';
-      if (s.missingDemo > 0) return 'Complete demographics first.';
+      if (s.count === 0 || s.missingDemo > 0) return 'Please complete Step 1.';
       if (s.missingPicks > 0) return `${s.missingPicks} student${s.missingPicks !== 1 ? 's' : ''} missing lab selections.`;
       return 'All lab preferences completed!';
     }
@@ -52,7 +51,7 @@ const STEPS: StepConfig[] = [
     title: 'Staff Data',
     to: '/partner/staff',
     getSubtitle: (s, _) => {
-      if (s.staffCount === 0) return 'No staff added yet. Add your staff with their name, title, and email.';
+      if (s.staffCount === 0) return 'Please add staff members who will be attending Jazz Lab.';
       if (s.staffMissingInfo > 0) return `${s.staffMissingInfo} staff member${s.staffMissingInfo !== 1 ? 's' : ''} missing profile details.`;
       return 'All staff profiles completed!';
     }
@@ -70,6 +69,53 @@ const STEPS: StepConfig[] = [
 
 type StepStatus = 'pending' | 'in_progress' | 'completed';
 
+interface TextSegment {
+  text: string;
+  className?: string;
+}
+
+function TypewriterSegments({ segments, speed = 15, animate = true }: { segments: TextSegment[]; speed?: number; animate?: boolean }) {
+  const totalLength = segments.reduce((sum, s) => sum + s.text.length, 0);
+  const [visibleChars, setVisibleChars] = useState(animate ? 0 : totalLength);
+
+  useEffect(() => {
+    if (!animate) {
+      setVisibleChars(totalLength);
+      return;
+    }
+    setVisibleChars(0);
+    const interval = setInterval(() => {
+      setVisibleChars((prev) => {
+        if (prev >= totalLength) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, speed);
+    return () => clearInterval(interval);
+  }, [segments, totalLength, speed, animate]);
+
+  let charsLeft = visibleChars;
+  return (
+    <>
+      {segments.map((seg, idx) => {
+        if (charsLeft <= 0) return null;
+        const textToRender = seg.text.slice(0, charsLeft);
+        charsLeft -= seg.text.length;
+        return (
+          <span key={idx} className={seg.className}>
+            {textToRender}
+          </span>
+        );
+      })}
+      {animate && visibleChars < totalLength && (
+        <span className="inline-block w-[1.5px] h-4 bg-sky-500 dark:bg-sky-400 ml-0.5 animate-pulse shrink-0 align-middle" />
+      )}
+    </>
+  );
+}
+
 export default function PartnerDashboard() {
   const { profile } = useAuth();
   const { isDark, bgFlavor, activeCampDayId, campDays }: any = useOutletContext();
@@ -79,6 +125,7 @@ export default function PartnerDashboard() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
   const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
+  const [shouldAnimate, setShouldAnimate] = useState(false);
   const [stats, setStats] = useState<Stats>({
     target: 50,
     count: 0,
@@ -101,6 +148,12 @@ export default function PartnerDashboard() {
         }
       });
       setStepStatuses(saved);
+
+      const seen = localStorage.getItem(`seen_dashboard_anim_${profile.id}`);
+      if (!seen) {
+        setShouldAnimate(true);
+        localStorage.setItem(`seen_dashboard_anim_${profile.id}`, 'true');
+      }
 
       // Scroll to the first incomplete (pending or in_progress) step card
       let firstIncomplete = 1;
@@ -301,28 +354,6 @@ export default function PartnerDashboard() {
     navigate(to);
   };
 
-  const getChecklistItems = (stepNum: number, status: StepStatus) => {
-    if (stepNum === 1) return [
-      { text: <>Enroll at least <strong>1 student</strong> in your roster</>, done: stats.count > 0 },
-      { text: <>Complete demographic profiles (<u><strong>Age, Grade, Zip, Gender, Ethnicity, Language</strong></u>)</>, done: stats.count > 0 && stats.missingDemo === 0 },
-      { text: <>Declare Demographics phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
-    ];
-    if (stepNum === 2) return [
-      { text: <>Complete the <strong>Demographics roster setup</strong> (Step 1)</>, done: stats.count > 0 && stats.missingDemo === 0 },
-      { text: <>Select <strong>all eligible labs</strong> for every student</>, done: stats.count > 0 && stats.missingPicks === 0 },
-      { text: <>Declare Preferences phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
-    ];
-    if (stepNum === 3) return [
-      { text: <>Add at least <strong>1 staff member</strong></>, done: stats.staffCount > 0 },
-      { text: <>Complete all staff profiles (<u><strong>Name, Title, Email</strong></u>)</>, done: stats.staffCount > 0 && stats.staffMissingInfo === 0 },
-      { text: <>Declare Staff phase <u><strong>Finished</strong></u></>, done: status === 'completed' },
-    ];
-    if (stepNum === 4) return [
-      { text: <>Wait for the admin to <strong>finalize assignments</strong> and publish schedules</>, done: isFinalized },
-      { text: <>Review, download, and print <strong>student schedules</strong></>, done: status === 'completed' },
-    ];
-    return [];
-  };
 
   const completedCount = STEPS.filter(s => getStepStatus(s.number) === 'completed').length;
   const allComplete = completedCount === STEPS.length;
@@ -352,17 +383,31 @@ export default function PartnerDashboard() {
 
           <div className="lg:col-span-2 space-y-4 relative z-10">
             <h1 className={cn('text-3xl font-black tracking-tight', isDark ? 'text-white' : 'text-slate-900')}>
-              Welcome back, {profile?.full_name || 'Partner'}
+              Hi, {profile?.full_name || 'Partner'}
             </h1>
-            <p className={cn('text-base font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
+            <p className={cn('text-base font-medium leading-relaxed min-h-[5.5rem] sm:min-h-[4rem] md:min-h-[3rem]', isDark ? 'text-slate-400' : 'text-slate-655')}>
               {campDays && campDays.length > 1 ? (
-                <>
-                  Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
-                </>
+                <TypewriterSegments
+                  animate={shouldAnimate}
+                  speed={15}
+                  segments={[
+                    { text: 'Please ' },
+                    { text: 'select your Camp Day', className: 'underline font-bold text-sky-500 dark:text-sky-400' },
+                    { text: ' from the options at the top-left. Then, ' },
+                    { text: 'follow the steps below', className: 'underline font-bold' },
+                    { text: ' to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.' }
+                  ]}
+                />
               ) : (
-                <>
-                  Please <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
-                </>
+                <TypewriterSegments
+                  animate={shouldAnimate}
+                  speed={15}
+                  segments={[
+                    { text: 'Please ' },
+                    { text: 'follow the steps below', className: 'underline font-bold' },
+                    { text: ' to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.' }
+                  ]}
+                />
               )}
             </p>
           </div>
@@ -377,7 +422,7 @@ export default function PartnerDashboard() {
               <span className={cn('text-[10px] font-black uppercase tracking-wider', isDark ? 'text-sky-400/90' : 'text-sky-700/90')}>
                 Team Collaboration
               </span>
-              <p className={cn('text-xs font-semibold leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-600')}>
+              <p className={cn('text-[13px] font-semibold leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-655')}>
                 Invite other team members or administrators to access this portal to view or edit data.
               </p>
             </div>
@@ -432,14 +477,13 @@ export default function PartnerDashboard() {
                 'text-[9px] font-black uppercase tracking-widest transition-colors duration-700',
                 allComplete ? 'text-emerald-500' : isDark ? 'text-white/20' : 'text-slate-300'
               )}>
-                Finish
+                All Set
               </span>
             </div>
           </div>
 
           {STEPS.map((step) => {
             const status = getStepStatus(step.number);
-            const checklist = getChecklistItems(step.number, status);
             const locked = isStepLocked(step.number);
 
             return (

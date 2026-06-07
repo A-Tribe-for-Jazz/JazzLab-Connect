@@ -154,10 +154,13 @@ export const getColumns = ({
       ),
       cell: ({ row }) => (
         <div id={row.index === 0 ? "tour-student-name" : undefined} className="px-4 flex items-center h-10 w-full min-w-0">
-          <span className={cn(
-            "font-semibold text-[13px] truncate",
-            isDark ? "text-white" : "text-slate-900"
-          )}>
+          <span
+            className={cn(
+              "font-semibold text-[13px] truncate",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            title={`${row.original.first_name} ${row.original.last_name}`}
+          >
             {row.original.first_name} {row.original.last_name}
           </span>
         </div>

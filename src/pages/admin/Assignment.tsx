@@ -803,7 +803,7 @@ function OrgDataDrawer({ org, isDark, onClose }: { org: any; isDark: boolean; on
         <div className="flex-1 min-h-0 flex flex-col px-4 pb-4">
           <div className="w-full flex-1 min-h-0 flex flex-col partner-enter">
             <section className="relative flex-1 min-h-0 flex flex-col">
-              {activeTab === 'students' ? <StudentGrid organizationId={org.id} isDark={isDark} /> : <PicksGrid organizationId={org.id} isDark={isDark} />}
+              {activeTab === 'students' ? <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} /> : <PicksGrid organizationId={org.id} isDark={isDark} />}
             </section>
           </div>
         </div>

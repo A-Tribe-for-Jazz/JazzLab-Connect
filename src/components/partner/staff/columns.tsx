@@ -72,7 +72,8 @@ function CollaborativeInput({
         onChange={handleChange}
         onFocus={onFocus}
         onBlur={onBlur}
-        className={cn(className, 'bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90')}
+        className={cn(className, 'bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 truncate')}
+        title={localValue}
       />
     </div>
   );

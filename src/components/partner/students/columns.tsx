@@ -81,8 +81,9 @@ function CollaborativeInput({
         onBlur={onBlur}
         className={cn(
           className,
-          "bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90"
+          "bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 truncate"
         )}
+        title={localValue}
       />
     </div>
   );
@@ -198,13 +199,16 @@ function SelectWithOther({
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
     )}>
       {/* Underlying Display Wrapper */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-6 text-center">
-        <span className={cn(
-          "text-[12px] leading-tight font-semibold line-clamp-2 break-words",
-          !localValue
-            ? (isDark ? "text-slate-700" : "text-slate-300")
-            : (isDark ? "text-white" : "text-slate-900")
-        )}>
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-4 text-center">
+        <span
+          className={cn(
+            "text-[12px] leading-tight font-semibold truncate w-full block",
+            !localValue
+              ? (isDark ? "text-slate-700" : "text-slate-350")
+              : (isDark ? "text-white" : "text-slate-900")
+          )}
+          title={visibleText}
+        >
           {visibleText}
         </span>
       </div>
@@ -292,6 +296,7 @@ interface ColumnProps {
   activeCursorsRef?: { current: { [cellKey: string]: string } };
   handleCellFocus?: (studentId: string, field: string) => void;
   handleCellBlur?: () => void;
+  isAdmin?: boolean;
 }
 
 const defaultCursorsRef = { current: {} as { [cellKey: string]: string } };
@@ -302,11 +307,12 @@ export const getColumns = ({
   isDark,
   activeCursorsRef = defaultCursorsRef,
   handleCellFocus,
-  handleCellBlur
+  handleCellBlur,
+  isAdmin = false
 }: ColumnProps): ColumnDef<StudentRow>[] => {
   const headerTextClass = "font-bold text-[11px] tracking-wide " + (isDark ? "text-slate-400" : "text-slate-500");
 
-  return [
+  const cols: ColumnDef<StudentRow>[] = [
     {
       id: "serial",
       header: () => (
@@ -594,7 +600,17 @@ export const getColumns = ({
       cell: ({ row }) => {
         const { sync_status, first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
 
-        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours];
+        const fields = [
+          first_name,
+          last_name,
+          age,
+          last_grade_completed,
+          home_zip_code,
+          race_ethnicity,
+          gender,
+          first_language,
+          ...(isAdmin ? [total_program_hours] : [])
+        ];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
         const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
 
@@ -636,7 +652,17 @@ export const getColumns = ({
       ),
       cell: ({ row }) => {
         const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
-        const fields = [first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours];
+        const fields = [
+          first_name,
+          last_name,
+          age,
+          last_grade_completed,
+          home_zip_code,
+          race_ethnicity,
+          gender,
+          first_language,
+          ...(isAdmin ? [total_program_hours] : [])
+        ];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
 
         if (!hasAnyData) return <div className="h-10 w-full" />;
@@ -661,4 +687,11 @@ export const getColumns = ({
       size: 65,
     },
   ];
+
+  return cols.filter(col => {
+    if (!isAdmin && (col as any).accessorKey === "total_program_hours") {
+      return false;
+    }
+    return true;
+  });
 };

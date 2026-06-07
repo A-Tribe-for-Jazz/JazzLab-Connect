@@ -981,7 +981,7 @@ function OrgDataDrawer({
           <div className="w-full flex-1 min-h-0 flex flex-col partner-enter">
             <section className="relative flex-1 min-h-0 flex flex-col">
               {activeTab === 'students' ? (
-                <StudentGrid organizationId={org.id} isDark={isDark} />
+                <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} />
               ) : (
                 <PicksGrid organizationId={org.id} isDark={isDark} />
               )}
