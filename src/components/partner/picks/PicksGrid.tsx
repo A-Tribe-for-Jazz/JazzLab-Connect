@@ -468,18 +468,6 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
 
 
 
-              {/* Final Note Style: Lighter Gradient */}
-              <div className={cn(
-                "h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent transition-all duration-500 self-start md:self-auto flex-1 justify-center w-full md:w-auto",
-                isDark
-                  ? "bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80"
-                  : "bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80"
-              )}>
-                <Info size={14} className={cn("shrink-0 opacity-70 animate-pulse", isDark ? "text-indigo-400" : "text-indigo-500")} />
-                <span className="text-center">
-                  Select all eligible lab preferences per student by clicking cells <span className="font-bold">(1 = top choice)</span>. Age-restricted labs are blocked. Click <span className="font-bold">"Clear"</span> to reset. A green checkmark under <span className="font-bold">"Complete"</span> confirms completion.
-                </span>
-              </div>
             </div>
           }
         />

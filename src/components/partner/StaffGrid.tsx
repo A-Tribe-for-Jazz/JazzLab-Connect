@@ -429,20 +429,6 @@ export default function StaffGrid({ organizationId, isDark = false }: StaffGridP
                 />
               </div>
 
-              {/* Info note */}
-              <div
-                className={cn(
-                  'h-auto md:h-10 py-2 md:py-0 flex items-center gap-2 px-4 rounded-xl text-[11px] font-semibold border border-transparent flex-1 justify-center w-full md:w-auto',
-                  isDark
-                    ? 'bg-gradient-to-r from-indigo-500/[0.02] to-transparent text-indigo-200/80'
-                    : 'bg-gradient-to-r from-indigo-50/[0.3] to-transparent text-indigo-600/80'
-                )}
-              >
-                <Info size={14} className={cn('shrink-0 opacity-70', isDark ? 'text-indigo-400' : 'text-indigo-500')} />
-                <span className="text-center">
-                  Please enter the name, email address, and cell phone number of each staff member who will be attending Jazz Lab.
-                </span>
-              </div>
             </div>
           }
         />
