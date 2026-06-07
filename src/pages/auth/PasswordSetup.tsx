@@ -203,7 +203,7 @@ export default function PasswordSetup() {
                   <div className="space-y-0.5">
                     <p className="text-[9px] font-bold text-sky-900 uppercase tracking-wider">End-to-End Encryption</p>
                     <p className="text-[10px] font-semibold text-slate-500 leading-normal">
-                      Your credentials and session are fully encrypted in transit and at rest.
+                      Protected by secure end-to-end encryption to safeguard your credentials and organizational data.
                     </p>
                   </div>
                 </div>
