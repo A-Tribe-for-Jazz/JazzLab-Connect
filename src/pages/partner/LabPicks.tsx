@@ -31,8 +31,8 @@ export default function PartnerLabPicks() {
         "w-full px-8 py-3 flex flex-col md:flex-row items-start md:items-center justify-between border-b shrink-0 gap-4 transition-colors duration-700",
         isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
       )}>
-        <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
-          <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
+        <div className="flex items-center gap-3 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+          <Info size={16} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
           <p className="leading-relaxed">
             Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion.
           </p>
