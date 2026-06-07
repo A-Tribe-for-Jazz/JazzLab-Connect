@@ -386,10 +386,10 @@ export default function PartnerDashboard() {
               onClick={() => setShowShareModal(true)}
               variant="outline"
               className={cn(
-                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full',
+                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto',
                 isDark
                   ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                  : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
+                  : 'bg-white border-slate-200/60 text-slate-650 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
               )}>
               <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
             </Button>
