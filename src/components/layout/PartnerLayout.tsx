@@ -1,57 +1,33 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, Microscope, Sun, Moon, Calendar, UserCheck, Palette, Check } from 'lucide-react';
+import { LayoutDashboard, Users, Microscope, Sun, Moon, Calendar, UserCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { supabase } from '../../lib/supabase';
-import { getThemeClasses, type BgFlavor } from '../../lib/theme';
+import { getThemeClasses } from '../../lib/theme';
 
 export default function PartnerLayout() {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDark, setIsDark] = React.useState(false);
-  const [bgFlavor, setBgFlavor] = React.useState<BgFlavor>(() => {
-    return (localStorage.getItem('portal_bg_flavor') as BgFlavor) || 'slate';
-  });
+  const bgFlavor = 'slate';
   const [campDays, setCampDays] = React.useState<any[]>([]);
   const [activeCampDayId, setActiveCampDayId] = React.useState<string>('');
   const childFlushRef = React.useRef<(() => Promise<void>) | null>(null);
 
-  const handleBgFlavorChange = (flavor: BgFlavor) => {
-    setBgFlavor(flavor);
-    localStorage.setItem('portal_bg_flavor', flavor);
-  };
-
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
 
-    const theme = getThemeClasses(isDark, bgFlavor);
     if (isDark) {
-      if (bgFlavor === 'zinc') {
-        document.body.style.backgroundColor = '#09090b';
-        document.documentElement.style.backgroundColor = '#09090b';
-      } else if (bgFlavor === 'classic') {
-        document.body.style.backgroundColor = '#000000';
-        document.documentElement.style.backgroundColor = '#000000';
-      } else {
-        document.body.style.backgroundColor = '#090d16';
-        document.documentElement.style.backgroundColor = '#090d16';
-      }
+      document.body.style.backgroundColor = '#090d16';
+      document.documentElement.style.backgroundColor = '#090d16';
     } else {
-      if (bgFlavor === 'zinc') {
-        document.body.style.backgroundColor = '#f4f4f5';
-        document.documentElement.style.backgroundColor = '#f4f4f5';
-      } else if (bgFlavor === 'classic') {
-        document.body.style.backgroundColor = '#ffffff';
-        document.documentElement.style.backgroundColor = '#ffffff';
-      } else {
-        document.body.style.backgroundColor = '#f8fafc';
-        document.documentElement.style.backgroundColor = '#f8fafc';
-      }
+      document.body.style.backgroundColor = '#f8fafc';
+      document.documentElement.style.backgroundColor = '#f8fafc';
     }
-  }, [isDark, bgFlavor]);
+  }, [isDark]);
 
   React.useEffect(() => {
     if (!profile?.organization_id) return;
@@ -125,7 +101,6 @@ export default function PartnerLayout() {
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
         bgFlavor={bgFlavor}
-        onBgFlavorChange={handleBgFlavorChange}
         hideBorder={isDataGridRoute}
         campDays={campDays}
         activeCampDayId={activeCampDayId}
@@ -298,64 +273,6 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
         </nav>
 
         <div className="flex items-center justify-end gap-3 w-72 h-full">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  "transition-colors p-2 rounded-xl border flex items-center justify-center cursor-pointer",
-                  isDark ? "text-slate-400 hover:text-white border-white/10 hover:bg-white/5" : "text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
-                )}
-                title="Change Background Theme"
-              >
-                <Palette size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className={cn(
-                "w-48 rounded-xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
-                isDark ? "bg-slate-950/90 border-white/10 text-white shadow-black" : "bg-white/95 border-slate-100 text-slate-900"
-              )}
-            >
-              <div className={cn("px-3 py-1.5 text-[10px] font-black uppercase tracking-wider", isDark ? "text-slate-500" : "text-slate-400")}>
-                Background Style
-              </div>
-              <DropdownMenuItem
-                onClick={() => onBgFlavorChange('slate')}
-                className={cn(
-                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
-                  bgFlavor === 'slate' ? (isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900") : "",
-                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
-                )}
-              >
-                <span>Soft Slate</span>
-                {bgFlavor === 'slate' && <Check size={14} className="text-sky-500" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onBgFlavorChange('zinc')}
-                className={cn(
-                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
-                  bgFlavor === 'zinc' ? (isDark ? "bg-white/5 text-white" : "bg-zinc-100 text-zinc-900") : "",
-                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
-                )}
-              >
-                <span>Warm Zinc</span>
-                {bgFlavor === 'zinc' && <Check size={14} className="text-sky-500" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onBgFlavorChange('classic')}
-                className={cn(
-                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
-                  bgFlavor === 'classic' ? (isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900") : "",
-                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
-                )}
-              >
-                <span>Classic B&W</span>
-                {bgFlavor === 'classic' && <Check size={14} className="text-sky-500" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <button
             onClick={onToggleTheme}
             className={cn(
