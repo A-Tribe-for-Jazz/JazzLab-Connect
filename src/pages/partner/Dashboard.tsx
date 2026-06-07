@@ -72,7 +72,7 @@ type StepStatus = 'pending' | 'in_progress' | 'completed';
 
 export default function PartnerDashboard() {
   const { profile } = useAuth();
-  const { isDark, bgFlavor, activeCampDayId }: any = useOutletContext();
+  const { isDark, bgFlavor, activeCampDayId, campDays }: any = useOutletContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any>(null);
@@ -355,7 +355,15 @@ export default function PartnerDashboard() {
               Welcome back, {profile?.full_name || 'Partner'}
             </h1>
             <p className={cn('text-sm font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
-              Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
+              {campDays && campDays.length > 1 ? (
+                <>
+                  Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
+                </>
+              ) : (
+                <>
+                  Please <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
+                </>
+              )}
             </p>
           </div>
 
