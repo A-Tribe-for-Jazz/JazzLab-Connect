@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { Settings2 } from "lucide-react"
+import { getThemeClasses, type BgFlavor } from "@/lib/theme"
 
 // Fixed row height — must match the h-10 (40px) on TableRow
 const ROW_HEIGHT = 40;
@@ -31,6 +32,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   isDark?: boolean;
+  bgFlavor?: BgFlavor;
   toolbar?: React.ReactNode;
   refineGridlines?: boolean;
 }
@@ -39,6 +41,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   isDark = false,
+  bgFlavor = 'slate',
   toolbar,
   refineGridlines = false
 }: DataTableProps<TData, TValue>) {
@@ -89,36 +92,38 @@ export function DataTable<TData, TValue>({
       ? totalHeight - (virtualRows[virtualRows.length - 1]?.end ?? 0)
       : 0
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   const themeStyles = {
-    wrapperBorder: isDark ? "border-white/10" : "border-slate-200",
+    wrapperBorder: theme.cardBorder,
     tableBorder: refineGridlines
-      ? (isDark ? "border-white/5" : "border-slate-100")
-      : (isDark ? "border-white/20" : "border-slate-300"),
+      ? theme.borderLight
+      : theme.border,
     headerBorder: refineGridlines
-      ? (isDark ? "border-white/5" : "border-slate-200")
-      : (isDark ? "border-white/10" : "border-slate-300"),
-    headBg: isDark
-      ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-      : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]",
+      ? theme.borderLight
+      : theme.border,
+    headBg: theme.tableHeadBg,
     rowBorder: refineGridlines
-      ? (isDark ? "border-white/5" : "border-slate-100")
-      : (isDark ? "border-white/10" : "border-slate-200"),
-    cellBorder: isDark ? "border-white/10" : "border-slate-200",
+      ? theme.borderLight
+      : theme.border,
+    cellBorder: theme.border,
   };
 
   return (
     <div className={cn(
-      "rounded-[1.25rem] border overflow-hidden relative flex flex-col flex-1 min-h-0",
+      "rounded-[1.25rem] border overflow-hidden relative flex flex-col flex-1 min-h-0 transition-colors duration-700",
       themeStyles.wrapperBorder,
+      theme.cardBg,
       isDark
-        ? "bg-[#020617] shadow-2xl shadow-black/40"
-        : "bg-white shadow-xl shadow-slate-200/40"
+        ? "shadow-2xl shadow-black/40"
+        : "shadow-xl shadow-slate-200/40"
     )}>
       {/* Unified Toolbar */}
       {toolbar && (
         <div className={cn(
-          "p-3 md:p-4 border-b shrink-0",
-          isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/30"
+          "p-3 md:p-4 border-b shrink-0 transition-colors duration-700",
+          themeStyles.headerBorder,
+          isDark ? "bg-white/[0.02]" : "bg-slate-50/30"
         )}>
           {toolbar}
         </div>
@@ -192,11 +197,11 @@ export function DataTable<TData, TValue>({
                       key={row.id}
                       data-state={row.getIsSelected() ? "selected" : undefined}
                       className={cn(
-                        "h-10 border-b group",
+                        "h-10 border-b group transition-colors duration-500",
                         isDark
-                          ? "hover:bg-white/[0.02] data-[state=selected]:bg-white/[0.05]"
-                          : "hover:bg-slate-50/50 data-[state=selected]:bg-slate-50/70",
-                        virtualRow.index % 2 === 1 && (isDark ? "bg-white/[0.015]" : "bg-slate-50/40"),
+                          ? `hover:${theme.rowHover} data-[state=selected]:bg-white/[0.05]`
+                          : `hover:${theme.rowHover} data-[state=selected]:bg-slate-50/70`,
+                        virtualRow.index % 2 === 1 && theme.rowOdd,
                         themeStyles.rowBorder
                       )}
                       style={{ height: ROW_HEIGHT }}

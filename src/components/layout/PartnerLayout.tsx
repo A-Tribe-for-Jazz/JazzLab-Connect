@@ -1,23 +1,57 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, Microscope, Sun, Moon, Calendar, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Microscope, Sun, Moon, Calendar, UserCheck, Palette, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { supabase } from '../../lib/supabase';
+import { getThemeClasses, type BgFlavor } from '../../lib/theme';
 
 export default function PartnerLayout() {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDark, setIsDark] = React.useState(false);
+  const [bgFlavor, setBgFlavor] = React.useState<BgFlavor>(() => {
+    return (localStorage.getItem('portal_bg_flavor') as BgFlavor) || 'slate';
+  });
   const [campDays, setCampDays] = React.useState<any[]>([]);
   const [activeCampDayId, setActiveCampDayId] = React.useState<string>('');
   const childFlushRef = React.useRef<(() => Promise<void>) | null>(null);
 
+  const handleBgFlavorChange = (flavor: BgFlavor) => {
+    setBgFlavor(flavor);
+    localStorage.setItem('portal_bg_flavor', flavor);
+  };
+
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+
+    const theme = getThemeClasses(isDark, bgFlavor);
+    if (isDark) {
+      if (bgFlavor === 'zinc') {
+        document.body.style.backgroundColor = '#09090b';
+        document.documentElement.style.backgroundColor = '#09090b';
+      } else if (bgFlavor === 'classic') {
+        document.body.style.backgroundColor = '#000000';
+        document.documentElement.style.backgroundColor = '#000000';
+      } else {
+        document.body.style.backgroundColor = '#090d16';
+        document.documentElement.style.backgroundColor = '#090d16';
+      }
+    } else {
+      if (bgFlavor === 'zinc') {
+        document.body.style.backgroundColor = '#f4f4f5';
+        document.documentElement.style.backgroundColor = '#f4f4f5';
+      } else if (bgFlavor === 'classic') {
+        document.body.style.backgroundColor = '#ffffff';
+        document.documentElement.style.backgroundColor = '#ffffff';
+      } else {
+        document.body.style.backgroundColor = '#f8fafc';
+        document.documentElement.style.backgroundColor = '#f8fafc';
+      }
+    }
+  }, [isDark, bgFlavor]);
 
   React.useEffect(() => {
     if (!profile?.organization_id) return;
@@ -81,13 +115,17 @@ export default function PartnerLayout() {
     { name: 'Schedules', path: '/partner/schedule', icon: Calendar },
   ];
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50">
+    <div className={cn("min-h-screen flex flex-col transition-colors duration-700", theme.bg)}>
       <PortalHeader
         navItems={navItems}
         onSignOut={handleSignOut}
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
+        bgFlavor={bgFlavor}
+        onBgFlavorChange={handleBgFlavorChange}
         hideBorder={isDataGridRoute}
         campDays={campDays}
         activeCampDayId={activeCampDayId}
@@ -98,10 +136,10 @@ export default function PartnerLayout() {
       {/* Main Content Area */}
       <main className={cn(
         "flex-1 transition-colors duration-700 flex flex-col",
-        isDark ? "bg-black" : "bg-white"
+        theme.bg
       )}>
         <div className="flex-1 min-h-0 flex flex-col">
-          <Outlet context={{ isDark, activeCampDayId, setActiveCampDayId, campDays, childFlushRef }} />
+          <Outlet context={{ isDark, bgFlavor, activeCampDayId, setActiveCampDayId, campDays, childFlushRef }} />
         </div>
       </main>
 
@@ -109,11 +147,11 @@ export default function PartnerLayout() {
       {!isDataGridRoute && (
         <footer className={cn(
           "py-6 text-center border-t transition-all duration-700 mt-auto",
-          isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
+          theme.headerBg
         )}>
           <p className={cn(
             "text-[10px] font-black uppercase tracking-[0.3em] transition-colors duration-700",
-            isDark ? "text-slate-700" : "text-slate-300"
+            isDark ? "text-slate-700" : "text-slate-350"
           )}>
             &copy; 2026 A Tribe for Jazz.
           </p>
@@ -123,7 +161,7 @@ export default function PartnerLayout() {
   );
 }
 
-function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, campDays, activeCampDayId, setActiveCampDayId, childFlushRef }: any) {
+function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, onBgFlavorChange, hideBorder, campDays, activeCampDayId, setActiveCampDayId, childFlushRef }: any) {
   const navigate = useNavigate();
 
   const handleNavClick = async (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -150,11 +188,13 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
     setActiveCampDayId(dayId);
   };
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   return (
     <header className={cn(
-      "sticky top-0 z-50 h-16 flex items-center px-8 transition-all duration-700",
-      !hideBorder && "border-b",
-      isDark ? cn("bg-black/95 backdrop-blur-md", !hideBorder && "border-white/10") : cn("bg-white/95 backdrop-blur-md", !hideBorder && "border-slate-200")
+      "sticky top-0 z-50 h-16 flex items-center px-8 transition-all duration-700 backdrop-blur-md",
+      !hideBorder ? "border-b" : "border-b-transparent",
+      theme.headerBg
     )}>
       <div className="flex items-center justify-between w-full h-full">
         <div className="flex items-center gap-4 w-72 h-full shrink-0">
@@ -177,8 +217,9 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
                 Select Camp Day:
               </span>
               <div className={cn(
-                "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner",
-                isDark ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200/60"
+                "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner transition-colors duration-700",
+                isDark ? "bg-white/5" : "bg-slate-100/50",
+                theme.border
               )}>
                 {campDays.map((day: any) => {
                   const isActive = activeCampDayId === day.id;
@@ -256,17 +297,76 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, hideBorder, 
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-4 w-72 h-full">
+        <div className="flex items-center justify-end gap-3 w-72 h-full">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "transition-colors p-2 rounded-xl border flex items-center justify-center cursor-pointer",
+                  isDark ? "text-slate-400 hover:text-white border-white/10 hover:bg-white/5" : "text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+                )}
+                title="Change Background Theme"
+              >
+                <Palette size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className={cn(
+                "w-48 rounded-xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300",
+                isDark ? "bg-slate-950/90 border-white/10 text-white shadow-black" : "bg-white/95 border-slate-100 text-slate-900"
+              )}
+            >
+              <div className={cn("px-3 py-1.5 text-[10px] font-black uppercase tracking-wider", isDark ? "text-slate-500" : "text-slate-400")}>
+                Background Style
+              </div>
+              <DropdownMenuItem
+                onClick={() => onBgFlavorChange('slate')}
+                className={cn(
+                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
+                  bgFlavor === 'slate' ? (isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900") : "",
+                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                )}
+              >
+                <span>Soft Slate</span>
+                {bgFlavor === 'slate' && <Check size={14} className="text-sky-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onBgFlavorChange('zinc')}
+                className={cn(
+                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
+                  bgFlavor === 'zinc' ? (isDark ? "bg-white/5 text-white" : "bg-zinc-100 text-zinc-900") : "",
+                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                )}
+              >
+                <span>Warm Zinc</span>
+                {bgFlavor === 'zinc' && <Check size={14} className="text-sky-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onBgFlavorChange('classic')}
+                className={cn(
+                  "rounded-lg font-semibold text-[13px] py-2 px-3 cursor-pointer transition-colors duration-200 my-0.5 flex items-center justify-between",
+                  bgFlavor === 'classic' ? (isDark ? "bg-white/5 text-white" : "bg-slate-100 text-slate-900") : "",
+                  isDark ? "focus:bg-white/5 focus:text-white" : "focus:bg-slate-50 focus:text-slate-900"
+                )}
+              >
+                <span>Classic B&W</span>
+                {bgFlavor === 'classic' && <Check size={14} className="text-sky-500" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <button
             onClick={onToggleTheme}
             className={cn(
-              "transition-colors",
-              isDark ? "text-slate-400 hover:text-amber-400" : "text-slate-400 hover:text-slate-900"
+              "transition-colors p-2 rounded-xl border flex items-center justify-center cursor-pointer",
+              isDark ? "text-slate-400 hover:text-amber-400 border-white/10 hover:bg-white/5" : "text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
             )}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button onClick={onSignOut} className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap">
+          <button onClick={onSignOut} className="text-[11.5px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors whitespace-nowrap pl-2">
             Sign Out
           </button>
         </div>

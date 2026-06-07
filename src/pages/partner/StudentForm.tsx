@@ -23,13 +23,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getThemeClasses } from '../../lib/theme';
 
 export default function StudentForm() {
   const { id } = useParams<{ id: string }>();
   const isNew = !id;
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { activeCampDayId } = useOutletContext<any>() || {};
+  const { isDark, bgFlavor, activeCampDayId } = useOutletContext<any>() || {};
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -211,8 +212,10 @@ export default function StudentForm() {
     );
   }
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className={cn("max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700", theme.bg)}>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <Button asChild variant="ghost" size="sm" className="pl-0 text-slate-500 hover:text-primary transition-colors">
@@ -221,7 +224,7 @@ export default function StudentForm() {
               Back to Dashboard
             </Link>
           </Button>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">
+          <h1 className={cn("text-3xl font-black tracking-tight transition-colors duration-700", theme.textTitle)}>
             {isNew ? 'Register New Student' : 'Modify Student Record'}
           </h1>
         </div>
@@ -235,8 +238,12 @@ export default function StudentForm() {
       <form className="space-y-10" onSubmit={(e) => handleSubmit(e, false)}>
         
         {/* Basic Info Card */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+        <Card className={cn(
+          "border overflow-hidden transition-colors duration-700 shadow-xl",
+          theme.cardBorder,
+          theme.cardBg
+        )}>
+          <CardHeader className={cn("border-b py-6 transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3 text-primary">
               <Music size={20} />
               <CardTitle className="text-lg">Core Information</CardTitle>
@@ -245,45 +252,45 @@ export default function StudentForm() {
           <CardContent className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <div className="space-y-2">
-                <Label htmlFor="first_name" className="font-bold text-slate-700">First Name <span className="text-primary">*</span></Label>
+                <Label htmlFor="first_name" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>First Name <span className="text-primary">*</span></Label>
                 <Input 
                   id="first_name"
                   required 
                   placeholder="e.g. John"
-                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
+                  className={cn("h-11 transition-all duration-500", theme.inputBg)}
                   value={formData.first_name} 
                   onChange={e => setFormData({...formData, first_name: e.target.value})} 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="last_name" className="font-bold text-slate-700">Last Name <span className="text-primary">*</span></Label>
+                <Label htmlFor="last_name" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Last Name <span className="text-primary">*</span></Label>
                 <Input 
                   id="last_name"
                   required 
                   placeholder="e.g. Doe"
-                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
+                  className={cn("h-11 transition-all duration-500", theme.inputBg)}
                   value={formData.last_name} 
                   onChange={e => setFormData({...formData, last_name: e.target.value})} 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="age" className="font-bold text-slate-700">Age <span className="text-primary">*</span></Label>
+                <Label htmlFor="age" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Age <span className="text-primary">*</span></Label>
                 <Input 
                   id="age"
                   type="number" 
                   required 
-                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
+                  className={cn("h-11 transition-all duration-500", theme.inputBg)}
                   value={formData.age} 
                   onChange={e => setFormData({...formData, age: e.target.value})} 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="camp_day" className="font-bold text-slate-700">Camp Date <span className="text-primary">*</span></Label>
+                <Label htmlFor="camp_day" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Camp Date <span className="text-primary">*</span></Label>
                 <Select 
                   value={formData.camp_day_id} 
                   onValueChange={val => setFormData({...formData, camp_day_id: val ?? ''})}
                 >
-                  <SelectTrigger className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all">
+                  <SelectTrigger className={cn("h-11 transition-all duration-500", theme.inputBg)}>
                     <SelectValue placeholder="Select a program date" />
                   </SelectTrigger>
                   <SelectContent>
@@ -296,10 +303,10 @@ export default function StudentForm() {
                 </Select>
               </div>
               <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="sibling_group" className="font-bold text-slate-700">Sibling Group ID <span className="text-slate-400 font-normal">(Optional)</span></Label>
+                <Label htmlFor="sibling_group" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Sibling Group ID <span className="text-slate-400 font-normal">(Optional)</span></Label>
                 <Input 
                   id="sibling_group"
-                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
+                  className={cn("h-11 transition-all duration-500", theme.inputBg)}
                   placeholder="e.g. Smith-Household-2024" 
                   value={formData.sibling_group_id} 
                   onChange={e => setFormData({...formData, sibling_group_id: e.target.value})} 
@@ -311,8 +318,12 @@ export default function StudentForm() {
         </Card>
 
         {/* Additional Info Card */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+        <Card className={cn(
+          "border overflow-hidden transition-colors duration-700 shadow-xl",
+          theme.cardBorder,
+          theme.cardBg
+        )}>
+          <CardHeader className={cn("border-b py-6 transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3 text-primary">
               <Info size={20} />
               <CardTitle className="text-lg">Additional Information</CardTitle>
@@ -321,22 +332,25 @@ export default function StudentForm() {
           <CardContent className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <div className="space-y-2">
-                <Label htmlFor="parent_email" className="font-bold text-slate-700">Parent Email</Label>
+                <Label htmlFor="parent_email" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Parent Email</Label>
                 <Input
                   id="parent_email"
                   type="email"
-                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white transition-all"
+                  className={cn("h-11 transition-all duration-500", theme.inputBg)}
                   placeholder="parent@example.com"
                   value={formData.parent_email}
                   onChange={e => setFormData({...formData, parent_email: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes" className="font-bold text-slate-700">Special Needs / Accommodations</Label>
+                <Label htmlFor="notes" className={cn("font-bold transition-colors duration-700", isDark ? "text-slate-200" : "text-slate-700")}>Special Needs / Accommodations</Label>
                 <textarea
                   id="notes"
                   rows={3}
-                  className="w-full rounded-md border border-slate-200 bg-slate-50/30 p-3 focus:bg-white focus:outline-none transition-all resize-none placeholder:text-slate-400"
+                  className={cn(
+                    "w-full rounded-md border p-3 focus:outline-none transition-all resize-none placeholder:text-slate-400",
+                    theme.inputBg
+                  )}
                   placeholder="Allergies, accessibility needs, etc."
                   value={formData.special_needs_notes}
                   onChange={e => setFormData({...formData, special_needs_notes: e.target.value})}
@@ -347,45 +361,51 @@ export default function StudentForm() {
         </Card>
 
         {/* Lab Preferences Card */}
-        <Card className="border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+        <Card className={cn(
+          "border overflow-hidden transition-colors duration-700 shadow-xl",
+          theme.cardBorder,
+          theme.cardBg
+        )}>
+          <CardHeader className={cn("border-b py-6 transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3 text-primary">
               <Star size={20} />
               <CardTitle className="text-lg">Lab Preferences</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="px-8 py-6 bg-amber-50/50 border-b border-amber-100">
-               <p className="text-xs text-amber-800 font-medium leading-relaxed">
+            <div className={cn("px-8 py-6 border-b transition-colors duration-700", isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-200" : "bg-amber-50/50 border-amber-100 text-amber-800")}>
+               <p className="text-xs font-medium leading-relaxed">
                 Rank exactly <span className="font-bold">5 labs</span>. Use 1 for their highest choice. 
                 Our algorithm prioritizes lower numbers to ensure every student gets a top-tier pick.
               </p>
             </div>
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="font-bold text-slate-900 pl-8 h-12">Available JazzLab Courses</TableHead>
+                <TableRow className={cn("hover:bg-transparent transition-colors duration-700", theme.border)}>
+                  <TableHead className={cn("font-bold pl-8 h-12", theme.tableHeadBg)}>Available JazzLab Courses</TableHead>
                   {[1, 2, 3, 4, 5].map(rank => (
-                    <TableHead key={rank} className="text-center font-bold text-slate-900 w-24">Rank {rank}</TableHead>
+                    <TableHead key={rank} className={cn("text-center font-bold w-24", theme.tableHeadBg)}>Rank {rank}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {labs.map(lab => (
-                  <TableRow key={lab.id} className="hover:bg-slate-50/50 border-slate-50 transition-colors">
-                    <td className="py-4 pl-8 font-bold text-slate-900 text-sm">{lab.name}</td>
+                  <TableRow key={lab.id} className={cn("hover:bg-transparent transition-colors duration-700", theme.border)}>
+                    <td className={cn("py-4 pl-8 font-bold text-sm border-r transition-colors duration-700", theme.border, isDark ? "text-white" : "text-slate-900")}>{lab.name}</td>
                     {[1, 2, 3, 4, 5].map(rank => {
                       const isSelected = preferences[rank] === lab.id;
                       return (
-                        <td key={rank} className="py-2 text-center">
+                        <td key={rank} className={cn("py-2 text-center border-r last:border-r-0 transition-colors duration-700", theme.border)}>
                           <button
                             type="button"
                             onClick={() => handleRankClick(lab.id, rank)}
                             className={cn(
-                              "w-10 h-10 rounded-xl border-2 flex items-center justify-center mx-auto transition-all duration-200 font-black text-sm",
+                              "w-10 h-10 rounded-xl border-2 flex items-center justify-center mx-auto transition-all duration-200 font-black text-sm cursor-pointer",
                               isSelected 
                                 ? 'bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110' 
-                                : 'bg-white border-slate-100 text-transparent hover:border-primary/40 hover:text-slate-300'
+                                : (isDark 
+                                  ? 'bg-transparent border-white/10 text-transparent hover:border-primary/45 hover:text-slate-600'
+                                  : 'bg-white border-slate-100 text-transparent hover:border-primary/40 hover:text-slate-300')
                             )}
                           >
                             {isSelected ? rank : rank}
@@ -401,16 +421,25 @@ export default function StudentForm() {
         </Card>
 
         {/* Floating Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+        <div className={cn(
+          "fixed bottom-0 left-0 right-0 p-4 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.02)] transition-all duration-700 border-t",
+          theme.headerBg,
+          theme.border
+        )}>
           <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <Button asChild variant="ghost" className="text-slate-500 font-bold">
+            <Button asChild variant="ghost" className="text-slate-500 font-bold hover:bg-transparent">
               <Link to="/partner/dashboard">Cancel</Link>
             </Button>
             <div className="flex items-center gap-3">
               <Button 
                 type="button" 
                 variant="outline" 
-                className="border-slate-200 text-slate-700 font-bold rounded-full px-6"
+                className={cn(
+                  "font-bold rounded-full px-6 transition-all duration-300",
+                  isDark 
+                    ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
+                    : "bg-white border-slate-200/60 text-slate-700 hover:bg-slate-50"
+                )}
                 onClick={(e) => handleSubmit(e, true)} 
                 disabled={saving}
               >
@@ -418,7 +447,7 @@ export default function StudentForm() {
               </Button>
               <Button 
                 type="submit" 
-                className="font-bold rounded-full px-8 shadow-lg shadow-primary/20"
+                className="font-bold rounded-full px-8 shadow-lg shadow-primary/20 cursor-pointer"
                 disabled={saving}
               >
                 <Save size={18} className="mr-2" />

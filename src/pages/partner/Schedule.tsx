@@ -5,6 +5,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Calendar, Search, Filter, Printer, Sparkles, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { getThemeClasses } from '../../lib/theme';
 import { Badge } from '@/components/ui/badge';
 import PartnerLoader from '../../components/partner/PartnerLoader';
 import {
@@ -49,7 +50,7 @@ interface PlacementRow {
 
 export default function PartnerSchedule() {
   const { profile } = useAuth();
-  const { isDark, activeCampDayId }: any = useOutletContext();
+  const { isDark, bgFlavor, activeCampDayId }: any = useOutletContext();
 
   const [loading, setLoading] = useState(true);
   const [campDays, setCampDays] = useState<{ id: string; date: string }[]>([]);
@@ -315,21 +316,18 @@ export default function PartnerSchedule() {
     window.print();
   };
 
-  if (loading) {
-    return <PartnerLoader isDark={isDark} label="Loading Placements..." />;
-  }
+  const theme = getThemeClasses(isDark, bgFlavor);
 
-  // If schedules are not finalized AND showDemo state is false, show "Schedules Not Ready"
   if (!isFinalized && !showDemo) {
     return (
       <div className={cn(
         "min-h-[calc(100dvh-5rem)] flex flex-col justify-center items-center text-center p-8 transition-colors duration-700",
-        isDark ? "bg-black text-white" : "bg-white text-slate-900"
+        theme.bg
       )}>
         <div className="max-w-md space-y-6 partner-enter animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <div className={cn(
             "size-20 rounded-full flex items-center justify-center mx-auto transition-colors duration-700",
-            isDark ? "bg-slate-900 text-slate-700" : "bg-slate-50 text-slate-300"
+            isDark ? "bg-white/5 text-slate-700" : "bg-slate-50 text-slate-300"
           )}>
             <Calendar size={36} />
           </div>
@@ -366,7 +364,7 @@ export default function PartnerSchedule() {
   return (
     <div className={cn(
       "h-[calc(100dvh-5rem)] transition-colors duration-700 overflow-hidden flex flex-col",
-      isDark ? "bg-black text-white" : "bg-white text-slate-900"
+      theme.bg
     )}>
       {/* Sandbox Demo Banner (Non-printable) */}
       {showDemo && !isFinalized && (
@@ -401,13 +399,16 @@ export default function PartnerSchedule() {
       <div className="w-full mx-auto px-4 flex-1 min-h-0 flex flex-col partner-enter">
         <section className="relative flex-1 min-h-0 flex flex-col pt-0 pb-0">
           <div className={cn(
-            "rounded-[1.25rem] border overflow-hidden relative flex flex-col flex-1 min-h-0",
-            isDark ? "border-white/10 bg-[#020617] shadow-2xl shadow-black/40" : "border-slate-200 bg-white shadow-xl shadow-slate-200/40"
+            "rounded-[1.25rem] border overflow-hidden relative flex flex-col flex-1 min-h-0 transition-colors duration-700",
+            theme.cardBorder,
+            theme.cardBg,
+            isDark ? "shadow-2xl shadow-black/40" : "shadow-xl shadow-slate-200/40"
           )}>
             {/* Unified High-Density Toolbar */}
             <div className={cn(
-              "p-3 md:p-4 border-b shrink-0",
-              isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/30"
+              "p-3 md:p-4 border-b shrink-0 transition-colors duration-700",
+              theme.border,
+              isDark ? "bg-white/[0.02]" : "bg-slate-50/30"
             )}>
               <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 w-full">
                 {/* Left: Search */}
@@ -428,9 +429,10 @@ export default function PartnerSchedule() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className={cn(
                       "pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
+                      theme.inputBg,
                       isDark
-                        ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/5 focus-visible:bg-sky-400/5 focus-visible:ring-0"
-                        : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
+                        ? "hover:border-sky-400/50 focus-visible:border-sky-400/50 focus-visible:ring-0"
+                        : "hover:border-sky-500/30 focus-visible:border-sky-500/30 focus-visible:ring-0"
                     )}
                   />
                 </div>
@@ -551,79 +553,59 @@ export default function PartnerSchedule() {
 
             {/* Roster Data Table */}
             <div className={cn(
-              "flex-1 overflow-auto min-h-0 border-r",
-              isDark ? "border-white/20" : "border-slate-300"
+              "flex-1 overflow-auto min-h-0 border-r transition-colors duration-700",
+              theme.border
             )}
               style={{ contain: "strict" }}
             >
               <Table className="border-collapse" wrapperClassName="overflow-visible" style={{ width: "100%" }}>
                 <TableHeader className="sticky top-0 z-40">
                   <TableRow className={cn(
-                    "border-b hover:bg-transparent",
-                    isDark ? "border-white/10" : "border-slate-300"
+                    "border-b hover:bg-transparent transition-colors duration-700",
+                    theme.border
                   )}>
                     <TableHead className={cn(
                       "font-semibold text-[13px] text-center w-[50px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-2",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>#</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Visit Date</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Organization/Camp</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[180px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Student FULL NAME</TableHead>
                     
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Assigned Lab 1</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Lab 1 Time Slot</TableHead>
                     
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Assigned Lab 2</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Lab 2 Time Slot</TableHead>
                     
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[160px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Assigned Lab 3</TableHead>
                     <TableHead className={cn(
                       "font-semibold text-[13px] border-r last:border-r-0 overflow-hidden sticky top-0 z-30 py-3 px-4 min-w-[120px]",
-                      isDark
-                        ? "bg-slate-950 text-slate-200 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)]"
-                        : "bg-slate-100 text-slate-800 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                      theme.tableHeadBg
                     )}>Lab 3 Time Slot</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -637,21 +619,21 @@ export default function PartnerSchedule() {
                     const a2 = s2 ? row.sessionAssignments[s2.id] : null;
                     const a3 = s3 ? row.sessionAssignments[s3.id] : null;
 
-                    return (
-                      <tr
+                    return (                      <tr
                         key={row.studentId}
                         className={cn(
-                          "h-10 border-b group",
+                          "h-10 border-b group transition-colors duration-500",
+                          theme.border,
                           isDark
-                            ? "hover:bg-white/[0.02] data-[state=selected]:bg-white/[0.05] border-white/10"
-                            : "hover:bg-slate-50/50 data-[state=selected]:bg-slate-50/70 border-slate-200",
-                          idx % 2 === 1 && (isDark ? "bg-white/[0.015]" : "bg-slate-50/40")
+                            ? `hover:${theme.rowHover} data-[state=selected]:bg-white/[0.05]`
+                            : `hover:${theme.rowHover} data-[state=selected]:bg-slate-50/70`,
+                          idx % 2 === 1 && theme.rowOdd
                         )}
                         style={{ height: 40 }}
                       >
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center justify-center w-[50px] h-10">
                             <span className={cn(
@@ -661,78 +643,78 @@ export default function PartnerSchedule() {
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-medium text-slate-600 dark:text-slate-400 truncate">
                             {visitDate}
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate" title={activeOrgName}>
                             {activeOrgName}
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {row.studentName}
                           </div>
                         </td>
-
+ 
                         {/* Rotation 1 */}
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {a1 ? a1.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
                             {s1 ? `${s1.start_time.slice(0, 5)} - ${s1.end_time.slice(0, 5)}` : "—"}
                           </div>
                         </td>
-
+ 
                         {/* Rotation 2 */}
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {a2 ? a2.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
                             {s2 ? `${s2.start_time.slice(0, 5)} - ${s2.end_time.slice(0, 5)}` : "—"}
                           </div>
                         </td>
-
+ 
                         {/* Rotation 3 */}
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {a3 ? a3.labName : <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>}
                           </div>
                         </td>
                         <td className={cn(
-                          "p-0 border-r last:border-r-0 relative overflow-hidden",
-                          isDark ? "border-white/10" : "border-slate-200"
+                          "p-0 border-r last:border-r-0 relative overflow-hidden transition-colors duration-700",
+                          theme.border
                         )}>
                           <div className="flex items-center h-10 px-4 text-xs text-slate-500 truncate">
                             {s3 ? `${s3.start_time.slice(0, 5)} - ${s3.end_time.slice(0, 5)}` : "—"}

@@ -16,6 +16,7 @@ import { DataTable } from "./students/data-table";
 import { getColumns, type StudentRow } from "./students/columns";
 import PartnerLoader from './PartnerLoader';
 import StudentDirectoryTour from './StudentDirectoryTour';
+import { type BgFlavor } from '@/lib/theme';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PHANTOM_PREFIX = 'phantom-';
@@ -43,10 +44,11 @@ const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | nul
 interface StudentGridProps {
   organizationId: string;
   isDark?: boolean;
+  bgFlavor?: BgFlavor;
   activeCampDayId?: string | null;
 }
 
-export default function StudentGrid({ organizationId, isDark = false, activeCampDayId = null }: StudentGridProps) {
+export default function StudentGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null }: StudentGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -668,6 +670,7 @@ export default function StudentGrid({ organizationId, isDark = false, activeCamp
           columns={columns}
           data={filteredStudents}
           isDark={isDark}
+          bgFlavor={bgFlavor}
           toolbar={
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
               {/* Left: Search */}

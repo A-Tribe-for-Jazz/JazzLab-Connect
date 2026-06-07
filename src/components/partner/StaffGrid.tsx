@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { DataTable } from './students/data-table';
 import { getColumns, type StaffRow } from './staff/columns';
 import PartnerLoader from './PartnerLoader';
+import { type BgFlavor } from '@/lib/theme';
 
 const PHANTOM_PREFIX = 'phantom-';
 const isPhantom = (id: string) => id.startsWith(PHANTOM_PREFIX);
@@ -26,9 +27,10 @@ const makeEmptyRow = (orgId: string, idx: number): StaffRow => ({
 interface StaffGridProps {
   organizationId: string;
   isDark?: boolean;
+  bgFlavor?: BgFlavor;
 }
 
-export default function StaffGrid({ organizationId, isDark = false }: StaffGridProps) {
+export default function StaffGrid({ organizationId, isDark = false, bgFlavor = 'slate' }: StaffGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -403,6 +405,7 @@ export default function StaffGrid({ organizationId, isDark = false }: StaffGridP
           columns={columns}
           data={filteredStaff}
           isDark={isDark}
+          bgFlavor={bgFlavor}
           toolbar={
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
               {/* Search */}

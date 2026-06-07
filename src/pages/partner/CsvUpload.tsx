@@ -5,6 +5,7 @@ import { UploadCloud, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Tras
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getThemeClasses } from '../../lib/theme';
 import {
   Table,
   TableBody,
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils';
 
 export default function CsvUpload() {
   const navigate = useNavigate();
-  const { isDark }: any = useOutletContext();
+  const { isDark, bgFlavor }: any = useOutletContext();
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, valid: 0, errors: 0 });
@@ -68,10 +69,12 @@ export default function CsvUpload() {
     }
   };
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   return (
     <div className={cn(
       "min-h-screen transition-all duration-700 pb-2",
-      isDark ? "bg-black text-white" : "bg-white text-slate-900"
+      theme.bg
     )}>
       <div className="w-full mx-auto px-4 pt-2 partner-enter">
       <div className="max-w-4xl mx-auto space-y-8 pb-32">
@@ -82,30 +85,30 @@ export default function CsvUpload() {
             Back to Dashboard
           </Link>
         </Button>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">Bulk Upload Students</h1>
+        <h1 className={cn("text-3xl font-black tracking-tight transition-colors duration-700", theme.textTitle)}>Bulk Upload Students</h1>
         <p className="text-sm font-medium text-slate-500">Import multiple students at once using a CSV file.</p>
       </div>
 
       <div className="grid gap-8">
         {/* Step 1: Download Template */}
-        <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+        <Card className={cn("border overflow-hidden transition-colors duration-700 shadow-xl", theme.cardBorder, theme.cardBg)}>
+          <CardHeader className={cn("border-b transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">1</div>
+              <div className={cn("size-8 rounded-full flex items-center justify-center text-xs font-black transition-colors duration-700", isDark ? "bg-white text-black" : "bg-slate-900 text-white")}>1</div>
               <div>
-                <CardTitle className="text-lg">Download Template</CardTitle>
+                <CardTitle className={cn("text-lg transition-colors duration-700", theme.textTitle)}>Download Template</CardTitle>
                 <CardDescription>Get the correctly formatted file to start</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white shadow-sm group hover:border-primary/30 transition-all">
+            <div className={cn("flex items-center justify-between p-4 rounded-xl border shadow-sm group transition-all duration-700", theme.cardBg, theme.border)}>
               <div className="flex items-center gap-4">
                 <div className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
                   <FileText size={24} />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-900">student_import_template.csv</p>
+                  <p className={cn("font-bold transition-colors duration-700", theme.textTitle)}>student_import_template.csv</p>
                   <p className="text-xs text-slate-500 font-medium">Headers: first_name, last_name, age, sibling_group_id</p>
                 </div>
               </div>
@@ -117,34 +120,38 @@ export default function CsvUpload() {
         </Card>
 
         {/* Step 2: Upload File */}
-        <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+        <Card className={cn("border overflow-hidden transition-colors duration-700 shadow-xl", theme.cardBorder, theme.cardBg)}>
+          <CardHeader className={cn("border-b transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">2</div>
+              <div className={cn("size-8 rounded-full flex items-center justify-center text-xs font-black transition-colors duration-700", isDark ? "bg-white text-black" : "bg-slate-900 text-white")}>2</div>
               <div>
-                <CardTitle className="text-lg">Upload Filled File</CardTitle>
+                <CardTitle className={cn("text-lg transition-colors duration-700", theme.textTitle)}>Upload Filled File</CardTitle>
                 <CardDescription>Select your CSV file for validation</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             {!file ? (
-              <label className="group border-2 border-dashed border-slate-200 rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-primary/40 transition-all">
+              <label className={cn(
+                "group border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer transition-all duration-700",
+                theme.border,
+                isDark ? "hover:bg-white/5" : "hover:bg-slate-50"
+              )}>
                 <div className="size-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors mb-4">
                   <UploadCloud size={32} />
                 </div>
-                <p className="text-lg font-bold text-slate-900">Click to upload or drag and drop</p>
+                <p className={cn("text-lg font-bold transition-colors duration-700", theme.textTitle)}>Click to upload or drag and drop</p>
                 <p className="text-sm font-medium text-slate-400 mt-1 uppercase tracking-widest text-[10px]">CSV files only (Max 5MB)</p>
                 <input type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
               </label>
             ) : (
-              <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className={cn("flex items-center justify-between p-4 rounded-xl border shadow-sm transition-colors duration-700", theme.border)}>
                 <div className="flex items-center gap-4">
                   <div className="size-12 rounded-xl bg-primary text-white flex items-center justify-center">
                     <FileSpreadsheet size={24} />
                   </div>
                   <div>
-                    <p className="font-bold text-slate-900">{file.name}</p>
+                    <p className={cn("font-bold transition-colors duration-700", theme.textTitle)}>{file.name}</p>
                     <p className="text-xs text-slate-500 font-medium">{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </div>
@@ -152,7 +159,7 @@ export default function CsvUpload() {
                   variant="ghost" 
                   size="icon" 
                   onClick={() => { setFile(null); setPreviewData([]); }} 
-                  className="rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/10"
+                  className="rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                 >
                   <Trash2 size={18} />
                 </Button>
@@ -162,12 +169,17 @@ export default function CsvUpload() {
         </Card>
 
         {/* Step 3: Preview */}
-        <Card className={`border-none shadow-xl shadow-slate-200/50 overflow-hidden transition-opacity duration-500 ${!file ? 'opacity-40' : 'opacity-100'}`}>
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+        <Card className={cn(
+          "border overflow-hidden transition-all duration-700 shadow-xl", 
+          theme.cardBorder,
+          theme.cardBg,
+          !file ? 'opacity-40 pointer-events-none' : 'opacity-100'
+        )}>
+          <CardHeader className={cn("border-b transition-colors duration-700", theme.cardHeaderBg, theme.border)}>
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">3</div>
+              <div className={cn("size-8 rounded-full flex items-center justify-center text-xs font-black transition-colors duration-700", isDark ? "bg-white text-black" : "bg-slate-900 text-white")}>3</div>
               <div>
-                <CardTitle className="text-lg">Validation Preview</CardTitle>
+                <CardTitle className={cn("text-lg transition-colors duration-700", theme.textTitle)}>Validation Preview</CardTitle>
                 <CardDescription>Review detected rows before importing</CardDescription>
               </div>
             </div>
@@ -176,17 +188,17 @@ export default function CsvUpload() {
             {previewData.length > 0 ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 shadow-inner">
-                    <div className="text-3xl font-black text-slate-900">{stats.total}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Rows</div>
+                  <div className={cn("rounded-xl p-4 text-center border shadow-inner transition-colors duration-700", theme.border, isDark ? "bg-white/5" : "bg-slate-50")}>
+                    <div className={cn("text-3xl font-black transition-colors duration-700", theme.textTitle)}>{stats.total}</div>
+                    <div className={cn("text-[10px] font-bold uppercase tracking-widest mt-1", theme.textMuted)}>Total Rows</div>
                   </div>
-                  <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100 shadow-inner">
+                  <div className={cn("rounded-xl p-4 text-center border shadow-inner transition-colors duration-700", isDark ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-100")}>
                     <div className="text-3xl font-black text-emerald-600 flex items-center justify-center gap-2">
                       <CheckCircle2 size={24} /> {stats.valid}
                     </div>
                     <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mt-1">Valid Rows</div>
                   </div>
-                  <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100 shadow-inner">
+                  <div className={cn("rounded-xl p-4 text-center border shadow-inner transition-colors duration-700", isDark ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-50 border-amber-100")}>
                     <div className="text-3xl font-black text-amber-600 flex items-center justify-center gap-2">
                       <AlertCircle size={24} /> {stats.errors}
                     </div>
@@ -194,29 +206,33 @@ export default function CsvUpload() {
                   </div>
                 </div>
 
-                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                <div className={cn("border rounded-xl overflow-hidden shadow-sm transition-colors duration-700", theme.border)}>
                   <Table>
-                    <TableHeader className="bg-slate-50/80">
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="font-bold text-slate-900">Row</TableHead>
-                        <TableHead className="font-bold text-slate-900">First Name</TableHead>
-                        <TableHead className="font-bold text-slate-900">Last Name</TableHead>
-                        <TableHead className="font-bold text-slate-900">Age</TableHead>
-                        <TableHead className="font-bold text-slate-900 text-right pr-6">Status</TableHead>
+                    <TableHeader className={theme.cardHeaderBg}>
+                      <TableRow className={cn("hover:bg-transparent transition-colors duration-700", theme.border)}>
+                        <TableHead className={cn("font-bold", theme.textTitle)}>Row</TableHead>
+                        <TableHead className={cn("font-bold", theme.textTitle)}>First Name</TableHead>
+                        <TableHead className={cn("font-bold", theme.textTitle)}>Last Name</TableHead>
+                        <TableHead className={cn("font-bold", theme.textTitle)}>Age</TableHead>
+                        <TableHead className={cn("font-bold text-right pr-6", theme.textTitle)}>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewData.slice(0, 5).map((row, idx) => (
-                        <TableRow key={idx} className={row.valid ? '' : 'bg-amber-50/30'}>
-                          <TableCell className="text-slate-400 font-medium">{row.row}</TableCell>
-                          <TableCell className="font-bold text-slate-900">{row.first_name || '-'}</TableCell>
-                          <TableCell className="font-bold text-slate-900">{row.last_name || '-'}</TableCell>
-                          <TableCell className="text-slate-600 font-medium">{row.age}</TableCell>
+                        <TableRow key={idx} className={cn(
+                          "transition-colors duration-700",
+                          theme.border,
+                          row.valid ? '' : (isDark ? 'bg-amber-500/10' : 'bg-amber-50/30')
+                        )}>
+                          <TableCell className={cn("font-medium transition-colors duration-700 border-r", theme.border, theme.textMuted)}>{row.row}</TableCell>
+                          <TableCell className={cn("font-bold transition-colors duration-700 border-r", theme.border, isDark ? "text-white" : "text-slate-900")}>{row.first_name || '-'}</TableCell>
+                          <TableCell className={cn("font-bold transition-colors duration-700 border-r", theme.border, isDark ? "text-white" : "text-slate-900")}>{row.last_name || '-'}</TableCell>
+                          <TableCell className={cn("font-medium transition-colors duration-700 border-r", theme.border, isDark ? "text-slate-300" : "text-slate-600")}>{row.age}</TableCell>
                           <TableCell className="text-right pr-6">
                             {row.valid ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Valid</Badge>
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">Valid</Badge>
                             ) : (
-                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20" title={row.error}>Error</Badge>
+                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold" title={row.error}>Error</Badge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -241,25 +257,29 @@ export default function CsvUpload() {
       </div>
 
       {/* Floating Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 p-4 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.02)] transition-all duration-700 border-t",
+        theme.headerBg,
+        theme.border
+      )}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="hidden sm:block">
             {stats.valid > 0 ? (
-              <p className="text-sm font-medium text-slate-600">
-                Ready to import <span className="font-black text-slate-900">{stats.valid}</span> valid students.
+              <p className={cn("text-sm font-medium transition-colors duration-700", isDark ? "text-slate-300" : "text-slate-600")}>
+                Ready to import <span className={cn("font-black transition-colors duration-700", theme.textTitle)}>{stats.valid}</span> valid students.
               </p>
             ) : (
               <p className="text-sm font-medium text-slate-400 italic">No valid data detected.</p>
             )}
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button asChild variant="ghost" className="text-slate-500 font-bold">
+            <Button asChild variant="ghost" className="text-slate-500 font-bold hover:bg-transparent">
               <Link to="/partner/dashboard">Cancel</Link>
             </Button>
             <Button 
               onClick={handleImport}
               disabled={stats.valid === 0 || isImporting}
-              className="font-bold rounded-full px-8 shadow-lg shadow-primary/20 flex-1 sm:flex-none"
+              className="font-bold rounded-full px-8 shadow-lg shadow-primary/20 flex-1 sm:flex-none cursor-pointer"
             >
               {isImporting ? 'Processing...' : `Import ${stats.valid} Valid Rows`}
             </Button>

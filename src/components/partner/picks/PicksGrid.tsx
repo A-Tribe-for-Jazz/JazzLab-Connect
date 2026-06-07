@@ -8,14 +8,16 @@ import PartnerLoader from '../PartnerLoader';
 import { DataTable } from "../students/data-table";
 import { getColumns, type LabPickRow } from "./columns";
 import LabPreferencesTour from './LabPreferencesTour';
+import { type BgFlavor } from '@/lib/theme';
 
 interface PicksGridProps {
   organizationId: string;
   isDark?: boolean;
+  bgFlavor?: BgFlavor;
   activeCampDayId?: string | null;
 }
 
-export default function PicksGrid({ organizationId, isDark = false, activeCampDayId = null }: PicksGridProps) {
+export default function PicksGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null }: PicksGridProps) {
   const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<LabPickRow[]>([]);
   const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
@@ -443,6 +445,7 @@ export default function PicksGrid({ organizationId, isDark = false, activeCampDa
           columns={columns}
           data={filteredStudents}
           isDark={isDark}
+          bgFlavor={bgFlavor}
           toolbar={
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
               <div className="relative flex-1 max-w-md w-full group/search">

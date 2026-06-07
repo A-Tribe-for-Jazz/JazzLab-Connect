@@ -6,6 +6,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ShareAccessModal from '../../components/partner/ShareAccessModal';
 import { cn } from '@/lib/utils';
+import { getThemeClasses } from '../../lib/theme';
 
 interface StepConfig {
   number: number;
@@ -71,7 +72,7 @@ type StepStatus = 'pending' | 'in_progress' | 'completed';
 
 export default function PartnerDashboard() {
   const { profile } = useAuth();
-  const { isDark, activeCampDayId }: any = useOutletContext();
+  const { isDark, bgFlavor, activeCampDayId }: any = useOutletContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any>(null);
@@ -299,19 +300,19 @@ export default function PartnerDashboard() {
 
 
 
-  if (loading) return null;
+  const theme = getThemeClasses(isDark, bgFlavor);
 
   return (
     <div className={cn(
       'pb-20 transition-all duration-700 min-h-[calc(100dvh-5rem)]',
-      isDark ? 'bg-black' : 'bg-white'
+      theme.bg
     )}>
       <div className="w-full px-8 pt-16 space-y-12 partner-enter">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className={cn(
-          'flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b pb-8 w-full',
-          isDark ? 'border-white/5' : 'border-slate-100'
+          'flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b pb-8 w-full transition-colors duration-700',
+          theme.border
         )}>
           <div className="space-y-1.5 flex-1">
             <h1 className={cn('text-3xl font-black tracking-tighter transition-colors duration-700', isDark ? 'text-white' : 'text-slate-900')}>
@@ -398,7 +399,7 @@ export default function PartnerDashboard() {
                     ? isDark ? 'bg-[#051a10] border-emerald-500/15' : 'bg-[#f0fbf5] border-emerald-100 shadow-xs'
                     : status === 'in_progress'
                       ? isDark ? 'bg-[#181206] border-amber-500/20' : 'bg-[#fdfbf2] border-amber-150 shadow-xs'
-                      : isDark ? 'bg-[#0d0d0f] border-white/5' : 'bg-white border-slate-200/80 shadow-xs'
+                      : isDark ? cn(theme.cardBg, "border-white/5") : 'bg-white border-slate-200/80 shadow-xs'
                 )}>
                   {/* Inner content wrapper to apply layout but not card opacity directly (so watermark remains visible) */}
                   <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">

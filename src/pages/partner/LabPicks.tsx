@@ -3,10 +3,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, ArrowRight, Info } from 'lucide-react';
 import PicksGrid from '../../components/partner/picks/PicksGrid';
 import { cn } from '@/lib/utils';
+import { getThemeClasses } from '../../lib/theme';
 
 export default function PartnerLabPicks() {
   const { profile } = useAuth();
-  const { isDark, activeCampDayId, childFlushRef }: any = useOutletContext();
+  const { isDark, bgFlavor, activeCampDayId, childFlushRef }: any = useOutletContext();
   const navigate = useNavigate();
 
   const handleNavClick = async (e: React.MouseEvent, path: string) => {
@@ -21,15 +22,18 @@ export default function PartnerLabPicks() {
     navigate(path);
   };
 
+  const theme = getThemeClasses(isDark, bgFlavor);
+
   return (
     <div className={cn(
       "h-[calc(100dvh-5rem)] transition-colors duration-700 overflow-hidden flex flex-col",
-      isDark ? "bg-black text-white" : "bg-white text-slate-900"
+      theme.bg
     )}>
       {/* Page Action Header */}
       <div className={cn(
         "w-full px-8 py-3 flex flex-col md:flex-row items-start md:items-center justify-between border-b shrink-0 gap-4 transition-colors duration-700",
-        isDark ? "bg-black border-white/5" : "bg-white border-slate-100"
+        theme.headerBg,
+        theme.border
       )}>
         <div className="flex items-center gap-3 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
           <Info size={16} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
@@ -73,6 +77,7 @@ export default function PartnerLabPicks() {
               key={activeCampDayId}
               organizationId={profile.organization_id}
               isDark={isDark}
+              bgFlavor={bgFlavor}
               activeCampDayId={activeCampDayId}
             />
           )}
