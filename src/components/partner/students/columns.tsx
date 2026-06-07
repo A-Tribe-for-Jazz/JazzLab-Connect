@@ -326,7 +326,6 @@ const RACE_ETHNICITY_OPTIONS = [
   { value: "Native Hawaiian or Pacific Islander", label: "Native Hawaiian or Pacific Islander" },
   { value: "White", label: "White" },
   { value: "Two or more races", label: "Two or more races" },
-  { value: "Prefer not to say", label: "Prefer not to say" },
   { value: "Other", label: "Other" },
 ];
 
@@ -335,7 +334,6 @@ const GENDER_OPTIONS = [
   { value: "Female", label: "Female" },
   { value: "Non-binary", label: "Non-binary" },
   { value: "Transgender", label: "Transgender" },
-  { value: "Prefer not to say", label: "Prefer not to say" },
   { value: "Other", label: "Other" },
 ];
 
