@@ -354,7 +354,7 @@ export default function PartnerDashboard() {
             <h1 className={cn('text-3xl font-black tracking-tight', isDark ? 'text-white' : 'text-slate-900')}>
               Welcome back, {profile?.full_name || 'Partner'}
             </h1>
-            <p className={cn('text-sm font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
+            <p className={cn('text-base font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
               {campDays && campDays.length > 1 ? (
                 <>
                   Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
