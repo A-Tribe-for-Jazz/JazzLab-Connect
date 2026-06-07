@@ -78,7 +78,6 @@ export default function PartnerDashboard() {
   const [organization, setOrganization] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [layoutStyle, setLayoutStyle] = useState<'banner' | 'clean' | 'two_column'>('banner');
   const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
   const [stats, setStats] = useState<Stats>({
     target: 50,
@@ -339,162 +338,63 @@ export default function PartnerDashboard() {
     )}>
       <div className="w-full px-8 pt-16 space-y-12 partner-enter">
 
-        {/* Layout Style Customizer (Toggle switcher) */}
-        <div className="flex justify-end w-full -mb-6">
-          <div className={cn(
-            'flex items-center gap-1 p-1 rounded-xl text-[11px] font-bold border transition-colors',
-            isDark ? 'bg-slate-950/40 border-white/5' : 'bg-slate-100 border-slate-200 shadow-xs'
-          )}>
-            <span className={cn('px-2.5 text-slate-400 font-extrabold uppercase tracking-widest text-[9px]')}>Style Toggle:</span>
-            {(['banner', 'clean', 'two_column'] as const).map((style) => (
-              <button
-                key={style}
-                onClick={() => setLayoutStyle(style)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg transition-all capitalize',
-                  layoutStyle === style
-                    ? isDark
-                      ? 'bg-white/10 text-white shadow-xs'
-                      : 'bg-white text-slate-800 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-655 hover:bg-slate-200/40 dark:hover:bg-white/5'
-                )}
-              >
-                {style === 'clean' ? 'Accent' : style === 'two_column' ? 'Split' : 'Banner'}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* ── Banner Header ────────────────────────────────────────────────── */}
+        <div className={cn(
+          'p-8 rounded-3xl border grid grid-cols-1 lg:grid-cols-3 gap-8 w-full transition-all duration-500 shadow-sm relative overflow-hidden',
+          isDark
+            ? 'bg-[#0f172a]/40 border-slate-800 border-l-4 border-l-sky-500/80'
+            : 'bg-sky-50/30 border-slate-200/60 border-l-4 border-l-sky-500'
+        )}>
+          {/* Subtle background glow */}
+          <div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
 
-        {layoutStyle === 'banner' && (
-          <div className={cn(
-            'p-8 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-8 w-full transition-all duration-500 shadow-sm relative overflow-hidden',
-            isDark
-              ? 'bg-[#0f172a]/40 border-slate-800 border-l-4 border-l-sky-500/80'
-              : 'bg-sky-50/30 border-slate-200/60 border-l-4 border-l-sky-500'
-          )}>
-            {/* Subtle background glow */}
-            <div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
-            
-            <div className="space-y-2 flex-1 relative z-10">
+          <div className="lg:col-span-2 space-y-4 relative z-10">
+            <div className="space-y-2">
               <span className={cn(
                 'text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',
                 isDark ? 'bg-sky-500/10 border-sky-500/20 text-sky-400' : 'bg-sky-50 border-sky-100 text-sky-700'
               )}>
                 Partner Portal
               </span>
-              <h2 className={cn('text-2xl font-black tracking-tight mt-2', isDark ? 'text-white' : 'text-slate-900')}>
+              <h1 className={cn('text-3xl font-black tracking-tight mt-2', isDark ? 'text-white' : 'text-slate-900')}>
                 Welcome back, {profile?.full_name || 'Partner'}
-              </h2>
-              <p className={cn('text-sm font-medium leading-relaxed max-w-3xl', isDark ? 'text-slate-400' : 'text-slate-650')}>
-                Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
-              </p>
+              </h1>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto relative z-10">
-              <Button
-                onClick={() => setShowShareModal(true)}
-                variant="outline"
-                className={cn(
-                  'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full sm:w-auto',
-                  isDark
-                    ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                    : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
-                )}>
-                <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
-              </Button>
-            </div>
+            <p className={cn('text-sm font-medium leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-650')}>
+              Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
+            </p>
           </div>
-        )}
 
-        {layoutStyle === 'clean' && (
-          <header className={cn(
-            'flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b pb-8 w-full transition-colors duration-700',
-            theme.border
-          )}>
-            <div className="flex gap-4 flex-1">
-              <div className="w-1.5 self-stretch rounded-full bg-gradient-to-b from-sky-500 to-indigo-600 shrink-0" />
-              <div className="space-y-1.5">
-                <h1 className={cn('text-3xl font-black tracking-tighter transition-colors duration-700', isDark ? 'text-white' : 'text-slate-900')}>
-                  Welcome, {profile?.full_name || 'Partner'}
-                </h1>
-                <p className={cn('text-sm font-medium transition-colors duration-700', isDark ? 'text-slate-400' : 'text-slate-650')}>
-                  Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end w-full md:w-auto gap-3 shrink-0">
-              <Button
-                onClick={() => setShowShareModal(true)}
-                variant="outline"
-                className={cn(
-                  'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full md:w-auto',
-                  isDark
-                    ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                    : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
-                )}>
-                <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
-              </Button>
-            </div>
-          </header>
-        )}
-
-        {layoutStyle === 'two_column' && (
           <div className={cn(
-            'grid grid-cols-1 lg:grid-cols-3 gap-8 p-8 rounded-3xl border transition-all duration-500 w-full relative overflow-hidden',
+            'flex flex-col justify-between gap-6 p-6 rounded-2xl border transition-all duration-350 relative z-10',
             isDark
-              ? 'bg-[#0f172a]/30 border-white/5'
-              : 'bg-white border-slate-200 shadow-xs'
+              ? 'bg-[#0f172a]/60 border-slate-800/85 hover:border-slate-800'
+              : 'bg-white border-slate-200/80 hover:border-slate-350 shadow-xs'
           )}>
-            {/* Background gradient grid flare */}
-            <div className="absolute -left-20 -bottom-20 w-64 h-64 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none" />
-
-            <div className="lg:col-span-2 space-y-4">
-              <div className="space-y-2">
-                <span className={cn(
-                  'text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',
-                  isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-100 text-indigo-700'
-                )}>
-                  Overview
-                </span>
-                <h2 className={cn('text-3xl font-black tracking-tight mt-1', isDark ? 'text-white' : 'text-slate-900')}>
-                  Welcome, {profile?.full_name || 'Partner'}
-                </h2>
-              </div>
-              <p className={cn('text-sm font-medium leading-relaxed max-w-3xl', isDark ? 'text-slate-400' : 'text-slate-655')}>
-                Please <strong className="underline text-sky-500 dark:text-sky-400">select your Camp Day</strong> from the options at the top-left. Then, <strong className="underline">follow the steps below</strong> to provide student demographics, lab preferences, and staff details — mark each step as complete once all information is filled.
+            <div className="space-y-1.5">
+              <span className={cn('text-[10px] font-black uppercase tracking-wider', isDark ? 'text-sky-400/90' : 'text-sky-700/90')}>
+                Collaborative Setup
+              </span>
+              <h3 className={cn('text-sm font-bold', isDark ? 'text-white' : 'text-slate-900')}>
+                Share Access
+              </h3>
+              <p className={cn('text-[11px] font-semibold leading-normal', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                Invite other team members or administrators to access this dashboard and help input student rosters and staff demographics.
               </p>
             </div>
-
-            <div className={cn(
-              'flex flex-col justify-between gap-6 p-6 rounded-2xl border transition-all duration-350',
-              isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'
-            )}>
-              <div className="space-y-1">
-                <span className={cn('text-[10px] font-black uppercase tracking-wider', isDark ? 'text-slate-500' : 'text-slate-400')}>
-                  Roster Progress
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className={cn('text-3xl font-black tracking-tight', isDark ? 'text-white' : 'text-slate-900')}>
-                    {completedCount} / 4
-                  </span>
-                  <span className={cn('text-xs font-semibold', isDark ? 'text-slate-400' : 'text-slate-500')}>
-                    Steps Complete
-                  </span>
-                </div>
-              </div>
-              <Button
-                onClick={() => setShowShareModal(true)}
-                variant="outline"
-                className={cn(
-                  'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full',
-                  isDark
-                    ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                    : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
-                )}>
-                <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
-              </Button>
-            </div>
+            <Button
+              onClick={() => setShowShareModal(true)}
+              variant="outline"
+              className={cn(
+                'rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border w-full',
+                isDark
+                  ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                  : 'bg-white border-slate-200/60 text-slate-655 hover:border-slate-350 hover:shadow-md hover:bg-slate-50'
+              )}>
+              <Share2 size={16} className="mr-2 text-slate-400" /> Share Access
+            </Button>
           </div>
-        )}
+        </div>
 
         {/* ── Timeline ────────────────────────────────────────────────────── */}
         <div className="max-w-4xl mx-auto relative space-y-12 py-6">
