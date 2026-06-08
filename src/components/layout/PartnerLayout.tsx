@@ -202,7 +202,7 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
             onClick={(e) => handleNavClick(e, '/partner/dashboard')}
             className="flex items-center gap-2.5 min-w-0"
           >
-            <div className="h-8 w-8 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-white/10 bg-white flex items-center justify-center p-0.5 shadow-sm">
+            <div className="h-10 w-10 overflow-hidden shrink-0 flex items-center justify-center">
               <img 
                 src={orgDetails?.logo_url || "/atfj-logo.png"} 
                 alt={orgDetails?.name || "Logo"} 
