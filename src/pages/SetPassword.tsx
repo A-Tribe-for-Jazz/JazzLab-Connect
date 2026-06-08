@@ -217,7 +217,7 @@ export default function SetPassword() {
                             {loading ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Saving...
+                                Please wait....
                               </>
                             ) : (
                               'Set Password and Continue'
