@@ -446,7 +446,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
                 <div className="hidden lg:flex items-center justify-center gap-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 text-center px-4 flex-1">
                   <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
                   <p className="leading-tight">
-                    Please enter the name, title, email address, and cell phone number (optional) of each staff member who will be attending Jazz Lab.
+                    Please enter the name, title, email address, and cell phone number of each staff member who will be attending Jazz Lab.
                   </p>
                 </div>
 
@@ -483,7 +483,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
               <div className="flex lg:hidden items-center gap-2.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-150 dark:border-white/5 pt-3 mt-1">
                 <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
                 <p className="leading-tight">
-                  Please enter the name, title, email address, and cell phone number (optional) of each staff member who will be attending Jazz Lab.
+                  Please enter the name, title, email address, and cell phone number of each staff member who will be attending Jazz Lab.
                 </p>
               </div>
             </div>

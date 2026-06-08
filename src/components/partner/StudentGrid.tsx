@@ -806,7 +806,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
                 <div className="hidden lg:flex items-center justify-center gap-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 text-center px-4 flex-1">
                   <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
                   <p className="leading-tight">
-                    Fill out all fields for each student below. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion.
+                    Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
                   </p>
                 </div>
 
@@ -843,7 +843,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
               <div className="flex lg:hidden items-center gap-2.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-150 dark:border-white/5 pt-3 mt-1">
                 <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
                 <p className="leading-tight">
-                  Fill out all fields for each student below. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion.
+                  Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
                 </p>
               </div>
             </div>
