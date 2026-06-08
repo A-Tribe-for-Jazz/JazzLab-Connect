@@ -961,6 +961,9 @@ function InviteModal({
       const token = sessionData.session?.access_token;
       if (!token) throw new Error('Authentication session not found. Please log in again.');
 
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectTo = isLocal ? window.location.origin : 'https://jazzlabconnect.com';
+
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -970,6 +973,7 @@ function InviteModal({
           fullName: form.fullName.trim(),
           organizationId: form.role === 'partner' ? form.organizationId : undefined,
           labId: form.role === 'educator' ? form.labId : undefined,
+          redirectTo,
         }),
       });
       const data = await res.json();

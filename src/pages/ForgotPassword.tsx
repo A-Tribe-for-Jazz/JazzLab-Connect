@@ -28,8 +28,10 @@ export default function ForgotPassword() {
     setError(null)
     setMessage(null)
     try {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectTo = `${isLocal ? window.location.origin : 'https://jazzlabconnect.com'}/set-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/set-password`,
+        redirectTo,
       })
       if (error) throw error
       setMessage("Password reset link sent! Please check your email.")

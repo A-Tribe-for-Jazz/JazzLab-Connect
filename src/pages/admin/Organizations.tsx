@@ -632,6 +632,9 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.access_token) {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const redirectTo = isLocal ? window.location.origin : 'https://jazzlabconnect.com';
+
         await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
           method: 'POST',
           headers: {
@@ -642,7 +645,8 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
             email: formData.contactEmail,
             role: 'partner',
             organizationId: orgData.id,
-            fullName: formData.contactName
+            fullName: formData.contactName,
+            redirectTo,
           })
         });
       }
@@ -1028,10 +1032,20 @@ function ManageModal({
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectTo = isLocal ? window.location.origin : 'https://jazzlabconnect.com';
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: 'partner', organizationId: org.id, fullName: inviteName.trim() })
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          role: 'partner',
+          organizationId: org.id,
+          fullName: inviteName.trim(),
+          redirectTo,
+        })
       });
       const resData = await response.json();
       if (!response.ok) throw new Error(resData.error || 'Failed to send invite');

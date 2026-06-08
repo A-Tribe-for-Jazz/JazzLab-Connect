@@ -60,8 +60,10 @@ export default function LoginPage() {
     setRecoveryLoading(true);
     setRecoveryError(null);
     try {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectTo = `${isLocal ? window.location.origin : 'https://jazzlabconnect.com'}/set-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail.trim(), {
-        redirectTo: `${window.location.origin}/set-password`,
+        redirectTo,
       });
       if (error) throw error;
       setRecoverySent(true);

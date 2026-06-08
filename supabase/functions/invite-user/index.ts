@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     // 4. Get the request payload
-    let { email, role, organizationId, fullName } = await req.json()
+    let { email, role, organizationId, fullName, redirectTo } = await req.json()
 
     if (!email || !role) {
       return new Response(JSON.stringify({ error: 'Email and role are required' }), {
@@ -91,13 +91,18 @@ serve(async (req) => {
     // 5. Already initialized supabaseAdmin previously
 
     // 6. Send the invite
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+    const inviteOptions: any = {
       data: {
         role: role,
         organization_id: organizationId || null,
         full_name: fullName || '', 
       },
-    })
+    }
+    if (redirectTo) {
+      inviteOptions.redirectTo = redirectTo
+    }
+
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, inviteOptions)
 
     if (inviteError) {
       throw inviteError
