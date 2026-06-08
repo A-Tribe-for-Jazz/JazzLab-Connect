@@ -63,11 +63,14 @@ export default function SetPassword() {
 
       if (updateError) throw updateError;
 
-      // 2. Update Profile Name
+      // 2. Update name and password_set status in public profiles table
       if (profile?.id) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ full_name: fullName.trim() })
+          .update({ 
+            full_name: fullName.trim(),
+            password_set: true
+          })
           .eq('id', profile.id);
         if (profileError) throw profileError;
       }

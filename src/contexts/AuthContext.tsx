@@ -9,6 +9,7 @@ interface Profile {
   role: UserRole;
   organization_id: string | null;
   full_name: string;
+  password_set: boolean;
 }
 
 interface AuthContextType {
@@ -48,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
+        setRequiresPasswordSetup(false);
         setLoading(false);
       }
     });
@@ -60,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
+        setRequiresPasswordSetup(false);
         setLoading(false);
       }
     });
@@ -76,7 +79,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) throw error;
-      setProfile(data as Profile);
+      const userProfile = data as Profile;
+      setProfile(userProfile);
+      
+      // If the profile says password_set is false, force password setup
+      if (userProfile.password_set === false) {
+        setRequiresPasswordSetup(true);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -86,11 +95,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     sessionStorage.clear();
+    setRequiresPasswordSetup(false);
     await supabase.auth.signOut();
   };
 
   const completePasswordSetup = () => {
     setRequiresPasswordSetup(false);
+    setProfile(prev => prev ? { ...prev, password_set: true } : null);
   };
 
   return (

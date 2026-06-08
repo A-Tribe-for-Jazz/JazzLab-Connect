@@ -69,11 +69,14 @@ export default function PasswordSetup() {
       const { error: authErr } = await supabase.auth.updateUser({ password });
       if (authErr) throw authErr;
 
-      // 2. Update name in public profiles table
+      // 2. Update name and password_set status in public profiles table
       if (profile?.id) {
         const { error: profileErr } = await supabase
           .from('profiles')
-          .update({ full_name: fullName.trim() })
+          .update({ 
+            full_name: fullName.trim(),
+            password_set: true
+          })
           .eq('id', profile.id);
         if (profileErr) throw profileErr;
       }
