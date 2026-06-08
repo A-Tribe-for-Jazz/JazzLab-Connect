@@ -118,21 +118,16 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   // ─── Fetch initial data from DB ─────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
-      const [studentsRes, daysRes, orgRes] = await Promise.all([
+      const [studentsRes, daysRes] = await Promise.all([
         supabase
           .from('students')
           .select('*')
           .eq('organization_id', organizationId)
-          .order('order_index', { ascending: true }),
+          .order('created_at', { ascending: true }),
         supabase
           .from('camp_day_organizations')
           .select('camp_day_id, camp_days(date)')
           .eq('organization_id', organizationId),
-        supabase
-          .from('organizations')
-          .select('max_slots')
-          .eq('id', organizationId)
-          .maybeSingle()
       ]);
 
       if (studentsRes.data) {
@@ -153,28 +148,13 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
 
         const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
 
-        // Position existing students at their order_index to preserve empty gaps
-        const maxIndex = filteredExisting.reduce((max, s) => Math.max(max, s.order_index ?? 0), -1);
-        const limitSlots = orgRes.data?.max_slots;
-        const targetLength = (limitSlots !== null && limitSlots !== undefined && limitSlots > 0)
-          ? Math.max(limitSlots, maxIndex + 1)
-          : Math.max(20, maxIndex + 21);
-        const padded: StudentRow[] = Array.from({ length: targetLength }, (_, idx) =>
-          makeEmptyRow(organizationId, idx, activeCampDayId)
-        );
-
-        filteredExisting.forEach(s => {
-          let idx = s.order_index ?? 0;
-          while (idx < padded.length && !isPhantom(padded[idx].id)) {
-            idx++;
-          }
-          if (idx < padded.length) {
-            padded[idx] = { ...s, order_index: idx };
-          } else {
-            padded.push({ ...s, order_index: padded.length });
-          }
-        });
-
+        // Pad with 20 empty phantom rows for new entry — virtualization means
+        // we no longer need a large buffer since only visible rows render.
+        const padded = [...filteredExisting];
+        const targetCount = filteredExisting.length + 20;
+        while (padded.length < targetCount) {
+          padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
+        }
         setStudents(padded);
       }
 
