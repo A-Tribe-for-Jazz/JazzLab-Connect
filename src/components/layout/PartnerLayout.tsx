@@ -227,13 +227,18 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
         </div>
 
         {campDays && campDays.length > 1 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={cn(
-              "text-[13px] font-semibold tracking-tight transition-colors duration-500",
-              isDark ? "text-slate-400" : "text-slate-500"
-            )}>
-              Select Camp Day:
-            </span>
+          <div className={cn(
+            "flex items-center gap-3 shrink-0 px-4 py-1.5 rounded-2xl border transition-all duration-500",
+            isDark
+              ? "bg-sky-400/[0.01] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+              : "bg-sky-500/[0.02] border-sky-100/80 shadow-[0_2px_12px_rgba(14,165,233,0.03)]"
+          )}>
+            <div className="flex items-center gap-1.5 shrink-0 select-none">
+              <Calendar size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-sky-600/90 dark:text-sky-400/90">
+                Select Day
+              </span>
+            </div>
             <div className={cn(
               "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner transition-colors duration-700",
               isDark ? "bg-white/5" : "bg-slate-100/50",
@@ -247,13 +252,13 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
                     key={day.id}
                     onClick={() => handleCampDayChange(day.id)}
                     className={cn(
-                      "px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
+                      "px-3 py-1 rounded-lg text-[10.5px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
                       isActive
                         ? (isDark
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                          : "bg-white text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.15)] border-emerald-200")
+                          ? "bg-sky-500/10 text-sky-450 border-sky-500/35 shadow-[0_0_12px_rgba(14,165,233,0.2)] scale-105"
+                          : "bg-white text-sky-700 border-sky-200/80 shadow-[0_3px_10px_rgba(14,165,233,0.12)] scale-105")
                         : (isDark
-                          ? "bg-transparent border-transparent text-slate-400 hover:text-white"
+                          ? "bg-transparent border-transparent text-slate-450 hover:text-white"
                           : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
                     )}
                   >
