@@ -341,23 +341,21 @@ export default function PartnerDashboard() {
       }
       setStepStatuses(saved);
 
-      // Scroll to the first incomplete (pending or in_progress) step card
-      let firstIncomplete = 1;
-      let foundIncomplete = false;
+      // Scroll to the step that is in progress, not on pending/Start Step
+      let inProgressStep: number | null = null;
       for (let num = 1; num <= 4; num++) {
-        if (saved[num] !== 'completed') {
-          firstIncomplete = num;
-          foundIncomplete = true;
+        if (saved[num] === 'in_progress') {
+          inProgressStep = num;
           break;
         }
       }
 
-      firstIncompleteRef.current = firstIncomplete;
-      foundIncompleteRef.current = foundIncomplete;
+      firstIncompleteRef.current = inProgressStep;
+      foundIncompleteRef.current = inProgressStep !== null;
 
-      if (!shouldAnimate && foundIncomplete) {
+      if (!shouldAnimate && inProgressStep !== null) {
         setTimeout(() => {
-          const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
+          const stepEl = document.getElementById(`step-card-${inProgressStep}`);
           if (stepEl) {
             stepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
