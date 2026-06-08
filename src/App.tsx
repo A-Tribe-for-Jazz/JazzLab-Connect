@@ -53,7 +53,7 @@ function RootRedirect() {
     }
   }
 
-  return <Navigate to="/signin" replace />;
+  return <Navigate to={`/signin${window.location.hash}`} replace />;
 }
 
 function App() {

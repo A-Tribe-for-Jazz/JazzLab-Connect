@@ -19,7 +19,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
   }
 
   if (!user || !profile) {
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    return <Navigate to={`/signin${window.location.hash}`} state={{ from: location }} replace />;
   }
 
   if (requiresPasswordSetup && location.pathname !== '/password-setup') {
