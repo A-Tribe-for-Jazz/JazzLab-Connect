@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ShieldCheck, Mail, Lock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const HERO_IMAGE =
-  'https://images.squarespace-cdn.com/content/v1/60beb127277b425865c6f3b4/fa62e73c-8f4c-4c26-b2ee-57fecc16ea21/_MOR0343.jpg';
+  '/banner.webp';
 
 export default function LoginPage() {
   const { user, profile, requiresPasswordSetup } = useAuth();
