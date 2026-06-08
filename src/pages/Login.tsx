@@ -214,12 +214,6 @@ export default function LoginPage() {
                           <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                             Password
                           </Label>
-                          <Link
-                            to="/forgot-password"
-                            className="text-[10px] font-bold uppercase tracking-wider text-sky-500 hover:text-sky-600 transition-colors"
-                          >
-                            Forgot Password?
-                          </Link>
                         </div>
                         <div className="relative group">
                           <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10 pointer-events-none" />
