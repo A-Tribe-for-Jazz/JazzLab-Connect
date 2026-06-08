@@ -95,16 +95,18 @@ export default function PasswordSetup() {
     }
   };
 
-  if (success) {
+  if (loading || success) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 text-white animate-in fade-in duration-500">
         <div className="relative mb-6">
           <Loader2 className="animate-spin text-sky-400" size={48} />
           <div className="absolute inset-0 blur-xl bg-sky-400/20 animate-pulse" />
         </div>
-        <h2 className="text-xl font-black tracking-tight">Setup Complete!</h2>
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mt-2">
-          Preparing your workspace... Please wait...
+        <h2 className="text-xl font-black tracking-tight">
+          {success ? 'Setup Complete!' : 'Updating Details...'}
+        </h2>
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mt-2 animate-pulse">
+          {success ? 'Preparing your workspace... Please wait...' : 'Please wait...'}
         </p>
       </div>
     );
