@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -41,6 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     () => window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery')
   );
 
+  const profileRef = useRef<Profile | null>(null);
+
   useEffect(() => {
     let active = true;
 
@@ -51,7 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setLoading(true);
+        // Only trigger global loading UI if we don't have a profile yet (prevents unmounting of setup/recovery screens)
+        if (!profileRef.current) {
+          setLoading(true);
+        }
         try {
           const { data, error } = await supabase
             .from('profiles')
@@ -64,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userProfile = data as Profile;
           console.log('AuthContext fetched profile:', userProfile);
           setProfile(userProfile);
+          profileRef.current = userProfile;
           if (userProfile.password_set === false) {
             console.log('AuthContext: password_set is false, setting requiresPasswordSetup to true');
             setRequiresPasswordSetup(true);
@@ -75,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error fetching profile:', error);
           if (active) {
             setProfile(null);
+            profileRef.current = null;
             setRequiresPasswordSetup(false);
           }
         } finally {
@@ -83,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         console.log('AuthContext: no session user, clearing profile');
         setProfile(null);
+        profileRef.current = null;
         setRequiresPasswordSetup(false);
         setLoading(false);
       }
@@ -102,12 +110,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     sessionStorage.clear();
     setRequiresPasswordSetup(false);
+    setProfile(null);
+    profileRef.current = null;
     await supabase.auth.signOut();
   };
 
   const completePasswordSetup = () => {
     setRequiresPasswordSetup(false);
-    setProfile(prev => prev ? { ...prev, password_set: true } : null);
+    setProfile(prev => {
+      const val = prev ? { ...prev, password_set: true } : null;
+      profileRef.current = val;
+      return val;
+    });
   };
 
   return (
