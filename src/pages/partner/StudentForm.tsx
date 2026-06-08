@@ -382,7 +382,7 @@ export default function StudentForm() {
             <Table>
               <TableHeader>
                 <TableRow className={cn("hover:bg-transparent transition-colors duration-700", theme.border)}>
-                  <TableHead className={cn("font-bold pl-8 h-12", theme.tableHeadBg)}>Available JazzLab Courses</TableHead>
+                  <TableHead className={cn("font-bold pl-8 h-12", theme.tableHeadBg)}>Available Jazz Lab Courses</TableHead>
                   {[1, 2, 3, 4, 5].map(rank => (
                     <TableHead key={rank} className={cn("text-center font-bold w-24", theme.tableHeadBg)}>Rank {rank}</TableHead>
                   ))}

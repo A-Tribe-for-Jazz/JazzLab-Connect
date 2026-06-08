@@ -294,7 +294,7 @@ export default function EducatorRoster() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139); // slate-500
-    doc.text(`JazzLab Summer Arts Program  |  Instructor: ${profile?.full_name || "Camp Instructor"}`, 14, 32);
+    doc.text(`Jazz Lab Summer Arts Program  |  Instructor: ${profile?.full_name || "Camp Instructor"}`, 14, 32);
 
     // Separator line
     doc.setDrawColor(15, 23, 42);

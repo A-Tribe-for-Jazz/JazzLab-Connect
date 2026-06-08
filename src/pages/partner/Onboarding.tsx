@@ -32,7 +32,7 @@ export default function PartnerOnboarding() {
         {/* Welcome Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-2">
-            Welcome to JazzLab Connect
+            Welcome to Jazz Lab Connect
           </div>
           <h1 className={cn("text-4xl font-black tracking-tight transition-colors duration-700", isDark ? "text-white" : "text-slate-900")}>Organization Setup</h1>
           <p className={cn("max-w-xl mx-auto text-lg font-medium leading-relaxed transition-colors duration-700", isDark ? "text-slate-400" : "text-slate-500")}>

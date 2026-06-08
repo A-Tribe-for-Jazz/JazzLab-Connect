@@ -35,7 +35,7 @@ export async function generateProgramReport() {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Program Report");
 
-  XLSX.writeFile(workbook, "JazzLab_Full_Program_Report.xlsx");
+  XLSX.writeFile(workbook, "Jazz_Lab_Full_Program_Report.xlsx");
 }
 
 export async function generateStudentPassports() {

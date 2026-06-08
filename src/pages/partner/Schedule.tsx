@@ -548,7 +548,7 @@ export default function PartnerSchedule() {
 
             {/* Printable Header Context */}
             <div className="hidden print:block mb-8">
-              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">JazzLab Final Roster</h1>
+              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">Jazz Lab Final Roster</h1>
               <p className="text-xs text-slate-500 mt-1">
                 Camp Session Date: {showDemo && !isFinalized ? "Thursday, May 14, 2026" : (campDayLabel || 'Unassigned Day')}
               </p>

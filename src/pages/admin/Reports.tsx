@@ -431,7 +431,7 @@ export default function AdminReports() {
 
             {/* Printable Header Context */}
             <div className="hidden print:block mb-8">
-              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">JazzLab Master Schedule</h1>
+              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">Jazz Lab Master Schedule</h1>
               <p className="text-xs text-slate-500 mt-1 font-bold">
                 Camp Session Date: {selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unassigned Day'}
               </p>

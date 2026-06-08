@@ -15,7 +15,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl font-medium text-gray-500">Loading JazzLab Connect...</div>
+        <div className="text-xl font-medium text-gray-500">Loading Jazz Lab Connect...</div>
       </div>
     );
   }

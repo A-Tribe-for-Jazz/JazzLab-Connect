@@ -33,7 +33,7 @@ export default function EducatorLayout() {
               </div>
               <div className="flex flex-col">
                 <span className={cn("font-bold text-sm leading-tight tracking-tight transition-colors duration-700", isDark ? "text-white" : "text-slate-900")}>Educator Portal</span>
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider transition-colors duration-700", isDark ? "text-slate-400" : "text-slate-500")}>JazzLab Connect</span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider transition-colors duration-700", isDark ? "text-slate-400" : "text-slate-500")}>Jazz Lab Connect</span>
               </div>
             </Link>
           </div>

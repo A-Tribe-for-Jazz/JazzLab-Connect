@@ -58,7 +58,7 @@ export function LoginForm({
                 </div>
                 <h1 className="text-2xl font-bold">Welcome back</h1>
                 <p className="text-balance text-muted-foreground text-sm">
-                  Login to your JazzLab Connect account
+                  Login to your Jazz Lab Connect account
                 </p>
               </div>
 

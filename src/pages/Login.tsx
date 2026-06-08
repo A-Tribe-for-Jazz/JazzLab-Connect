@@ -81,7 +81,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-between w-full max-w-7xl mx-auto h-full">
           <div className="flex items-center gap-3">
             <ShieldCheck className="text-primary" size={18} />
-            <span className="font-black text-sm tracking-tight text-slate-900">JazzLab Connect</span>
+            <span className="font-black text-sm tracking-tight text-slate-900">Jazz Lab Connect</span>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sign In</span>
         </div>
@@ -107,7 +107,7 @@ export default function LoginPage() {
                     <p className="text-sm font-medium italic text-slate-400">
                       {inviteExpired
                         ? 'Request a new setup link to create your password.'
-                        : 'Sign in to your JazzLab Connect account.'}
+                        : 'Sign in to your Jazz Lab Connect account.'}
                     </p>
                   </div>
                 </div>
