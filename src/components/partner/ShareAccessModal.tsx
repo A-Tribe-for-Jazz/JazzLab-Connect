@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, AlertCircle, X } from 'lucide-react';
+import { UserPlus, Mail, AlertCircle, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ShareAccessModalProps {
@@ -25,11 +25,13 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId, i
   const [form, setForm] = useState({ fullName: '', email: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setTimeout(() => {
         setError(null);
+        setSuccess(false);
         setForm({ fullName: '', email: '' });
       }, 300);
     }
@@ -68,7 +70,10 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId, i
         throw new Error(data.error || 'Failed to send secure invitation.');
       }
 
-      onOpenChange(false);
+      setSuccess(true);
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to send invite.');
     } finally {
@@ -89,120 +94,142 @@ export default function ShareAccessModal({ open, onOpenChange, organizationId, i
       <DialogContent
         showCloseButton={false}
         className={cn(
-          'sm:max-w-[760px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl',
+          'sm:max-w-[760px] border-none shadow-2xl p-0 overflow-hidden rounded-2xl transition-all duration-300',
+          success && 'sm:max-w-[480px]',
           isDark ? 'bg-[#020617] text-white shadow-black' : 'bg-white text-slate-900'
         )}
       >
-        <DialogHeader className={cn(
-          'p-6 md:p-8 border-b relative',
-          isDark ? 'border-white/5' : 'border-slate-100'
-        )}>
-          <div className="flex items-center gap-4">
+        {success ? (
+          <div className="p-8 md:p-12 flex flex-col items-center justify-center text-center space-y-4 min-h-[320px]">
             <div className={cn(
-              'size-12 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-md',
-              isDark
-                ? 'bg-sky-500/10 border-sky-500/25 text-sky-400 shadow-sky-950/20'
-                : 'bg-sky-50 border-sky-100 text-sky-700 shadow-sky-100'
+              'size-16 rounded-full flex items-center justify-center border transition-all duration-500 shadow-md bg-emerald-500/10 border-emerald-500/25 text-emerald-400 scale-110'
             )}>
-              <UserPlus size={22} className="stroke-[2]" />
+              <Check size={28} className="stroke-[3]" />
             </div>
-            <div className="flex-1 min-w-0 pr-12">
-              <DialogTitle className="text-xl font-black tracking-tight leading-none">Share Access</DialogTitle>
+            <div className="space-y-2">
+              <DialogTitle className="text-2xl font-black tracking-tight leading-none">Invitation Sent!</DialogTitle>
               <DialogDescription className={cn(
-                'text-[11px] font-medium mt-1 leading-normal',
+                'text-xs font-semibold leading-normal max-w-[320px] mx-auto',
                 isDark ? 'text-slate-400' : 'text-slate-500'
               )}>
-                Invite a colleague from your organization to help manage student registrations. They will receive an email link to establish their credentials.
+                An invitation has been successfully sent to <span className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>{form.email}</span>.
               </DialogDescription>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className={cn(
-              'absolute top-6 right-6 size-9 rounded-xl flex items-center justify-center border transition-all duration-200 z-50',
-              isDark
-                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-            )}
-          >
-            <X size={16} className="stroke-[2.5]" />
-          </button>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Full Name</Label>
-              <div className="relative group">
-                <UserPlus size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
-                <Input
-                  required
-                  placeholder="Albert Einstein"
-                  className={inputCls}
-                  value={form.fullName}
-                  onChange={e => setForm({ ...form, fullName: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Email Address</Label>
-              <div className="relative group">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
-                <Input
-                  required
-                  type="email"
-                  placeholder="name@example.com"
-                  className={inputCls}
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <p className={cn(
-              'text-xs font-bold p-3 rounded-xl flex items-center gap-2 animate-in fade-in',
-              isDark
-                ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
-                : 'text-rose-500 bg-rose-50 border border-rose-100'
+        ) : (
+          <>
+            <DialogHeader className={cn(
+              'p-6 md:p-8 border-b relative',
+              isDark ? 'border-white/5' : 'border-slate-100'
             )}>
-              <AlertCircle size={14} className="shrink-0" /> {error}
-            </p>
-          )}
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  'size-12 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-md',
+                  isDark
+                    ? 'bg-sky-500/10 border-sky-500/25 text-sky-400 shadow-sky-950/20'
+                    : 'bg-sky-50 border-sky-100 text-sky-700 shadow-sky-100'
+                )}>
+                  <UserPlus size={22} className="stroke-[2]" />
+                </div>
+                <div className="flex-1 min-w-0 pr-12">
+                  <DialogTitle className="text-xl font-black tracking-tight leading-none">Share Access</DialogTitle>
+                  <DialogDescription className={cn(
+                    'text-[11px] font-medium mt-1 leading-normal',
+                    isDark ? 'text-slate-400' : 'text-slate-500'
+                  )}>
+                    Invite a colleague from your organization to help manage student registrations. They will receive an email link to establish their credentials.
+                  </DialogDescription>
+                </div>
+              </div>
 
-          <DialogFooter className={cn(
-            'pt-4 border-t gap-2 bg-transparent',
-            isDark ? 'border-white/5' : 'border-slate-100'
-          )}>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className={cn(
-                'rounded-xl h-10 px-5 font-semibold tracking-wide text-xs transition-all duration-300 border border-transparent',
-                isDark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50'
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  'absolute top-6 right-6 size-9 rounded-xl flex items-center justify-center border transition-all duration-200 z-50',
+                  isDark
+                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                )}
+              >
+                <X size={16} className="stroke-[2.5]" />
+              </button>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Full Name</Label>
+                  <div className="relative group">
+                    <UserPlus size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
+                    <Input
+                      required
+                      placeholder="Albert Einstein"
+                      className={inputCls}
+                      value={form.fullName}
+                      onChange={e => setForm({ ...form, fullName: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Email Address</Label>
+                  <div className="relative group">
+                    <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
+                    <Input
+                      required
+                      type="email"
+                      placeholder="name@example.com"
+                      className={inputCls}
+                      value={form.email}
+                      onChange={e => setForm({ ...form, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <p className={cn(
+                  'text-xs font-bold p-3 rounded-xl flex items-center gap-2 animate-in fade-in',
+                  isDark
+                    ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                    : 'text-rose-500 bg-rose-50 border border-rose-100'
+                )}>
+                  <AlertCircle size={14} className="shrink-0" /> {error}
+                </p>
               )}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className={cn(
-                'rounded-xl h-10 px-5 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border',
-                isDark
-                  ? 'bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/50'
-                  : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
-              )}
-            >
-              {loading ? 'Sending...' : 'Send Invite'}
-            </Button>
-          </DialogFooter>
-        </form>
+
+              <DialogFooter className={cn(
+                'pt-4 border-t gap-2 bg-transparent',
+                isDark ? 'border-white/5' : 'border-slate-100'
+              )}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  className={cn(
+                    'rounded-xl h-10 px-5 font-semibold tracking-wide text-xs transition-all duration-300 border border-transparent',
+                    isDark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50'
+                  )}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className={cn(
+                    'rounded-xl h-10 px-5 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border',
+                    isDark
+                      ? 'bg-sky-500/20 border-sky-500/20 text-sky-400 hover:bg-sky-500/30 hover:border-sky-500/50'
+                      : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300'
+                  )}
+                >
+                  {loading ? 'Sending...' : 'Send Invite'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
