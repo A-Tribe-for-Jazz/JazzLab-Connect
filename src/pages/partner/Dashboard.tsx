@@ -305,6 +305,7 @@ export default function PartnerDashboard() {
   };
 
   const isStepLocked = (stepNum: number): boolean => {
+    if (stepNum === 4) return true;
     if (stepNum === 1) return false;
     const prevStatus = getStepStatus(stepNum - 1);
     return prevStatus !== 'completed';
