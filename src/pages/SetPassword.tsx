@@ -97,6 +97,21 @@ export default function SetPassword() {
     }
   };
 
+  if (message) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 text-white animate-in fade-in duration-500">
+        <div className="relative mb-6">
+          <Loader2 className="animate-spin text-sky-400" size={48} />
+          <div className="absolute inset-0 blur-xl bg-sky-400/20 animate-pulse" />
+        </div>
+        <h2 className="text-xl font-black tracking-tight">Success!</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mt-2">
+          Preparing your workspace... Please wait...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
       <div className="w-full max-w-sm md:max-w-5xl">
@@ -160,6 +175,7 @@ export default function SetPassword() {
                                 placeholder="Your full name"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
+                                disabled={loading}
                                 className="pl-9"
                               />
                             </div>
@@ -178,6 +194,7 @@ export default function SetPassword() {
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                disabled={loading}
                                 className="pl-9 pr-10"
                               />
                               <button
@@ -208,6 +225,7 @@ export default function SetPassword() {
                                 placeholder="••••••••"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
+                                disabled={loading}
                                 className="pl-9"
                               />
                             </div>
