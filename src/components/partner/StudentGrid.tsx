@@ -62,6 +62,12 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   const handleNavClick = async (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     await flushToDB();
+    if (path === '/partner/lab-picks' && profile?.id) {
+      const currentStatus = localStorage.getItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_2`);
+      if (currentStatus !== 'completed' && currentStatus !== 'in_progress') {
+        localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_2`, 'in_progress');
+      }
+    }
     navigate(path);
   };
   const [filterStatus, setFilterStatus] = useState(searchParams.get('filter') || 'all');

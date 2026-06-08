@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import { Search, Info, Play, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface PicksGridProps {
 }
 
 export default function PicksGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null }: PicksGridProps) {
+  const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const navigate = useNavigate();
   const [students, setStudents] = useState<LabPickRow[]>([]);
@@ -28,6 +30,12 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
   const handleNavClick = async (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     await flushToDB();
+    if (path === '/partner/staff' && profile?.id) {
+      const currentStatus = localStorage.getItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_3`);
+      if (currentStatus !== 'completed' && currentStatus !== 'in_progress') {
+        localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_3`, 'in_progress');
+      }
+    }
     navigate(path);
   };
   const [isTourOpen, setIsTourOpen] = useState(false);
