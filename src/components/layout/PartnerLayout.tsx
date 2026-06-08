@@ -202,19 +202,27 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
             onClick={(e) => handleNavClick(e, '/partner/dashboard')}
             className="flex items-center gap-2.5 min-w-0"
           >
-            <div className="h-12 w-12 overflow-hidden shrink-0 flex items-center justify-center">
-              <img 
-                src={orgDetails?.logo_url || "/atfj-logo.png"} 
-                alt={orgDetails?.name || "Logo"} 
-                className="h-full w-full object-contain" 
-              />
+            <div className="h-12 w-12 overflow-hidden shrink-0 flex items-center justify-center rounded-xl">
+              {orgDetails ? (
+                <img 
+                  src={orgDetails.logo_url || "/atfj-logo.png"} 
+                  alt={orgDetails.name || "Logo"} 
+                  className="h-full w-full object-contain" 
+                />
+              ) : (
+                <div className="h-full w-full animate-pulse bg-slate-200 dark:bg-white/5 rounded-xl" />
+              )}
             </div>
-            <span className={cn(
-              "font-black text-[13px] tracking-tight truncate",
-              isDark ? "text-white" : "text-slate-900"
-            )}>
-              {orgDetails?.name || "Partner Portal"}
-            </span>
+            {orgDetails ? (
+              <span className={cn(
+                "font-black text-[13px] tracking-tight truncate",
+                isDark ? "text-white" : "text-slate-900"
+              )}>
+                {orgDetails.name || "Partner Portal"}
+              </span>
+            ) : (
+              <div className="h-4 w-28 animate-pulse bg-slate-200 dark:bg-white/5 rounded" />
+            )}
           </Link>
 
           {campDays && campDays.length > 1 && (
