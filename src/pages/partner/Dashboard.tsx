@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Check, Share2, Lock, AlertCircle } from 'lucide-react';
@@ -74,13 +74,24 @@ interface TextSegment {
   className?: string;
 }
 
-function TypewriterSegments({ segments, speed = 15, animate = true }: { segments: TextSegment[]; speed?: number; animate?: boolean }) {
+function TypewriterSegments({ 
+  segments, 
+  speed = 15, 
+  animate = true, 
+  onComplete 
+}: { 
+  segments: TextSegment[]; 
+  speed?: number; 
+  animate?: boolean; 
+  onComplete?: () => void; 
+}) {
   const totalLength = segments.reduce((sum, s) => sum + s.text.length, 0);
   const [visibleChars, setVisibleChars] = useState(animate ? 0 : totalLength);
 
   useEffect(() => {
     if (!animate) {
       setVisibleChars(totalLength);
+      if (onComplete) onComplete();
       return;
     }
     setVisibleChars(0);
@@ -88,13 +99,16 @@ function TypewriterSegments({ segments, speed = 15, animate = true }: { segments
       setVisibleChars((prev) => {
         if (prev >= totalLength) {
           clearInterval(interval);
+          if (onComplete) {
+            setTimeout(onComplete, 0);
+          }
           return prev;
         }
         return prev + 1;
       });
     }, speed);
     return () => clearInterval(interval);
-  }, [segments, totalLength, speed, animate]);
+  }, [segments, totalLength, speed, animate, onComplete]);
 
   let charsLeft = visibleChars;
   return (
@@ -123,6 +137,21 @@ export default function PartnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const firstIncompleteRef = useRef<number | null>(null);
+  const foundIncompleteRef = useRef<boolean>(false);
+  const hasScrolledRef = useRef<boolean>(false);
+
+  const handleTypewriterComplete = () => {
+    if (shouldAnimate && foundIncompleteRef.current && firstIncompleteRef.current && !hasScrolledRef.current) {
+      hasScrolledRef.current = true;
+      setTimeout(() => {
+        const stepEl = document.getElementById(`step-card-${firstIncompleteRef.current}`);
+        if (stepEl) {
+          stepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 2000); // Wait 2 seconds after completion
+    }
+  };
   const [isFinalized, setIsFinalized] = useState(false);
   const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({
     1: 'pending',
@@ -322,10 +351,10 @@ export default function PartnerDashboard() {
         }
       }
 
-      const hasScrolledBefore = sessionStorage.getItem(`dashboard_scrolled_${profile?.id}`);
-      if (!hasScrolledBefore) {
-        sessionStorage.setItem(`dashboard_scrolled_${profile?.id}`, 'true');
-      } else if (foundIncomplete) {
+      firstIncompleteRef.current = firstIncomplete;
+      foundIncompleteRef.current = foundIncomplete;
+
+      if (!shouldAnimate && foundIncomplete) {
         setTimeout(() => {
           const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
           if (stepEl) {
@@ -448,6 +477,7 @@ export default function PartnerDashboard() {
                 <TypewriterSegments
                   animate={shouldAnimate}
                   speed={15}
+                  onComplete={handleTypewriterComplete}
                   segments={[
                     { text: 'Please ' },
                     { text: 'select your Camp Day', className: 'underline font-bold text-sky-500 dark:text-sky-400' },
@@ -460,6 +490,7 @@ export default function PartnerDashboard() {
                 <TypewriterSegments
                   animate={shouldAnimate}
                   speed={15}
+                  onComplete={handleTypewriterComplete}
                   segments={[
                     { text: 'Please ' },
                     { text: 'follow the steps below', className: 'underline font-bold' },
