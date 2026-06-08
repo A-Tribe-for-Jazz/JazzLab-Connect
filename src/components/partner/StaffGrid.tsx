@@ -78,7 +78,7 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
         .from('staff_members')
         .select('*')
         .eq('organization_id', organizationId)
-        .order('created_at', { ascending: true });
+        .order('order_index', { ascending: true });
 
       if (data) {
         const existing = data
@@ -93,11 +93,25 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
             cell: s.cell ?? '',
           })) as StaffRow[];
 
-        const targetCount = Math.max(existing.length + 20, 50);
-        const padded = [...existing];
-        while (padded.length < targetCount) {
-          padded.push(makeEmptyRow(organizationId, padded.length));
-        }
+        // Position existing staff at their order_index to preserve empty gaps
+        const maxIndex = existing.reduce((max, s) => Math.max(max, s.order_index ?? 0), -1);
+        const targetLength = Math.max(50, maxIndex + 21);
+        const padded: StaffRow[] = Array.from({ length: targetLength }, (_, idx) =>
+          makeEmptyRow(organizationId, idx)
+        );
+
+        existing.forEach(s => {
+          let idx = s.order_index ?? 0;
+          while (idx < padded.length && !isPhantom(padded[idx].id)) {
+            idx++;
+          }
+          if (idx < padded.length) {
+            padded[idx] = { ...s, order_index: idx };
+          } else {
+            padded.push({ ...s, order_index: padded.length });
+          }
+        });
+
         setStaff(padded);
       }
     } catch (error) {

@@ -123,7 +123,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
           .from('students')
           .select('*')
           .eq('organization_id', organizationId)
-          .order('created_at', { ascending: true }),
+          .order('order_index', { ascending: true }),
         supabase
           .from('camp_day_organizations')
           .select('camp_day_id, camp_days(date)')
@@ -148,13 +148,25 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
 
         const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
 
-        // Pad with 20 empty phantom rows for new entry — virtualization means
-        // we no longer need a large buffer since only visible rows render.
-        const padded = [...filteredExisting];
-        const targetCount = filteredExisting.length + 20;
-        while (padded.length < targetCount) {
-          padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
-        }
+        // Position existing students at their order_index to preserve empty gaps
+        const maxIndex = filteredExisting.reduce((max, s) => Math.max(max, s.order_index ?? 0), -1);
+        const targetLength = Math.max(20, maxIndex + 21);
+        const padded: StudentRow[] = Array.from({ length: targetLength }, (_, idx) =>
+          makeEmptyRow(organizationId, idx, activeCampDayId)
+        );
+
+        filteredExisting.forEach(s => {
+          let idx = s.order_index ?? 0;
+          while (idx < padded.length && !isPhantom(padded[idx].id)) {
+            idx++;
+          }
+          if (idx < padded.length) {
+            padded[idx] = { ...s, order_index: idx };
+          } else {
+            padded.push({ ...s, order_index: padded.length });
+          }
+        });
+
         setStudents(padded);
       }
 
