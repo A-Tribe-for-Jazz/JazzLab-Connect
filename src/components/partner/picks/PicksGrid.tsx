@@ -31,10 +31,20 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
   const handleNavClick = async (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     await flushToDB();
-    if (path === '/partner/staff' && profile?.id) {
-      const currentStatus = localStorage.getItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_3`);
-      if (currentStatus !== 'completed' && currentStatus !== 'in_progress') {
-        localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_3`, 'in_progress');
+    if (path === '/partner/staff' && profile?.organization_id && activeCampDayId) {
+      const { data: cdo } = await supabase
+        .from('camp_day_organizations')
+        .select('step_3_status')
+        .eq('organization_id', profile.organization_id)
+        .eq('camp_day_id', activeCampDayId)
+        .maybeSingle();
+
+      if (cdo && cdo.step_3_status !== 'completed' && cdo.step_3_status !== 'in_progress') {
+        await supabase
+          .from('camp_day_organizations')
+          .update({ step_3_status: 'in_progress' })
+          .eq('organization_id', profile.organization_id)
+          .eq('camp_day_id', activeCampDayId);
       }
     }
     navigate(path);

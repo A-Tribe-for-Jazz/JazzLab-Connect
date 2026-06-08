@@ -124,7 +124,12 @@ export default function PartnerDashboard() {
   const [organization, setOrganization] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
+  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({
+    1: 'pending',
+    2: 'pending',
+    3: 'pending',
+    4: 'pending',
+  });
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [stats, setStats] = useState<Stats>({
     target: 50,
@@ -138,47 +143,13 @@ export default function PartnerDashboard() {
 
   useEffect(() => {
     if (profile?.id) {
-      const saved: Record<number, StepStatus> = {};
-      [1, 2, 3, 4].forEach(num => {
-        const val = localStorage.getItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${num}`) as StepStatus;
-        if (val === 'in_progress' || val === 'completed') {
-          saved[num] = val;
-        } else {
-          saved[num] = 'pending';
-        }
-      });
-      setStepStatuses(saved);
-
       const seen = localStorage.getItem(`seen_dashboard_anim_${profile.id}`);
       if (!seen) {
         setShouldAnimate(true);
         localStorage.setItem(`seen_dashboard_anim_${profile.id}`, 'true');
       }
-
-      // Scroll to the first incomplete (pending or in_progress) step card
-      let firstIncomplete = 1;
-      let foundIncomplete = false;
-      for (let num = 1; num <= 4; num++) {
-        if (saved[num] !== 'completed') {
-          firstIncomplete = num;
-          foundIncomplete = true;
-          break;
-        }
-      }
-
-      const hasScrolledBefore = sessionStorage.getItem(`dashboard_scrolled_${profile.id}`);
-      if (!hasScrolledBefore) {
-        sessionStorage.setItem(`dashboard_scrolled_${profile.id}`, 'true');
-      } else if (foundIncomplete) {
-        setTimeout(() => {
-          const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
-          if (stepEl) {
-            stepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
-      }
     }
-  }, [profile, activeCampDayId]);
+  }, [profile]);
 
   useEffect(() => {
     if (profile?.organization_id) {
@@ -203,9 +174,34 @@ export default function PartnerDashboard() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'preferences' }, () => fetchData())
         .subscribe();
 
+      const channelCdo = supabase
+        .channel(`dashboard-cdo-org-${profile.organization_id}`)
+        .on(
+          'postgres_changes',
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'camp_day_organizations',
+            filter: `organization_id=eq.${profile.organization_id}` 
+          },
+          (payload) => {
+            const updated = payload.new as any;
+            if (updated && updated.camp_day_id === activeCampDayId) {
+              setStepStatuses({
+                1: (updated.step_1_status || 'pending') as StepStatus,
+                2: (updated.step_2_status || 'pending') as StepStatus,
+                3: (updated.step_3_status || 'pending') as StepStatus,
+                4: (updated.step_4_status || 'pending') as StepStatus,
+              });
+            }
+          }
+        )
+        .subscribe();
+
       return () => {
         supabase.removeChannel(channelStudents);
         supabase.removeChannel(channelPrefs);
+        supabase.removeChannel(channelCdo);
       };
     } else if (profile) {
       setLoading(false);
@@ -293,6 +289,50 @@ export default function PartnerDashboard() {
       setIsFinalized(assignmentsFinalized);
 
       if (!orgData) setOrganization({ name: 'Creative Youth Alliance' });
+
+      // Fetch onboarding step statuses
+      let saved: Record<number, StepStatus> = { 1: 'pending', 2: 'pending', 3: 'pending', 4: 'pending' };
+      if (activeCampDayId) {
+        const { data: cdo } = await supabase
+          .from('camp_day_organizations')
+          .select('step_1_status, step_2_status, step_3_status, step_4_status')
+          .eq('organization_id', orgId)
+          .eq('camp_day_id', activeCampDayId)
+          .maybeSingle();
+
+        if (cdo) {
+          saved = {
+            1: (cdo.step_1_status || 'pending') as StepStatus,
+            2: (cdo.step_2_status || 'pending') as StepStatus,
+            3: (cdo.step_3_status || 'pending') as StepStatus,
+            4: (cdo.step_4_status || 'pending') as StepStatus,
+          };
+        }
+      }
+      setStepStatuses(saved);
+
+      // Scroll to the first incomplete (pending or in_progress) step card
+      let firstIncomplete = 1;
+      let foundIncomplete = false;
+      for (let num = 1; num <= 4; num++) {
+        if (saved[num] !== 'completed') {
+          firstIncomplete = num;
+          foundIncomplete = true;
+          break;
+        }
+      }
+
+      const hasScrolledBefore = sessionStorage.getItem(`dashboard_scrolled_${profile?.id}`);
+      if (!hasScrolledBefore) {
+        sessionStorage.setItem(`dashboard_scrolled_${profile?.id}`, 'true');
+      } else if (foundIncomplete) {
+        setTimeout(() => {
+          const stepEl = document.getElementById(`step-card-${firstIncomplete}`);
+          if (stepEl) {
+            stepEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -311,24 +351,38 @@ export default function PartnerDashboard() {
     return prevStatus !== 'completed';
   };
 
-  const handleStartStep = (stepNum: number, to: string, e: React.MouseEvent) => {
+  const updateStepStatusInDB = async (stepNum: number, status: StepStatus) => {
+    if (!profile?.organization_id || !activeCampDayId) return;
+    try {
+      const field = `step_${stepNum}_status`;
+      await supabase
+        .from('camp_day_organizations')
+        .update({ [field]: status })
+        .eq('organization_id', profile.organization_id)
+        .eq('camp_day_id', activeCampDayId);
+    } catch (error) {
+      console.error('Error updating step status in DB:', error);
+    }
+  };
+
+  const handleStartStep = async (stepNum: number, to: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const current = getStepStatus(stepNum);
     if (current === 'pending') {
       const next = { ...stepStatuses, [stepNum]: 'in_progress' as StepStatus };
       setStepStatuses(next);
-      if (profile?.id) localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${stepNum}`, 'in_progress');
+      await updateStepStatusInDB(stepNum, 'in_progress');
     }
     navigate(to);
   };
 
-  const handleMarkComplete = (stepNum: number, e: React.MouseEvent) => {
+  const handleMarkComplete = async (stepNum: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const next = { ...stepStatuses, [stepNum]: 'completed' as StepStatus };
     setStepStatuses(next);
-    if (profile?.id) localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${stepNum}`, 'completed');
+    await updateStepStatusInDB(stepNum, 'completed');
 
     // Automatically scroll to place the next step box in the middle of the viewport
     const nextStepNum = stepNum + 1;
@@ -340,20 +394,20 @@ export default function PartnerDashboard() {
     }, 150);
   };
 
-  const handleMarkIncomplete = (stepNum: number, e: React.MouseEvent) => {
+  const handleMarkIncomplete = async (stepNum: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const next = { ...stepStatuses, [stepNum]: 'pending' as StepStatus };
     setStepStatuses(next);
-    if (profile?.id) localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${stepNum}`, 'pending');
+    await updateStepStatusInDB(stepNum, 'pending');
   };
 
-  const handleCardClick = (stepNum: number, to: string) => {
+  const handleCardClick = async (stepNum: number, to: string) => {
     const current = getStepStatus(stepNum);
     if (current === 'pending') {
       const next = { ...stepStatuses, [stepNum]: 'in_progress' as StepStatus };
       setStepStatuses(next);
-      if (profile?.id) localStorage.setItem(`step_status_${profile.id}_${activeCampDayId || 'default'}_${stepNum}`, 'in_progress');
+      await updateStepStatusInDB(stepNum, 'in_progress');
     }
     navigate(to);
   };
