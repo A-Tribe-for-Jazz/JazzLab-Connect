@@ -24,6 +24,7 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
   const navigate = useNavigate();
   const [students, setStudents] = useState<LabPickRow[]>([]);
   const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
+  const [maxSlots, setMaxSlots] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -243,16 +244,23 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
 
   const fetchData = async () => {
     try {
-      const [labsRes, studentsRes] = await Promise.all([
+      const [labsRes, studentsRes, orgRes] = await Promise.all([
         supabase.from('labs').select('id, name, min_age, max_age').order('name'),
         supabase
           .from('students')
           .select('id, first_name, last_name, age, camp_day_id, notes, preferences(lab_id, rank)')
           .eq('organization_id', organizationId)
-          .order('first_name')
+          .order('first_name'),
+        supabase
+          .from('organizations')
+          .select('max_slots')
+          .eq('id', organizationId)
+          .maybeSingle()
       ]);
 
       if (labsRes.data) setLabs(labsRes.data);
+      if (orgRes.data) setMaxSlots(orgRes.data.max_slots);
+
       if (studentsRes.data) {
         const existingStudents = studentsRes.data
           .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
@@ -263,7 +271,10 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
             sync_status: 'synced'
           })) as any[];
 
-        const targetCount = Math.max(existingStudents.length + 20, 100);
+        const limitSlots = orgRes.data?.max_slots;
+        const targetCount = (limitSlots !== null && limitSlots !== undefined && limitSlots > 0)
+          ? Math.max(limitSlots, existingStudents.length)
+          : Math.max(existingStudents.length + 20, 100);
 
         const paddedStudents = [...existingStudents];
         while (paddedStudents.length < targetCount) {

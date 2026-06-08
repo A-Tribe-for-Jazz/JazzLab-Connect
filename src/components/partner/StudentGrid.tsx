@@ -54,6 +54,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   const navigate = useNavigate();
   const { childFlushRef } = useOutletContext<any>() || {};
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [maxSlots, setMaxSlots] = useState<number | null>(null);
   const [campDays, setCampDays] = useState<{ id: string, date: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
@@ -118,7 +119,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   // ─── Fetch initial data from DB ─────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
-      const [studentsRes, daysRes] = await Promise.all([
+      const [studentsRes, daysRes, orgRes] = await Promise.all([
         supabase
           .from('students')
           .select('*')
@@ -128,7 +129,16 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
           .from('camp_day_organizations')
           .select('camp_day_id, camp_days(date)')
           .eq('organization_id', organizationId),
+        supabase
+          .from('organizations')
+          .select('max_slots')
+          .eq('id', organizationId)
+          .maybeSingle()
       ]);
+
+      if (orgRes.data) {
+        setMaxSlots(orgRes.data.max_slots);
+      }
 
       if (studentsRes.data) {
         const existing = studentsRes.data
@@ -148,10 +158,12 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
 
         const filteredExisting = existing.filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
 
-        // Pad with 20 empty phantom rows for new entry — virtualization means
-        // we no longer need a large buffer since only visible rows render.
+        // Pad with empty rows based on maxSlots or default 20
         const padded = [...filteredExisting];
-        const targetCount = filteredExisting.length + 20;
+        const limitSlots = orgRes.data?.max_slots;
+        const targetCount = (limitSlots !== null && limitSlots !== undefined && limitSlots > 0)
+          ? Math.max(limitSlots, filteredExisting.length)
+          : filteredExisting.length + 20;
         while (padded.length < targetCount) {
           padded.push(makeEmptyRow(organizationId, padded.length, activeCampDayId));
         }
@@ -566,8 +578,10 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
           const next = [...prev];
           next[idx] = { ...prev[idx], ...latestStudent };
 
-          // Auto-expand when near the bottom
-          if (idx >= prev.length - 5) {
+          // Auto-expand when near the bottom, but only if there is no slots limit set
+          const limitSlots = maxSlots;
+          const hasLimit = limitSlots !== null && limitSlots !== undefined && limitSlots > 0;
+          if (!hasLimit && idx >= prev.length - 5) {
             const extras = Array.from({ length: 50 }).map((_, i) =>
               makeEmptyRow(organizationId, prev.length + i, activeCampDayId)
             );
