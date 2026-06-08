@@ -15,6 +15,30 @@ export default function PartnerLayout() {
   const [campDays, setCampDays] = React.useState<any[]>([]);
   const [activeCampDayId, setActiveCampDayId] = React.useState<string>('');
   const childFlushRef = React.useRef<(() => Promise<void>) | null>(null);
+  const [orgDetails, setOrgDetails] = React.useState<{ name: string; logo_url: string | null } | null>(null);
+
+  React.useEffect(() => {
+    if (!profile?.organization_id) return;
+
+    const fetchOrgDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('name, logo_url')
+          .eq('id', profile.organization_id)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setOrgDetails(data);
+        }
+      } catch (err) {
+        console.error('Error fetching organization details:', err);
+      }
+    };
+
+    fetchOrgDetails();
+  }, [profile?.organization_id]);
 
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -105,6 +129,7 @@ export default function PartnerLayout() {
         activeCampDayId={activeCampDayId}
         setActiveCampDayId={setActiveCampDayId}
         childFlushRef={childFlushRef}
+        orgDetails={orgDetails}
       />
 
       {/* Main Content Area */}
@@ -135,7 +160,7 @@ export default function PartnerLayout() {
   );
 }
 
-function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, onBgFlavorChange, hideBorder, campDays, activeCampDayId, setActiveCampDayId, childFlushRef }: any) {
+function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, onBgFlavorChange, hideBorder, campDays, activeCampDayId, setActiveCampDayId, childFlushRef, orgDetails }: any) {
   const navigate = useNavigate();
 
   const handleNavClick = async (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -171,15 +196,25 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
       theme.headerBg
     )}>
       <div className="flex items-center justify-between w-full h-full">
-        <div className="flex items-center gap-4 w-72 h-full shrink-0">
+        <div className="flex items-center gap-3 w-80 h-full shrink-0 min-w-0">
           <Link
             to="/partner/dashboard"
             onClick={(e) => handleNavClick(e, '/partner/dashboard')}
-            className="flex items-center"
+            className="flex items-center gap-2.5 min-w-0"
           >
-            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
-              <img src="/atfj-logo.png" alt="ATFJ" className="h-full w-full object-cover" />
+            <div className="h-8 w-8 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-white/10 bg-white flex items-center justify-center p-0.5 shadow-sm">
+              <img 
+                src={orgDetails?.logo_url || "/atfj-logo.png"} 
+                alt={orgDetails?.name || "Logo"} 
+                className="h-full w-full object-contain" 
+              />
             </div>
+            <span className={cn(
+              "font-black text-[13px] tracking-tight truncate",
+              isDark ? "text-white" : "text-slate-900"
+            )}>
+              {orgDetails?.name || "Partner Portal"}
+            </span>
           </Link>
 
           {campDays && campDays.length > 1 && (

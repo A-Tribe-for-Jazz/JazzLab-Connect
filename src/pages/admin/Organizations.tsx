@@ -48,7 +48,21 @@ interface Organization {
   missing_picks: number;
   incomplete_count: number;
   members: OrganizationMember[];
+  logo_url?: string | null;
 }
+
+const AVAILABLE_LOGOS = [
+  { name: 'No Custom Logo', value: 'none' },
+  { name: 'All THAT', value: '/orglogos/All THAT.jpg' },
+  { name: 'Boys & Girls Club', value: '/orglogos/Boys & Grils Club.jpg' },
+  { name: 'EPIC Youth', value: '/orglogos/EPIC Youth.jpg' },
+  { name: 'ETSS', value: '/orglogos/ETSS.jpg' },
+  { name: 'Eckerd Connects', value: '/orglogos/Eckerd Connects.jpg' },
+  { name: 'Lead the Way', value: '/orglogos/Lead the Way.jpg' },
+  { name: 'Rickenbacker Woods Foundation', value: '/orglogos/Rickenbacker Woods Foundation.jpg' },
+  { name: 'YMCA', value: '/orglogos/YMCA.jpg' },
+  { name: 'YWCA Safe & Sound', value: '/orglogos/YWCA Safe & Sound.jpg' },
+];
 
 type SortField = 'name' | 'student_count' | 'incomplete_count' | 'camp_day';
 
@@ -80,7 +94,7 @@ export default function AdminOrganizations() {
         supabase
           .from('organizations')
           .select(`
-            id, name, contact_name, contact_email,
+            id, name, contact_name, contact_email, logo_url,
             camp_day_organizations (
               camp_days (id, date)
             )
@@ -153,7 +167,8 @@ export default function AdminOrganizations() {
           student_count: sCount,
           missing_picks: missingPicksCount,
           incomplete_count: incompleteCount,
-          members: orgMembers
+          members: orgMembers,
+          logo_url: org.logo_url
         };
       });
 
@@ -580,10 +595,16 @@ export default function AdminOrganizations() {
 
 function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: boolean, onClose: () => void, onInvite: () => void, isDark: boolean, campDays: any[] }) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    contactName: string;
+    contactEmail: string;
+    logoUrl: string;
+  }>({
     name: '',
     contactName: '',
-    contactEmail: ''
+    contactEmail: '',
+    logoUrl: 'none'
   });
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -601,7 +622,8 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
         .insert({
           name: formData.name,
           contact_name: formData.contactName,
-          contact_email: formData.contactEmail
+          contact_email: formData.contactEmail,
+          logo_url: formData.logoUrl === 'none' ? null : formData.logoUrl
         })
         .select()
         .single();
@@ -729,6 +751,38 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="logo_url" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Organization Logo</Label>
+                <Select
+                  value={formData.logoUrl}
+                  onValueChange={(val) => setFormData({ ...formData, logoUrl: val || 'none' })}
+                >
+                  <SelectTrigger
+                    id="logo_url"
+                    className={cn(
+                      "h-10 border transition-all rounded-xl font-bold text-xs w-full",
+                      isDark 
+                        ? "bg-white/5 border-white/10 text-white focus:border-sky-500/50 focus:ring-0" 
+                        : "border-slate-200 focus:border-sky-500/30 focus:ring-0"
+                    )}
+                  >
+                    <SelectValue placeholder="Select a logo" />
+                  </SelectTrigger>
+                  <SelectContent className={cn(isDark ? "bg-[#020617] border-white/10 text-white" : "bg-white border-slate-200")}>
+                    {AVAILABLE_LOGOS.map((logo) => (
+                      <SelectItem key={logo.value || 'none'} value={logo.value || 'none'}>
+                        <div className="flex items-center gap-2">
+                          {logo.value !== 'none' && (
+                            <img src={logo.value} alt={logo.name} className="h-5 w-5 object-contain rounded border border-slate-205" />
+                          )}
+                          <span>{logo.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
@@ -1015,6 +1069,7 @@ function ManageModal({
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(org.name);
   const [selectedDates, setSelectedDates] = useState<string[]>(org.camp_days.map(d => d.date));
+  const [logoUrl, setLogoUrl] = useState<string>(org.logo_url || 'none');
 
   const toggleDate = (date: string) => {
     setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
@@ -1079,7 +1134,13 @@ function ManageModal({
     e.preventDefault();
     setLoading(true);
     try {
-      const { error: orgError } = await supabase.from('organizations').update({ name }).eq('id', org.id);
+      const { error: orgError } = await supabase
+        .from('organizations')
+        .update({ 
+          name,
+          logo_url: logoUrl === 'none' ? null : logoUrl 
+        })
+        .eq('id', org.id);
       if (orgError) throw orgError;
 
       const { error: deleteError } = await supabase.from('camp_day_organizations').delete().eq('organization_id', org.id);
@@ -1182,6 +1243,39 @@ function ManageModal({
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
+                </div>
+
+                {/* Organization Logo */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="manage_logo_url" className={labelCls}>Organization Logo</Label>
+                  <Select
+                    value={logoUrl}
+                    onValueChange={(val) => setLogoUrl(val || 'none')}
+                  >
+                    <SelectTrigger
+                      id="manage_logo_url"
+                      className={cn(
+                        "h-10 border transition-all rounded-xl font-bold text-xs w-full",
+                        isDark 
+                          ? "bg-white/5 border-white/10 text-white focus:border-sky-500/50 focus:ring-0" 
+                          : "border-slate-200 focus:border-sky-500/30 focus:ring-0"
+                      )}
+                    >
+                      <SelectValue placeholder="Select a logo" />
+                    </SelectTrigger>
+                    <SelectContent className={cn(isDark ? "bg-[#020617] border-white/10 text-white" : "bg-white border-slate-200")}>
+                      {AVAILABLE_LOGOS.map((logo) => (
+                        <SelectItem key={logo.value || 'none'} value={logo.value || 'none'}>
+                          <div className="flex items-center gap-2">
+                            {logo.value !== 'none' && (
+                              <img src={logo.value} alt={logo.name} className="h-5 w-5 object-contain rounded border border-slate-205" />
+                            )}
+                            <span>{logo.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Camp Dates — multi-select checkboxes */}
