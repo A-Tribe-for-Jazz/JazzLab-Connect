@@ -320,7 +320,6 @@ export const getColumns = ({
 
       const count = preferences?.length || 0;
       const isComplete = eligibleCount > 0 && count >= eligibleCount;
-      const hasSelections = count > 0;
 
       return (
         <div id={row.index === 0 ? "tour-status-ready" : undefined} className="flex items-center justify-center h-10 px-1">
@@ -331,7 +330,7 @@ export const getColumns = ({
             )}>
               <Loader2 size={14} className="animate-spin" />
             </div>
-          ) : hasSelections ? (
+          ) : (
             <div className={cn(
               "p-1.5 rounded-full transition-all duration-500",
               isComplete
@@ -340,7 +339,7 @@ export const getColumns = ({
             )}>
               {isComplete ? <Check size={14} /> : <AlertCircle size={14} />}
             </div>
-          ) : null}
+          )}
         </div>
       );
     },
@@ -358,11 +357,10 @@ export const getColumns = ({
       </div>
     ),
     cell: ({ row }) => {
-      const { first_name, last_name, preferences } = row.original;
+      const { first_name, last_name } = row.original;
       const hasAnyData = !!(first_name?.trim() || last_name?.trim());
-      const hasPrefs = preferences && preferences.length > 0;
 
-      if (!hasAnyData || !hasPrefs) return <div className="h-10 w-full" />;
+      if (!hasAnyData) return <div className="h-10 w-full" />;
 
       return (
         <div id={row.index === 0 ? "tour-clear-action" : undefined} className="h-full w-full relative min-h-[40px]">
