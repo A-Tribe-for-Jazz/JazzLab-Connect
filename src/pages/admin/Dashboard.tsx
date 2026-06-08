@@ -96,13 +96,13 @@ export default function AdminDashboard() {
         const picksComplete = orgStudents.filter(s => {
           const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
           const eligibleLabs = labsData.filter((lab: any) => {
-            if (lab.min_age == null || studentAge == null) return true;
-            return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+            if (lab.min_age == null) return true;
+            return studentAge !== null && studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
           });
           const eligibleCount = eligibleLabs.length;
-          const requiredCount = Math.min(5, eligibleCount);
+          const requiredCount = eligibleCount;
           const selectedCount = s.preferences?.length || 0;
-          return selectedCount >= requiredCount;
+          return requiredCount > 0 && selectedCount >= requiredCount;
         }).length;
         return {
           id: org.id,

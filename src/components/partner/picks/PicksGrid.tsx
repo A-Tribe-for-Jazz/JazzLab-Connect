@@ -299,7 +299,8 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
     } else {
       // Block selection if student doesn't meet lab age requirement
       const lab = labsRef.current.find(l => l.id === labId);
-      if (lab && lab.min_age != null && student.age !== '' && student.age != null) {
+      if (lab && lab.min_age != null) {
+        if (student.age === '' || student.age == null) return;
         const age = Number(student.age);
         const maxAge = lab.max_age ?? 999;
         if (age < lab.min_age || age > maxAge) return;

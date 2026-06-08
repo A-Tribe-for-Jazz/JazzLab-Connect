@@ -85,7 +85,7 @@ function BlockedCell({ minAge, maxAge, isDark }: {
     <div
       onClick={trigger}
       className={cn(
-        'w-full h-10 flex items-center justify-center cursor-pointer select-none transition-colors duration-300',
+        'w-full h-10 flex items-center justify-center cursor-not-allowed select-none transition-colors duration-300',
         active
           ? isDark ? 'bg-rose-500/10' : 'bg-rose-50'
           : isDark ? 'bg-white/[0.015]' : 'bg-slate-50/80'
@@ -265,7 +265,7 @@ export const getColumns = ({
       const studentAge = age !== '' && age != null ? Number(age) : null;
       const minAge = lab.min_age;
       const maxAge = lab.max_age ?? 999;
-      const meetsAge = studentAge === null || minAge == null || (studentAge >= minAge && studentAge <= maxAge);
+      const meetsAge = minAge == null || (studentAge !== null && studentAge >= minAge && studentAge <= maxAge);
 
       // Show blocked cell if ineligible and not already selected
       if (!meetsAge && !rank) {
@@ -314,13 +314,12 @@ export const getColumns = ({
 
       const studentAge = age !== '' && age != null ? Number(age) : null;
       const eligibleCount = labs.filter(lab => {
-        if (lab.min_age == null || studentAge == null) return true;
-        return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+        if (lab.min_age == null) return true;
+        return studentAge !== null && studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
       }).length;
 
       const count = preferences?.length || 0;
-      const requiredCount = Math.min(5, eligibleCount);
-      const isComplete = requiredCount > 0 && count >= requiredCount;
+      const isComplete = eligibleCount > 0 && count >= eligibleCount;
       const hasSelections = count > 0;
 
       return (
