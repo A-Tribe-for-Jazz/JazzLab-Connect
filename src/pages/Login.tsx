@@ -11,7 +11,7 @@ const HERO_IMAGE =
   'https://images.squarespace-cdn.com/content/v1/60beb127277b425865c6f3b4/fa62e73c-8f4c-4c26-b2ee-57fecc16ea21/_MOR0343.jpg';
 
 export default function LoginPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, requiresPasswordSetup } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,6 +28,9 @@ export default function LoginPage() {
   const [recoverySent, setRecoverySent] = useState(false);
 
   if (user && profile) {
+    if (requiresPasswordSetup) {
+      return <Navigate to="/password-setup" replace />;
+    }
     if (profile.role === 'master_admin') return <Navigate to="/admin/dashboard" replace />;
     if (profile.role === 'partner') return <Navigate to="/partner/dashboard" replace />;
     if (profile.role === 'educator') return <Navigate to="/educator/roster" replace />;

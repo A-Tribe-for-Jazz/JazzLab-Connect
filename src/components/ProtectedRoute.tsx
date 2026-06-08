@@ -22,7 +22,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
     return <Navigate to={`/signin${window.location.hash}`} state={{ from: location }} replace />;
   }
 
-  if (requiresPasswordSetup && location.pathname !== '/password-setup') {
+  if (requiresPasswordSetup && location.pathname !== '/password-setup' && location.pathname !== '/set-password') {
     return <Navigate to="/password-setup" replace />;
   }
 
