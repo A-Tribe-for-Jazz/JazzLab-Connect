@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff, User } from 'lucide-react';
+import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -128,15 +128,19 @@ export default function SetPassword() {
                       )}
 
                       {message && (
-                        <div className="flex flex-col items-center justify-center space-y-3 py-4 text-center animate-in fade-in zoom-in duration-300">
-                          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
+                        <div className="flex flex-col items-center justify-center space-y-4 py-4 text-center animate-in fade-in zoom-in duration-300">
+                          <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm animate-bounce">
                             <CheckCircle2 className="size-6" />
                           </div>
-                          <div className="space-y-1">
-                            <h2 className="text-base font-semibold text-foreground">Success!</h2>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
+                          <div className="space-y-2">
+                            <h2 className="text-base font-bold text-foreground">Success!</h2>
+                            <p className="text-xs text-muted-foreground font-medium">
                               {message}
                             </p>
+                            <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-wider pt-2">
+                              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                              Preparing Workspace...
+                            </div>
                           </div>
                         </div>
                       )}
@@ -209,8 +213,15 @@ export default function SetPassword() {
                             </div>
                           </Field>
 
-                          <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? 'Saving...' : 'Set Password and Continue'}
+                          <Button type="submit" className="w-full flex items-center justify-center gap-2" disabled={loading}>
+                            {loading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              'Set Password and Continue'
+                            )}
                           </Button>
                         </>
                       )}
