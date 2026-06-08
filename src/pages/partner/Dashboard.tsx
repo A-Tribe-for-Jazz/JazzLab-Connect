@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import ShareAccessModal from '../../components/partner/ShareAccessModal';
 import { cn } from '@/lib/utils';
 import { getThemeClasses } from '../../lib/theme';
+import PartnerLoader from '../../components/partner/PartnerLoader';
 
 interface StepConfig {
   number: number;
@@ -448,6 +449,17 @@ export default function PartnerDashboard() {
 
 
   const theme = getThemeClasses(isDark, bgFlavor);
+
+  if (loading) {
+    return (
+      <div className={cn(
+        'pb-20 transition-all duration-700 min-h-[calc(100dvh-5rem)] flex items-center justify-center',
+        theme.bg
+      )}>
+        <PartnerLoader label="Powering Up Dashboard..." isDark={isDark} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
