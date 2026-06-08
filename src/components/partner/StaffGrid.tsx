@@ -74,12 +74,20 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
 
   const fetchData = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('staff_members')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('order_index', { ascending: true });
+      const [staffRes, orgRes] = await Promise.all([
+        supabase
+          .from('staff_members')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('order_index', { ascending: true }),
+        supabase
+          .from('organizations')
+          .select('max_slots')
+          .eq('id', organizationId)
+          .maybeSingle()
+      ]);
 
+      const data = staffRes.data;
       if (data) {
         const existing = data
           .filter((s) => s.name?.trim() || s.title?.trim() || s.email?.trim() || s.cell?.trim())
@@ -95,7 +103,10 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
 
         // Position existing staff at their order_index to preserve empty gaps
         const maxIndex = existing.reduce((max, s) => Math.max(max, s.order_index ?? 0), -1);
-        const targetLength = Math.max(50, maxIndex + 21);
+        const limitSlots = orgRes.data?.max_slots;
+        const targetLength = (limitSlots !== null && limitSlots !== undefined && limitSlots > 0)
+          ? Math.max(limitSlots, maxIndex + 1)
+          : Math.max(50, maxIndex + 21);
         const padded: StaffRow[] = Array.from({ length: targetLength }, (_, idx) =>
           makeEmptyRow(organizationId, idx)
         );

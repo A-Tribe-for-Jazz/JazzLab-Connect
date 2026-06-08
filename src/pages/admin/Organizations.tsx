@@ -49,6 +49,7 @@ interface Organization {
   incomplete_count: number;
   members: OrganizationMember[];
   logo_url?: string | null;
+  max_slots?: number | null;
 }
 
 const AVAILABLE_LOGOS = [
@@ -94,7 +95,7 @@ export default function AdminOrganizations() {
         supabase
           .from('organizations')
           .select(`
-            id, name, contact_name, contact_email, logo_url,
+            id, name, contact_name, contact_email, logo_url, max_slots,
             camp_day_organizations (
               camp_days (id, date)
             )
@@ -168,7 +169,8 @@ export default function AdminOrganizations() {
           missing_picks: missingPicksCount,
           incomplete_count: incompleteCount,
           members: orgMembers,
-          logo_url: org.logo_url
+          logo_url: org.logo_url,
+          max_slots: org.max_slots
         };
       });
 
@@ -600,11 +602,13 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
     contactName: string;
     contactEmail: string;
     logoUrl: string;
+    maxSlots: string;
   }>({
     name: '',
     contactName: '',
     contactEmail: '',
-    logoUrl: 'none'
+    logoUrl: 'none',
+    maxSlots: ''
   });
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -623,7 +627,8 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
           name: formData.name,
           contact_name: formData.contactName,
           contact_email: formData.contactEmail,
-          logo_url: formData.logoUrl === 'none' ? null : formData.logoUrl
+          logo_url: formData.logoUrl === 'none' ? null : formData.logoUrl,
+          max_slots: formData.maxSlots ? parseInt(formData.maxSlots, 10) : null
         })
         .select()
         .single();
@@ -783,6 +788,24 @@ function InviteModal({ isOpen, onClose, onInvite, isDark, campDays }: { isOpen: 
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="max_slots" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Max Slots (Optional)</Label>
+                <Input
+                  id="max_slots"
+                  type="number"
+                  min="1"
+                  className={cn(
+                    "h-10 border transition-all rounded-xl font-bold text-xs w-full",
+                    isDark 
+                      ? "bg-white/5 border-white/10 text-white placeholder-slate-600 focus-visible:border-sky-500/50 focus-visible:bg-sky-500/[0.02]" 
+                      : "border-slate-200 focus-visible:border-sky-500/30 focus-visible:bg-sky-500/[0.01]"
+                  )}
+                  placeholder="e.g. 50"
+                  value={formData.maxSlots}
+                  onChange={(e) => setFormData({ ...formData, maxSlots: e.target.value })}
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -1070,6 +1093,7 @@ function ManageModal({
   const [name, setName] = useState(org.name);
   const [selectedDates, setSelectedDates] = useState<string[]>(org.camp_days.map(d => d.date));
   const [logoUrl, setLogoUrl] = useState<string>(org.logo_url || 'none');
+  const [maxSlots, setMaxSlots] = useState<string>(org.max_slots !== undefined && org.max_slots !== null ? String(org.max_slots) : '');
 
   const toggleDate = (date: string) => {
     setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
@@ -1138,7 +1162,8 @@ function ManageModal({
         .from('organizations')
         .update({ 
           name,
-          logo_url: logoUrl === 'none' ? null : logoUrl 
+          logo_url: logoUrl === 'none' ? null : logoUrl,
+          max_slots: maxSlots ? parseInt(maxSlots, 10) : null
         })
         .eq('id', org.id);
       if (orgError) throw orgError;
@@ -1276,6 +1301,20 @@ function ManageModal({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Max Slots */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="manage_max_slots" className={labelCls}>Max Slots (Optional)</Label>
+                  <Input
+                    id="manage_max_slots"
+                    type="number"
+                    min="1"
+                    className={inputCls}
+                    placeholder="e.g. 50"
+                    value={maxSlots}
+                    onChange={(e) => setMaxSlots(e.target.value)}
+                  />
                 </div>
 
                 {/* Camp Dates — multi-select checkboxes */}
