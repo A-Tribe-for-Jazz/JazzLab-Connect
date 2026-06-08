@@ -97,11 +97,10 @@ export default function PasswordSetup() {
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 flex flex-col justify-between">
-      {/* Header — mirrors Login portal header with ATFJ logo and new title */}
+      {/* Header — mirrors Login portal header with new title */}
       <header className="shrink-0 h-14 flex items-center px-8 border-b border-slate-200 bg-white/95 backdrop-blur-md">
         <div className="flex items-center justify-between w-full max-w-7xl mx-auto h-full">
           <div className="flex items-center gap-3">
-            <img src="/atfj-logo.png" alt="A Tribe for Jazz Logo" className="h-7 w-auto" />
             <span className="font-black text-sm tracking-tight text-slate-900">Jazz Lab Summer Experience - 2026</span>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Setup</span>
