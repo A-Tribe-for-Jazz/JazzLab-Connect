@@ -7,6 +7,7 @@ import {
   Table, Settings
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { hasAnyStudentData } from '../../lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -135,9 +136,7 @@ export default function AdminOrganizations() {
       const labsData = labsRes.data || [];
       setCampDays(campDaysRes.data || []);
 
-      const realStudents = studentsData.filter(
-        s => s.first_name?.trim() || s.last_name?.trim()
-      );
+      const realStudents = studentsData.filter(hasAnyStudentData);
 
       const formatted = orgsData.map((org: any) => {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);

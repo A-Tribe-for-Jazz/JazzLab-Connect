@@ -6,6 +6,7 @@ import {
   Mail, Shield, Building2, Loader2, AlertCircle, X
 } from 'lucide-react';
 import { Link, useOutletContext, useNavigate } from 'react-router-dom';
+import { hasAnyStudentData } from '../../lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -78,7 +79,7 @@ export default function AdminDashboard() {
         supabase.from('assignments').select('id, pick_number'),
         supabase.from('organizations').select('id, name'),
         supabase.from('students').select(`
-          id, organization_id, first_name, last_name, age,
+          *,
           preferences (lab_id)
         `),
       ]);
@@ -86,9 +87,7 @@ export default function AdminDashboard() {
       const labsData = labsRes.data || [];
       const labCount = labsData.length;
       const flagged = (assignData || []).filter(a => a.pick_number === null).length;
-      const realStudents = (studentsData || []).filter(
-        s => s.first_name?.trim() || s.last_name?.trim()
-      );
+      const realStudents = (studentsData || []).filter(hasAnyStudentData);
 
       const formattedPipeline: PipelineOrg[] = (orgsData || []).map((org: any) => {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);

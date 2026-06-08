@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { hasAnyStudentData } from './utils';
 
 function getPrefScore(rank: number): number {
   if (rank === 1) return 100;
@@ -51,8 +52,8 @@ export async function runAssignmentAlgorithm(campDayId: string) {
     const activeLabs = labs;
     const activeTimeSlots = timeSlotsData;
 
-    // Filter students with names (same as frontend behavior)
-    const activeStudents = students.filter(s => s.first_name?.trim() || s.last_name?.trim());
+    // Filter students with any user data (same as frontend behavior)
+    const activeStudents = students.filter(hasAnyStudentData);
     if (activeStudents.length === 0) {
       return {
         success: true,

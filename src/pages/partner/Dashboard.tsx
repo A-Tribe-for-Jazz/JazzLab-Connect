@@ -5,7 +5,7 @@ import { Check, Share2, Lock, AlertCircle } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ShareAccessModal from '../../components/partner/ShareAccessModal';
-import { cn } from '@/lib/utils';
+import { cn, hasAnyStudentData } from '@/lib/utils';
 import { getThemeClasses } from '../../lib/theme';
 import PartnerLoader from '../../components/partner/PartnerLoader';
 
@@ -253,13 +253,13 @@ export default function PartnerDashboard() {
 
       const { data: stData, error: stError } = await supabase
         .from('students')
-        .select('id, first_name, last_name, age, camp_day_id, preferences (lab_id)')
+        .select('*, preferences (lab_id)')
         .eq('organization_id', orgId);
 
       if (stError) throw stError;
 
       const realStudents = (stData || [])
-        .filter(s => s.first_name?.trim() || s.last_name?.trim())
+        .filter(hasAnyStudentData)
         .filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId);
       const count = realStudents.length;
       const missingDemo = realStudents.filter(

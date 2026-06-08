@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import StudentGrid from '@/components/partner/StudentGrid';
 import PicksGrid from '@/components/partner/picks/PicksGrid';
-import { cn } from '@/lib/utils';
+import { cn, hasAnyStudentData } from '@/lib/utils';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 
 export default function AdminAssignment() {
@@ -73,7 +73,7 @@ export default function AdminAssignment() {
         supabase.from('lab_sessions').select('*'),
         supabase.from('camp_days').select('*, camp_day_organizations(camp_day_id)').order('date'),
         supabase.from('organizations').select('id, name, contact_name, contact_email, camp_day_organizations ( camp_day_id )'),
-        supabase.from('students').select('id, organization_id, first_name, last_name, age, preferences (lab_id)'),
+        supabase.from('students').select('*, preferences (lab_id)'),
         supabase.from('lab_instructors').select('lab_id, educator_id'),
       ]);
       if (labsRes.data) setLabs(labsRes.data);
@@ -180,7 +180,7 @@ export default function AdminAssignment() {
   );
 
   const dayStudents = useMemo(() => {
-    const real = students.filter(s => s.first_name?.trim() || s.last_name?.trim());
+    const real = students.filter(hasAnyStudentData);
     return real.filter(s => activeOrgs.some(o => o.id === s.organization_id));
   }, [students, activeOrgs]);
 

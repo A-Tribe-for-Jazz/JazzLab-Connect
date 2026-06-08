@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Calendar, Search, Filter, Printer, Building, AlertTriangle, ArrowRight, Info } from 'lucide-react';
-import { cn, formatTimeString } from '@/lib/utils';
+import { cn, formatTimeString, hasAnyStudentData } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -110,7 +110,7 @@ export default function AdminReports() {
         // Fetch students attending on this camp day
         const { data: studentsData, error: studentsError } = await supabase
           .from('students')
-          .select('id, first_name, last_name, age, organization_id')
+          .select('*')
           .eq('camp_day_id', selectedDayId);
 
         if (studentsError) throw studentsError;
@@ -153,7 +153,7 @@ export default function AdminReports() {
     if (!selectedDayId) return [];
 
     return students
-      .filter(s => s.first_name?.trim() || s.last_name?.trim())
+      .filter(hasAnyStudentData)
       .map(student => {
         const studentAssignments = assignments.filter(a => a.student_id === student.id);
         const sessionMap: { [timeSlotId: string]: { labId: string; labName: string; pickNumber: number | null } } = {};

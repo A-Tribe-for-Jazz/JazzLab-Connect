@@ -3,7 +3,7 @@ import { useSearchParams, useOutletContext, useNavigate } from 'react-router-dom
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Search, Filter, Info, Play, ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, hasAnyStudentData } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -152,7 +152,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
 
       if (studentsRes.data) {
         const existing = studentsRes.data
-          .filter(s => s.first_name?.trim() || s.last_name?.trim())
+          .filter(hasAnyStudentData)
           .map((s, idx) => ({
             ...s,
             sync_status: 'synced' as const,
@@ -226,6 +226,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
           student.race_ethnicity,
           student.gender,
           student.first_language,
+          student.notes,
           ...(isAdmin ? [student.total_program_hours] : [])
         ];
         const hasData = fields.some(f => f !== '' && f !== null && f !== undefined);
@@ -382,7 +383,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
         }
         // Row from another user we haven't seen yet — replace an empty phantom slot
         const phantomIdx = prev.findIndex(
-          s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
+          s => isPhantom(s.id) && !hasAnyStudentData(s)
         );
         const newRow: StudentRow = {
           ...makeEmptyRow(organizationId, phantomIdx !== -1 ? phantomIdx : prev.length, activeCampDayId),
@@ -483,11 +484,11 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
           if (ownInsertsRef.current.has(newRow.id)) return;
           setStudents(prev => {
             if (prev.some(s => s.id === newRow.id)) return prev;
-            const hasData = !!(newRow.first_name?.trim() || newRow.last_name?.trim());
+            const hasData = hasAnyStudentData(newRow);
             if (!hasData) return prev;
             if (activeCampDayId && newRow.camp_day_id !== activeCampDayId) return prev;
             const phantomIdx = prev.findIndex(
-              s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
+              s => isPhantom(s.id) && !hasAnyStudentData(s)
             );
             const student: StudentRow = {
               ...newRow,
@@ -696,9 +697,9 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
 
   const hasIncompleteRow = useMemo(() => {
     return students.some(s => {
-      const isBlank = !s.first_name?.trim() && !s.last_name?.trim() && (s.age === '' || s.age == null);
+      const isBlank = !hasAnyStudentData(s);
       if (isBlank) return false;
-      const isPartiallyFilled = s.first_name?.trim() || s.last_name?.trim() || (s.age !== '' && s.age != null);
+      const isPartiallyFilled = hasAnyStudentData(s);
       const isComplete = !!(s.first_name?.trim() && s.last_name?.trim() && s.age !== '' && s.age != null);
       return isPartiallyFilled && !isComplete;
     });

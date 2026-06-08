@@ -16,3 +16,19 @@ export function formatTimeString(timeStr: string): string {
   hour = hour ? hour : 12;
   return `${hour}:${minute} ${ampm}`;
 }
+
+export function hasAnyStudentData(s: any): boolean {
+  if (!s) return false;
+  return !!(
+    s.first_name?.trim() ||
+    s.last_name?.trim() ||
+    (s.age !== '' && s.age !== null && s.age !== undefined) ||
+    s.last_grade_completed?.trim() ||
+    s.home_zip_code?.trim() ||
+    s.race_ethnicity?.trim() ||
+    s.gender?.trim() ||
+    s.first_language?.trim() ||
+    s.notes?.trim() ||
+    (s.total_program_hours !== '' && s.total_program_hours !== null && s.total_program_hours !== undefined)
+  );
+}
