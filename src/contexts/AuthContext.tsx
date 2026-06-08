@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleAuthChange = async (session: Session | null) => {
       if (!active) return;
+      console.log('AuthContext handleAuthChange session:', session?.user?.email, 'session ID:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -61,10 +62,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!active) return;
           if (error) throw error;
           const userProfile = data as Profile;
+          console.log('AuthContext fetched profile:', userProfile);
           setProfile(userProfile);
           if (userProfile.password_set === false) {
+            console.log('AuthContext: password_set is false, setting requiresPasswordSetup to true');
             setRequiresPasswordSetup(true);
           } else {
+            console.log('AuthContext: password_set is true, setting requiresPasswordSetup to false');
             setRequiresPasswordSetup(false);
           }
         } catch (error) {
@@ -77,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (active) setLoading(false);
         }
       } else {
+        console.log('AuthContext: no session user, clearing profile');
         setProfile(null);
         setRequiresPasswordSetup(false);
         setLoading(false);

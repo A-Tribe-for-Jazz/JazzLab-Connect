@@ -10,6 +10,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
   const { user, profile, loading, requiresPasswordSetup } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute: path =', location.pathname, 'user =', user?.email, 'profile =', profile?.full_name, 'loading =', loading, 'requiresPasswordSetup =', requiresPasswordSetup);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -19,10 +21,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
   }
 
   if (!user || !profile) {
+    console.log('ProtectedRoute: no user or profile, redirecting to /signin');
     return <Navigate to={`/signin${window.location.hash}`} state={{ from: location }} replace />;
   }
 
   if (requiresPasswordSetup && location.pathname !== '/password-setup' && location.pathname !== '/set-password') {
+    console.log('ProtectedRoute: requiresPasswordSetup is true, redirecting from', location.pathname, 'to /password-setup');
     return <Navigate to="/password-setup" replace />;
   }
 

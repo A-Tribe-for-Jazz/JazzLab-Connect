@@ -30,6 +30,8 @@ import EducatorRoster from './pages/educator/Roster';
 function RootRedirect() {
   const { user, profile, loading, requiresPasswordSetup } = useAuth();
   
+  console.log('RootRedirect state: user =', user?.email, 'profile =', profile?.full_name, 'loading =', loading, 'requiresPasswordSetup =', requiresPasswordSetup);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -39,6 +41,7 @@ function RootRedirect() {
   }
 
   if (requiresPasswordSetup) {
+    console.log('RootRedirect: requiresPasswordSetup is true, redirecting to /password-setup');
     return <Navigate to="/password-setup" replace />;
   }
 

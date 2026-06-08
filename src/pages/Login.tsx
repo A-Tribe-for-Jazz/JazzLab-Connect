@@ -27,10 +27,14 @@ export default function LoginPage() {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoverySent, setRecoverySent] = useState(false);
 
+  console.log('LoginPage state: user =', user?.email, 'profile =', profile?.full_name, 'requiresPasswordSetup =', requiresPasswordSetup);
+
   if (user && profile) {
     if (requiresPasswordSetup) {
+      console.log('LoginPage redirecting to /password-setup');
       return <Navigate to="/password-setup" replace />;
     }
+    console.log('LoginPage redirecting to dashboard based on role:', profile.role);
     if (profile.role === 'master_admin') return <Navigate to="/admin/dashboard" replace />;
     if (profile.role === 'partner') return <Navigate to="/partner/dashboard" replace />;
     if (profile.role === 'educator') return <Navigate to="/educator/roster" replace />;
