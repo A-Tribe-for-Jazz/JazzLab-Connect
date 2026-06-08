@@ -195,8 +195,8 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
       !hideBorder ? "border-b" : "border-b-transparent",
       theme.headerBg
     )}>
-      <div className="flex items-center justify-between w-full h-full">
-        <div className="flex items-center gap-3 w-80 h-full shrink-0 min-w-0">
+      <div className="flex items-center justify-between w-full h-full gap-4">
+        <div className="flex items-center gap-3 shrink-0 min-w-0">
           <Link
             to="/partner/dashboard"
             onClick={(e) => handleNavClick(e, '/partner/dashboard')}
@@ -224,67 +224,67 @@ function PortalHeader({ navItems, onSignOut, isDark, onToggleTheme, bgFlavor, on
               <div className="h-4 w-28 animate-pulse bg-slate-200 dark:bg-white/5 rounded" />
             )}
           </Link>
+        </div>
 
-          {campDays && campDays.length > 1 && (
-            <div className="flex items-center gap-2 shrink-0">
-              <span className={cn(
-                "text-[13px] font-semibold tracking-tight transition-colors duration-500",
-                isDark ? "text-slate-400" : "text-slate-500"
-              )}>
-                Select Camp Day:
-              </span>
-              <div className={cn(
-                "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner transition-colors duration-700",
-                isDark ? "bg-white/5" : "bg-slate-100/50",
-                theme.border
-              )}>
-                {campDays.map((day: any) => {
-                  const isActive = activeCampDayId === day.id;
-                  const formattedDate = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  return (
-                    <button
-                      key={day.id}
-                      onClick={() => handleCampDayChange(day.id)}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
-                        isActive
-                          ? (isDark
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                            : "bg-white text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.15)] border-emerald-200")
-                          : (isDark
-                            ? "bg-transparent border-transparent text-slate-400 hover:text-white"
-                            : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
-                      )}
-                    >
-                      <span className="relative flex h-[10px] w-[10px] min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] shrink-0 items-center justify-center">
+        {campDays && campDays.length > 1 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={cn(
+              "text-[13px] font-semibold tracking-tight transition-colors duration-500",
+              isDark ? "text-slate-400" : "text-slate-500"
+            )}>
+              Select Camp Day:
+            </span>
+            <div className={cn(
+              "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner transition-colors duration-700",
+              isDark ? "bg-white/5" : "bg-slate-100/50",
+              theme.border
+            )}>
+              {campDays.map((day: any) => {
+                const isActive = activeCampDayId === day.id;
+                const formattedDate = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                return (
+                  <button
+                    key={day.id}
+                    onClick={() => handleCampDayChange(day.id)}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
+                      isActive
+                        ? (isDark
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                          : "bg-white text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.15)] border-emerald-200")
+                        : (isDark
+                          ? "bg-transparent border-transparent text-slate-400 hover:text-white"
+                          : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
+                    )}
+                  >
+                    <span className="relative flex h-[10px] w-[10px] min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] shrink-0 items-center justify-center">
+                      <svg
+                        className={cn(
+                          "h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 transition-opacity duration-300",
+                          isActive ? "opacity-100" : "opacity-0"
+                        )}
+                        viewBox="0 0 8 8"
+                        fill="currentColor"
+                      >
+                        <circle cx="4" cy="4" r="3" />
+                      </svg>
+                      {isActive && (
                         <svg
-                          className={cn(
-                            "h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 transition-opacity duration-300",
-                            isActive ? "opacity-100" : "opacity-0"
-                          )}
+                          className="absolute inset-0 m-auto h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 animate-ping-slow"
                           viewBox="0 0 8 8"
                           fill="currentColor"
                         >
                           <circle cx="4" cy="4" r="3" />
                         </svg>
-                        {isActive && (
-                          <svg
-                            className="absolute inset-0 m-auto h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 animate-ping-slow"
-                            viewBox="0 0 8 8"
-                            fill="currentColor"
-                          >
-                            <circle cx="4" cy="4" r="3" />
-                          </svg>
-                        )}
-                      </span>
-                      {formattedDate}
-                    </button>
-                  );
-                })}
-              </div>
+                      )}
+                    </span>
+                    {formattedDate}
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <nav className="flex items-center gap-8 h-full">
           {navItems.map((item: any) => (
