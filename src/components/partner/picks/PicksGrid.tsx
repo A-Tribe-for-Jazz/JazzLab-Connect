@@ -139,7 +139,7 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
     const handleStudentRealtimeChange = async (studentId: string) => {
       const { data: student, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, age, notes, organization_id, preferences(lab_id, rank)')
+        .select('id, first_name, last_name, age, camp_day_id, notes, organization_id, preferences(lab_id, rank)')
         .eq('id', studentId)
         .single();
 
@@ -164,7 +164,14 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
       // Ignore students from other orgs
       if (student.organization_id !== organizationId) return;
 
-      const isValid = !!(student.first_name?.trim() && student.last_name?.trim() && student.age !== null && student.age !== undefined && student.age !== '');
+      const isValid = !!(
+        student.first_name?.trim() &&
+        student.last_name?.trim() &&
+        student.age !== null &&
+        student.age !== undefined &&
+        student.age !== '' &&
+        (!activeCampDayId || student.camp_day_id === activeCampDayId)
+      );
 
       setStudents(prev => {
         const idx = prev.findIndex(s => s.id === studentId);

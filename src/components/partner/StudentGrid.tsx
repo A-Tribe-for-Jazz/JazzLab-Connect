@@ -485,6 +485,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
             if (prev.some(s => s.id === newRow.id)) return prev;
             const hasData = !!(newRow.first_name?.trim() || newRow.last_name?.trim());
             if (!hasData) return prev;
+            if (activeCampDayId && newRow.camp_day_id !== activeCampDayId) return prev;
             const phantomIdx = prev.findIndex(
               s => isPhantom(s.id) && !s.first_name?.trim() && !s.last_name?.trim() && s.age === ''
             );
