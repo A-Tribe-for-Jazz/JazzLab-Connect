@@ -1,51 +1,118 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { User, CheckCircle2, AlertCircle, Check, Eraser, Loader2 } from "lucide-react";
+import { User, CheckCircle2, AlertCircle, Check, Eraser, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useState, useRef, useCallback } from "react";
 
 export type LabPickRow = {
   id: string;
   first_name: string;
   last_name: string;
+  age?: number | '';
+  notes?: string;
   preferences: { lab_id: string; rank: number }[];
   sync_status?: 'synced' | 'saving' | 'error';
 };
 
 interface ColumnProps {
-  labs: { id: string, name: string }[];
+  labs: { id: string; name: string; min_age: number | null; max_age: number | null }[];
   handlePreferenceToggle: (studentId: string, labId: string) => void;
   handleClearPreferences: (studentId: string) => void;
+  handleNoteSave: (studentId: string, notes: string) => void;
   isDark: boolean;
 }
 
 const LAB_SHORT_NAMES: Record<string, string> = {
-  "Arts Collaboratorium": "Arts Collab",
-  "Jazz Fab Lab": "Jazz Fab",
-  "Virtual Reality MusicMaking": "VR Music",
-  "Conga Drumming": "Conga Drum",
-  "Afro-Futuristic Studio": "Afro-Future",
-  "Remix the Code": "Remix Code",
-  "Pixel Beats Lab": "Pixel Beats",
-  "The Decibel Lab with DriveOhio": "Decibel Lab",
-  "The Vocal Resonance Lab with The Singing Buckeyes": "Vocal Resonance",
-  "The Vocal Resonance Lab": "Vocal Resonance",
-  "Vocal Resonance Lab": "Vocal Resonance",
-  "Guitar \u0026 Audio Engineering": "Guitar / Audio Eng",
-  "Guitar Lab (8+) or Audio Engineering (11+)": "Guitar / Audio Eng",
+  "Arts Collaboratorium": "Mixed Media Lab",
+  "Jazz Fab Lab": "Jazz Fab Lab",
+  "Virtual Reality MusicMaking": "Virtual Reality MusicMaking",
+  "Conga Drumming": "Conga Drumming",
+  "Afro-Futuristic Studio": "Afro-Futuristic Studio",
+  "Remix the Code": "Remix the Code",
+  "Pixel Beats Lab": "Pixel Beats Lab",
+  "Eco Jazz Sound Lab": "Eco Jazz Sound Lab",
+  "The Vocal Resonance Lab with The Singing Buckeyes": "The Reverb Lab",
+  "Young Producers Lab": "Future Producers' Lab",
 };
+
+export const LAB_DETAILS: Record<string, { short: string; room: string; desc: string; icon: string; ageRequirement: string }> = {
+  "Arts Collaboratorium": { short: "Mixed Media Lab", room: "106", desc: "Collage art making", icon: "🎨", ageRequirement: "All ages" },
+  "Young Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Future Producers Lab": { short: "Future Producers' Lab", room: "108", desc: "Singer-Songwriter activities", icon: "🎙️", ageRequirement: "11+" },
+  "Afro-Futuristic Studio": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
+  "AI World-Building Lab": { short: "Afro-Futuristic Studio", room: "110", desc: "Ai Image & Music-Making", icon: "🚀", ageRequirement: "10+" },
+  "Pixel Beats Lab": { short: "Pixel Beats Lab", room: "112", desc: "Video game music coding", icon: "🎮", ageRequirement: "9+" },
+  "The Vocal Resonance Lab with The Singing Buckeyes": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
+  "Vocal Resonance Lab": { short: "The Reverb Lab", room: "120", desc: "Harmonizing/ Singing", icon: "🎤", ageRequirement: "All ages" },
+  "Remix the Code": { short: "Remix the Code", room: "122", desc: "Music Coding w/ JavaScript", icon: "💻", ageRequirement: "11+" },
+  "Eco Jazz Sound Lab": { short: "Eco Jazz Sound Lab", room: "123", desc: "Nature recording/ mixing", icon: "🌱", ageRequirement: "9+" },
+  "Virtual Reality MusicMaking": { short: "Virtual Reality MusicMaking", room: "124", desc: "Music Composing in VR", icon: "🕶️", ageRequirement: "7+" },
+  "Conga Drumming": { short: "Conga Drumming", room: "125A", desc: "Cultural Drumming/ Rhythms", icon: "🥁", ageRequirement: "All ages" },
+  "Jazz Fab Lab": { short: "Jazz Fab Lab", room: "130", desc: "Engineering Instruments", icon: "🛠️", ageRequirement: "7+" },
+};
+
+function BlockedCell({ minAge, maxAge, isDark }: {
+  minAge: number | null;
+  maxAge: number | null;
+  isDark: boolean;
+}) {
+  const [active, setActive] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const trigger = useCallback(() => {
+    if (active) return;
+    setActive(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setActive(false), 900);
+  }, [active]);
+
+  const ageLabel = `Age ${minAge}${maxAge ? `–${maxAge}` : '+'}`;
+
+  return (
+    <div
+      onClick={trigger}
+      className={cn(
+        'w-full h-10 flex items-center justify-center cursor-pointer select-none transition-colors duration-300',
+        active
+          ? isDark ? 'bg-rose-500/10' : 'bg-rose-50'
+          : isDark ? 'bg-white/[0.015]' : 'bg-slate-50/80'
+      )}
+    >
+      <span className={cn(
+        'font-bold',
+        active
+          ? cn('text-[9px] tracking-widest uppercase', isDark ? 'text-rose-400' : 'text-rose-500')
+          : cn('text-[11px]', isDark ? 'text-slate-700' : 'text-slate-300')
+      )}>
+        {active ? `${ageLabel} only` : '—'}
+      </span>
+    </div>
+  );
+}
 
 export const getColumns = ({
   labs,
   handlePreferenceToggle,
   handleClearPreferences,
-  isDark
+  handleNoteSave,
+  isDark,
 }: ColumnProps): ColumnDef<LabPickRow>[] => {
   const baseColumns: ColumnDef<LabPickRow>[] = [
     {
       id: "serial",
       header: () => (
         <div className="flex items-center justify-center w-full">
-          <span className="font-black uppercase tracking-widest text-[10px] text-slate-500">#</span>
+          <span className={cn(
+            "font-black tracking-widest text-[10px]",
+            isDark ? "text-slate-200" : "text-slate-800"
+          )}>#</span>
         </div>
       ),
       cell: ({ row }) => (
@@ -65,42 +132,132 @@ export const getColumns = ({
       accessorKey: "name",
       header: () => (
         <div className="flex items-center px-4">
-          <span className="font-semibold text-[13px] text-slate-500">Student Name</span>
+          <span className={cn(
+            "font-bold text-[11px] tracking-wide",
+            isDark ? "text-slate-400" : "text-slate-500"
+          )}>Student Name</span>
         </div>
       ),
       cell: ({ row }) => (
-        <div className="px-2 flex items-center h-10">
-          <div className={cn(
-            "font-bold text-[13px] whitespace-nowrap",
+        <div id={row.index === 0 ? "tour-student-name" : undefined} className="px-4 flex items-center h-10 w-full min-w-0">
+          <span className={cn(
+            "font-semibold text-[13px] truncate",
             isDark ? "text-white" : "text-slate-900"
           )}>
             {row.original.first_name} {row.original.last_name}
-          </div>
+          </span>
         </div>
       ),
-      size: 250,
+      size: 215,
+    },
+    {
+      accessorKey: "age",
+      header: () => (
+        <div className="flex items-center justify-center">
+          <span className={cn(
+            "font-bold text-[11px] tracking-wide",
+            isDark ? "text-slate-400" : "text-slate-500"
+          )}>Age</span>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center h-10">
+          <span className={cn(
+            "text-[13px] font-medium",
+            isDark ? "text-slate-300" : "text-slate-600"
+          )}>
+            {row.original.age || ""}
+          </span>
+        </div>
+      ),
+      size: 45,
+    },
+    {
+      accessorKey: "notes",
+      header: () => (
+        <div className="flex flex-col items-center justify-center gap-0.5">
+          <span className={cn(
+            "font-bold text-[11px] tracking-wide",
+            isDark ? "text-slate-400" : "text-slate-500"
+          )}>Notes</span>
+          <span className={cn(
+            "text-[9px] font-medium",
+            isDark ? "text-slate-600" : "text-slate-400"
+          )}>(optional)</span>
+        </div>
+      ),
+      cell: ({ row }) => <NotesCell row={row} handleNoteSave={handleNoteSave} isDark={isDark} />,
+      size: 50,
     },
   ];
 
   // Dynamic Lab Columns
-  const labColumns: ColumnDef<LabPickRow>[] = labs.map((lab) => ({
+  const labColumns: ColumnDef<LabPickRow>[] = labs.map((lab, colIdx) => ({
     id: `lab-${lab.id}`,
-    header: () => (
-      <div className="flex items-center justify-center w-full">
-        <span className="font-bold text-[10px] text-slate-500 whitespace-nowrap">
-          {LAB_SHORT_NAMES[lab.name] || lab.name}
-        </span>
-      </div>
-    ),
+    header: () => {
+      const details = LAB_DETAILS[lab.name] || { short: LAB_SHORT_NAMES[lab.name] || lab.name, room: "TBD", desc: "", ageRequirement: "All ages" };
+      
+      return (
+        <div className="flex flex-col justify-between py-1.5 h-full w-full select-none text-center leading-normal min-w-0 overflow-hidden">
+          {/* Lab Name */}
+          <span className={cn(
+            "font-black text-[10.5px] leading-tight px-0.5 whitespace-normal break-words inline-block w-full",
+            isDark ? "text-white" : "text-slate-900"
+          )}>
+            {details.short}
+          </span>
+
+          {/* Divider */}
+          <div className={cn(
+            "my-1 border-t w-full",
+            isDark ? "border-white/10" : "border-slate-200"
+          )} />
+
+          {/* Brief Description */}
+          <span className={cn(
+            "text-[10px] font-semibold leading-tight px-0.5 italic whitespace-normal break-normal inline-block w-full",
+            isDark ? "text-slate-400" : "text-slate-500"
+          )}>
+            {details.desc}
+          </span>
+
+          {/* Divider */}
+          <div className={cn(
+            "my-1 border-t w-full",
+            isDark ? "border-white/10" : "border-slate-200"
+          )} />
+
+          {/* Age Req */}
+          <span className={cn(
+            "text-[10px] font-black tracking-wider whitespace-normal break-words inline-block w-full",
+            isDark ? "text-indigo-200/80" : "text-indigo-600/80"
+          )}>
+            Age: {details.ageRequirement}
+          </span>
+        </div>
+      );
+    },
     cell: ({ row }) => {
-      const { first_name, last_name } = row.original;
+      const { first_name, last_name, age } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
       const pref = row.original.preferences?.find(p => p.lab_id === lab.id);
       const rank = pref?.rank;
 
+      // Age eligibility check
+      const studentAge = age !== '' && age != null ? Number(age) : null;
+      const minAge = lab.min_age;
+      const maxAge = lab.max_age ?? 999;
+      const meetsAge = studentAge === null || minAge == null || (studentAge >= minAge && studentAge <= maxAge);
+
+      // Show blocked cell if ineligible and not already selected
+      if (!meetsAge && !rank) {
+        return <BlockedCell minAge={minAge} maxAge={lab.max_age ?? null} isDark={isDark} />;
+      }
+
       return (
         <button
+          id={row.index === 0 && colIdx === 0 ? "tour-lab-cell" : undefined}
           onClick={() => handlePreferenceToggle(row.original.id, lab.id)}
           className={cn(
             "w-full h-10 flex items-center justify-center transition-all duration-300 group/btn outline-none",
@@ -121,26 +278,35 @@ export const getColumns = ({
         </button>
       );
     },
-    size: 85,
+    size: 97,
   }));
 
   const statusColumn: ColumnDef<LabPickRow> = {
     id: "status",
     header: () => (
       <div className="flex items-center justify-center">
-        <span className="font-semibold text-[13px] text-slate-500">Status</span>
+        <span className={cn(
+          "font-bold text-[11px] tracking-wide",
+          isDark ? "text-slate-400" : "text-slate-500"
+        )}>Complete</span>
       </div>
     ),
     cell: ({ row }) => {
-      const { first_name, last_name, preferences, sync_status } = row.original;
+      const { first_name, last_name, age, preferences, sync_status } = row.original;
       if (!first_name?.trim() && !last_name?.trim()) return <div className="h-10" />;
 
+      const studentAge = age !== '' && age != null ? Number(age) : null;
+      const eligibleCount = labs.filter(lab => {
+        if (lab.min_age == null || studentAge == null) return true;
+        return studentAge >= lab.min_age && studentAge <= (lab.max_age ?? 999);
+      }).length;
+
       const count = preferences?.length || 0;
-      const isComplete = count === 5;
+      const isComplete = eligibleCount > 0 && count >= eligibleCount;
       const hasSelections = count > 0;
 
       return (
-        <div className="flex items-center justify-center h-10 px-4">
+        <div id={row.index === 0 ? "tour-status-ready" : undefined} className="flex items-center justify-center h-10 px-1">
           {sync_status === 'saving' ? (
             <div className={cn(
               "p-1.5 rounded-full transition-all duration-500 animate-spin-slow",
@@ -161,14 +327,17 @@ export const getColumns = ({
         </div>
       );
     },
-    size: 80,
+    size: 75,
   };
 
   const actionColumn: ColumnDef<LabPickRow> = {
     id: "actions",
     header: () => (
       <div className="flex items-center justify-center">
-        <span className="font-semibold text-[13px] text-slate-500">Action</span>
+        <span className={cn(
+          "font-bold text-[11px] tracking-wide",
+          isDark ? "text-slate-400" : "text-slate-500"
+        )}>Clear</span>
       </div>
     ),
     cell: ({ row }) => {
@@ -179,13 +348,13 @@ export const getColumns = ({
       if (!hasAnyData || !hasPrefs) return <div className="h-10 w-full" />;
 
       return (
-        <div className="h-full w-full relative min-h-[40px]">
+        <div id={row.index === 0 ? "tour-clear-action" : undefined} className="h-full w-full relative min-h-[40px]">
           <button
             onClick={() => handleClearPreferences(row.original.id)}
             title="Clear Selections"
             className={cn(
-              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear hover:bg-rose-50/50 dark:hover:bg-rose-900/10",
-              isDark ? "text-rose-400" : "text-rose-500"
+              "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/clear",
+              isDark ? "text-rose-400 hover:bg-rose-900/10" : "text-rose-500 hover:bg-rose-50/50"
             )}
           >
             <Eraser
@@ -196,8 +365,98 @@ export const getColumns = ({
         </div>
       );
     },
-    size: 80,
+    size: 50,
   };
 
   return [...baseColumns, ...labColumns, statusColumn, actionColumn];
 };
+
+function NotesCell({ row, handleNoteSave, isDark }: { row: any; handleNoteSave: (studentId: string, notes: string) => void; isDark: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(row.original.notes || '');
+
+  const { first_name, last_name, notes } = row.original;
+  const hasAnyData = !!(first_name?.trim() || last_name?.trim());
+  const hasNotes = !!notes?.trim();
+
+  if (!hasAnyData) return <div className="h-10 w-full" />;
+
+  return (
+    <div className="h-full w-full min-h-[40px]">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger
+          render={
+            <button
+              className={cn(
+                "absolute inset-0 w-full h-full flex items-center justify-center transition-all duration-300 group/note",
+                isDark ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/50",
+                open && (isDark ? "bg-white/[0.02]" : "bg-slate-50/50")
+              )}
+              onClick={() => setDraft(notes || '')}
+            />
+          }
+        >
+          <FileText
+            size={18}
+            fill="none"
+            className={cn(
+              "transition-all duration-300 group-hover/note:scale-110",
+              hasNotes || open
+                ? "text-yellow-400 opacity-100"
+                : (isDark
+                  ? "text-slate-700 group-hover/note:text-yellow-400"
+                  : "text-slate-300 group-hover/note:text-yellow-400")
+            )}
+          />
+        </DialogTrigger>
+        <DialogContent className={cn(
+          "w-[480px] rounded-[24px] border-none shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-0 overflow-hidden translate-x-[-50%] translate-y-[-50%] transition-all duration-500",
+          " [&_[data-slot=dialog-close]]:bg-transparent [&_[data-slot=dialog-close]]:opacity-20 [&_[data-slot=dialog-close]]:hover:opacity-100 [&_[data-slot=dialog-close]]:transition-all [&_[data-slot=dialog-close]]:duration-300 [&_[data-slot=dialog-close]]:hover:scale-110",
+          isDark ? "bg-slate-950/90 backdrop-blur-xl text-white ring-1 ring-white/10" : "bg-white ring-1 ring-slate-100"
+        )}>
+          <div className="p-6 flex flex-col h-[320px]">
+            <div className="flex-1">
+              <Textarea
+                placeholder="e.g. Hearing sensitivity to loud percussion..."
+                className={cn(
+                  "h-full w-full rounded-none border-none transition-all duration-500 text-[15px] shadow-none resize-none leading-relaxed p-0 pr-10",
+                  "focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none ring-0 ring-offset-0",
+                  isDark
+                    ? "bg-transparent text-slate-200 placeholder:text-slate-700"
+                    : "bg-transparent text-slate-700 placeholder:text-slate-300"
+                )}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+            </div>
+            <div className="mt-6 flex justify-end items-center gap-6">
+              <button
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "text-[13px] font-semibold transition-all duration-300 hover:opacity-100",
+                  isDark ? "text-slate-500 opacity-40" : "text-slate-400 opacity-60"
+                )}
+              >
+                Cancel
+              </button>
+              <Button
+                onClick={() => {
+                  handleNoteSave(row.original.id, draft);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "rounded-xl h-10 px-6 font-semibold tracking-wide text-xs transition-all duration-300 shadow-sm border",
+                  isDark
+                    ? "bg-yellow-500/20 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 hover:border-yellow-500/50"
+                    : "bg-yellow-50 border-yellow-200/60 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300"
+                )}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
