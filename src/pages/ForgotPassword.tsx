@@ -88,6 +88,14 @@ export default function ForgotPassword() {
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {/* Warning notice */}
+                          <div className="p-3.5 rounded-xl border border-amber-200/60 bg-amber-50/50 text-[12px] font-semibold leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-300">
+                            <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+                            <div className="text-left text-slate-600">
+                              To receive a secure password reset link, please enter your email address below. <strong className="underline font-bold text-amber-950">Please make sure to use the exact email address where you received the invitation.</strong>
+                            </div>
+                          </div>
+
                           <Field>
                             <FieldLabel htmlFor="email">Email Address</FieldLabel>
                             <Input
@@ -118,10 +126,7 @@ export default function ForgotPassword() {
                     </Link>
                   </div>
 
-                  <FieldDescription className="text-center text-[10px]">
-                    Authorized personnel only. Contact the Program Director for
-                    access.
-                  </FieldDescription>
+
                 </FieldGroup>
               </form>
               <div className="relative hidden bg-muted md:block">
