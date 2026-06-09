@@ -16,9 +16,10 @@ interface PicksGridProps {
   isDark?: boolean;
   bgFlavor?: BgFlavor;
   activeCampDayId?: string | null;
+  isAdmin?: boolean;
 }
 
-export default function PicksGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null }: PicksGridProps) {
+export default function PicksGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null, isAdmin = false }: PicksGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const navigate = useNavigate();
@@ -524,32 +525,34 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
                 </div>
 
                 {/* Right Side: Back to Dashboard & Next Buttons */}
-                <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
-                  <button
-                    onClick={(e) => handleNavClick(e, '/partner/dashboard')}
-                    className={cn(
-                      "rounded-xl h-10 px-4 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2 shrink-0",
-                      isDark
-                        ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
-                        : "bg-white border-slate-200/60 text-slate-655 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
-                    )}
-                  >
-                    <ArrowLeft size={16} />
-                    Back to Dashboard
-                  </button>
-                  <button
-                    onClick={(e) => handleNavClick(e, '/partner/staff')}
-                    className={cn(
-                      "rounded-xl h-10 px-4 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2 shrink-0",
-                      isDark
-                        ? "bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-350"
-                        : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
-                    )}
-                  >
-                    Next: Staff Data
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
+                {!isAdmin && (
+                  <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
+                    <button
+                      onClick={(e) => handleNavClick(e, '/partner/dashboard')}
+                      className={cn(
+                        "rounded-xl h-10 px-4 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2 shrink-0",
+                        isDark
+                          ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
+                          : "bg-white border-slate-200/60 text-slate-655 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
+                      )}
+                    >
+                      <ArrowLeft size={16} />
+                      Back to Dashboard
+                    </button>
+                    <button
+                      onClick={(e) => handleNavClick(e, '/partner/staff')}
+                      className={cn(
+                        "rounded-xl h-10 px-4 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2 shrink-0",
+                        isDark
+                          ? "bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-350"
+                          : "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
+                      )}
+                    >
+                      Next: Staff Data
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Mobile/Tablet Instruction Message (hidden on desktop) */}

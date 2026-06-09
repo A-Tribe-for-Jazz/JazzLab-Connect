@@ -1037,11 +1037,15 @@ function OrgDataDrawer({
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
-                'size-9 rounded-xl flex items-center justify-center shrink-0 border',
-                isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+                'size-9 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden bg-white',
+                isDark ? 'border-white/10' : 'border-slate-200'
               )}
             >
-              <Database size={16} />
+              <img 
+                src={org.logo_url && org.logo_url !== 'none' ? org.logo_url : '/atfj-logo.png'} 
+                alt={org.name} 
+                className="size-full object-contain p-1"
+              />
             </div>
             <h2 className="text-base font-black tracking-tight leading-none truncate">
               {org.name}
@@ -1108,7 +1112,7 @@ function OrgDataDrawer({
               {activeTab === 'students' ? (
                 <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} />
               ) : (
-                <PicksGrid organizationId={org.id} isDark={isDark} />
+                <PicksGrid organizationId={org.id} isDark={isDark} isAdmin={true} />
               )}
             </section>
           </div>
