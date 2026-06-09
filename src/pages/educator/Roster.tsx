@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -44,6 +44,11 @@ import * as XLSX from 'xlsx';
 export default function EducatorRoster() {
   const { profile } = useAuth();
   const { isDark }: any = useOutletContext() || { isDark: false };
+  const [searchParams] = useSearchParams();
+  const urlLabId = searchParams.get('lab') || '';
+  const urlDayId = searchParams.get('day') || '';
+  const urlSlotId = searchParams.get('slot') || '';
+
   const [loading, setLoading] = useState(true);
   
   // State for active lab context
@@ -99,20 +104,23 @@ export default function EducatorRoster() {
       
       const labsList = instData.map((d: any) => ({ id: d.lab_id, name: d.labs.name }));
       setAssignedLabs(labsList);
-      setActiveLabId(labsList[0].id);
+      const isLabAssigned = labsList.some(l => l.id === urlLabId);
+      setActiveLabId(isLabAssigned ? urlLabId : labsList[0].id);
 
       // 2. Get camp days
       const { data: daysData } = await supabase.from('camp_days').select('*').order('date');
       if (daysData && daysData.length > 0) {
         setCampDays(daysData);
-        setActiveDayId(daysData[0].id);
+        const hasDay = daysData.some(d => d.id === urlDayId);
+        setActiveDayId(hasDay ? urlDayId : daysData[0].id);
       }
 
       // 3. Get time slots
       const { data: slotsData } = await supabase.from('time_slots').select('*').order('start_time');
       if (slotsData) {
         setSessions(slotsData);
-        setActiveSessionId(slotsData[0].id);
+        const hasSlot = slotsData.some(s => s.id === urlSlotId);
+        setActiveSessionId(hasSlot ? urlSlotId : slotsData[0].id);
       }
     } catch (error) {
       console.error(error);

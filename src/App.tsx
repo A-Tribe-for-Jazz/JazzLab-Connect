@@ -25,7 +25,9 @@ import PartnerLabPicks from './pages/partner/LabPicks';
 import PartnerSchedule from './pages/partner/Schedule';
 
 import EducatorLayout from './components/layout/EducatorLayout';
+import EducatorDashboard from './pages/educator/Dashboard';
 import EducatorRoster from './pages/educator/Roster';
+import EducatorSchedule from './pages/educator/Schedule';
 
 function RootRedirect() {
   const { user, profile, loading, requiresPasswordSetup } = useAuth();
@@ -49,7 +51,7 @@ function RootRedirect() {
       case 'partner':
         return <Navigate to="/partner/dashboard" replace />;
       case 'educator':
-        return <Navigate to="/educator/roster" replace />;
+        return <Navigate to="/educator/dashboard" replace />;
     }
   }
 
@@ -101,7 +103,9 @@ function App() {
           {/* Educator Routes */}
           <Route element={<ProtectedRoute allowedRoles={['educator']} />}>
             <Route element={<EducatorLayout />}>
+              <Route path="/educator/dashboard" element={<EducatorDashboard />} />
               <Route path="/educator/roster" element={<EducatorRoster />} />
+              <Route path="/educator/schedule" element={<EducatorSchedule />} />
             </Route>
           </Route>
 

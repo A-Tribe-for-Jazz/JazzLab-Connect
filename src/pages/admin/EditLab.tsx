@@ -16,6 +16,8 @@ export default function EditLab() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [instructors, setInstructors] = useState<{ id: string; full_name: string }[]>([]);
+  const [allEducators, setAllEducators] = useState<{ id: string; full_name: string }[]>([]);
+  const [selectedEducatorId, setSelectedEducatorId] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -29,8 +31,23 @@ export default function EditLab() {
   });
 
   useEffect(() => {
+    fetchEducators();
     if (!isNew) fetchLab();
   }, [id]);
+
+  const fetchEducators = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'educator')
+        .order('full_name');
+      if (error) throw error;
+      if (data) setAllEducators(data);
+    } catch (err) {
+      console.error('Error fetching educators:', err);
+    }
+  };
 
   const fetchLab = async () => {
     try {
@@ -67,11 +84,22 @@ export default function EditLab() {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: 'educator', fullName: inviteName.trim() })
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          role: 'educator',
+          fullName: inviteName.trim(),
+          labId: id || undefined
+        })
       });
       const resData = await response.json();
       if (!response.ok) throw new Error(resData.error || 'Failed to send invite');
+      
       setInviteMessage({ type: 'success', text: `Invited ${inviteEmail}` });
+      if (resData.user?.user) {
+        setInstructors(prev => [...prev, { id: resData.user.user.id, full_name: inviteName.trim() }]);
+        // Add to allEducators list as well so it registers locally
+        setAllEducators(prev => [...prev, { id: resData.user.user.id, full_name: inviteName.trim() }]);
+      }
       setInviteEmail('');
       setInviteName('');
     } catch (err: any) {
@@ -80,6 +108,20 @@ export default function EditLab() {
       setInviteLoading(false);
     }
   };
+
+  const handleAddExistingEducator = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!selectedEducatorId) return;
+    const selected = allEducators.find(edu => edu.id === selectedEducatorId);
+    if (selected && !instructors.some(inst => inst.id === selected.id)) {
+      setInstructors(prev => [...prev, selected]);
+      setSelectedEducatorId('');
+    }
+  };
+
+  const availableEducators = allEducators.filter(
+    edu => !instructors.some(inst => inst.id === edu.id)
+  );
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -275,6 +317,45 @@ export default function EditLab() {
                       onChange={e => setFormData({ ...formData, max_age: parseInt(e.target.value) })}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className={cn('border-t', isDark ? 'border-white/5' : 'border-slate-100')} />
+
+              {/* Assign Existing Instructor */}
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Assign Existing Instructor</Label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedEducatorId}
+                    onChange={e => setSelectedEducatorId(e.target.value)}
+                    className={cn(
+                      inputCls,
+                      'px-3 flex-1',
+                      isDark ? '!bg-zinc-950 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                    )}
+                  >
+                    <option value="">Select an educator...</option>
+                    {availableEducators.map(edu => (
+                      <option key={edu.id} value={edu.id}>
+                        {edu.full_name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    onClick={handleAddExistingEducator}
+                    disabled={!selectedEducatorId}
+                    className={cn(
+                      'rounded-xl h-10 px-4 font-semibold text-xs transition-all border shrink-0',
+                      isDark
+                        ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20'
+                        : 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
+                    )}
+                  >
+                    Add
+                  </Button>
                 </div>
               </div>
 

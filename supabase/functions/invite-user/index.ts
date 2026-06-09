@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     // 4. Get the request payload
-    let { email, role, organizationId, fullName } = await req.json()
+    let { email, role, organizationId, fullName, labId } = await req.json()
 
     if (!email || !role) {
       return new Response(JSON.stringify({ error: 'Email and role are required' }), {
@@ -101,6 +101,20 @@ serve(async (req) => {
 
     if (inviteError) {
       throw inviteError
+    }
+
+    // Link educator to lab if labId is provided
+    if (role === 'educator' && labId && inviteData?.user) {
+      const { error: linkError } = await supabaseAdmin
+        .from('lab_instructors')
+        .insert({
+          lab_id: labId,
+          educator_id: inviteData.user.id
+        })
+      if (linkError) {
+        console.error('Failed to link educator to lab:', linkError.message)
+        throw new Error(`User invited but failed to link to lab: ${linkError.message}`)
+      }
     }
 
     return new Response(JSON.stringify({ message: 'User invited successfully', user: inviteData }), {
