@@ -47,6 +47,8 @@ interface Organization {
   camp_days: { id: string; date: string }[];
   student_count: number;
   missing_picks: number;
+  incomplete_demographics_count: number;
+  incomplete_picks_count: number;
   incomplete_count: number;
   members: OrganizationMember[];
   logo_url?: string | null;
@@ -66,7 +68,7 @@ const AVAILABLE_LOGOS = [
   { name: 'YWCA Safe & Sound', value: '/orglogos/YWCA Safe & Sound.jpg' },
 ];
 
-type SortField = 'name' | 'student_count' | 'incomplete_count' | 'camp_day';
+type SortField = 'name' | 'student_count' | 'incomplete_demographics_count' | 'incomplete_picks_count' | 'camp_day';
 
 export default function AdminOrganizations() {
   const { isDark }: any = useOutletContext();
@@ -142,7 +144,15 @@ export default function AdminOrganizations() {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);
         const sCount = orgStudents.length;
 
-        const missingPicksCount = orgStudents.filter(s => {
+        const missingDemoCount = orgStudents.filter(
+          s => !s.first_name?.trim() || !s.last_name?.trim() || s.age === null || s.age === undefined || s.age === ''
+        ).length;
+
+        const coreComplete = orgStudents.filter(
+          s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
+        );
+
+        const missingPicksCount = coreComplete.filter(s => {
           const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;
           const eligibleLabs = labsData.filter((lab: any) => {
             if (lab.min_age == null) return true;
@@ -166,6 +176,8 @@ export default function AdminOrganizations() {
           camp_days: org.camp_day_organizations?.map((cdo: any) => cdo.camp_days).filter(Boolean) || [],
           student_count: sCount,
           missing_picks: missingPicksCount,
+          incomplete_demographics_count: missingDemoCount,
+          incomplete_picks_count: missingPicksCount,
           incomplete_count: incompleteCount,
           members: orgMembers,
           logo_url: org.logo_url,
@@ -215,9 +227,12 @@ export default function AdminOrganizations() {
       } else if (sortField === 'student_count') {
         aVal = a.student_count;
         bVal = b.student_count;
-      } else if (sortField === 'incomplete_count') {
-        aVal = a.incomplete_count;
-        bVal = b.incomplete_count;
+      } else if (sortField === 'incomplete_demographics_count') {
+        aVal = a.incomplete_demographics_count;
+        bVal = b.incomplete_demographics_count;
+      } else if (sortField === 'incomplete_picks_count') {
+        aVal = a.incomplete_picks_count;
+        bVal = b.incomplete_picks_count;
       } else if (sortField === 'camp_day') {
         aVal = a.camp_days[0]?.date || '9999-99-99';
         bVal = b.camp_days[0]?.date || '9999-99-99';
@@ -366,20 +381,6 @@ export default function AdminOrganizations() {
                       <th 
                         onClick={() => handleSort('student_count')}
                         className={cn(
-                          "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 cursor-pointer select-none group text-center w-[120px] overflow-hidden",
-                          isDark 
-                            ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
-                            : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
-                        )}
-                      >
-                        <div className="flex items-center justify-center">
-                          <span>Registered</span>
-                          {renderSortArrow('student_count')}
-                        </div>
-                      </th>
-                      <th 
-                        onClick={() => handleSort('incomplete_count')}
-                        className={cn(
                           "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 cursor-pointer select-none group text-center w-[130px] overflow-hidden",
                           isDark 
                             ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
@@ -387,8 +388,36 @@ export default function AdminOrganizations() {
                         )}
                       >
                         <div className="flex items-center justify-center">
-                          <span>Needs Work</span>
-                          {renderSortArrow('incomplete_count')}
+                          <span>No. of Students</span>
+                          {renderSortArrow('student_count')}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('incomplete_demographics_count')}
+                        className={cn(
+                          "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 cursor-pointer select-none group text-center w-[175px] overflow-hidden",
+                          isDark 
+                            ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                            : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                        )}
+                      >
+                        <div className="flex items-center justify-center">
+                          <span>Incomplete Demographics</span>
+                          {renderSortArrow('incomplete_demographics_count')}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('incomplete_picks_count')}
+                        className={cn(
+                          "py-3 px-4 font-semibold text-[13px] border-r last:border-r-0 cursor-pointer select-none group text-center w-[175px] overflow-hidden",
+                          isDark 
+                            ? "bg-slate-900 text-slate-400 border-white/20 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md" 
+                            : "bg-slate-50 text-slate-500 border-slate-300 shadow-[inset_0_-1px_0_0_#cbd5e1]"
+                        )}
+                      >
+                        <div className="flex items-center justify-center">
+                          <span>Incomplete Lab Selections</span>
+                          {renderSortArrow('incomplete_picks_count')}
                         </div>
                       </th>
                       <th className={cn(
@@ -488,7 +517,7 @@ export default function AdminOrganizations() {
                             )}
                           </td>
 
-                          {/* Registered */}
+                          {/* No. of Students */}
                           <td className={cn(
                             "py-1 px-4 text-center font-semibold text-[13px] border-r last:border-r-0 overflow-hidden",
                             isDark ? "border-white/20" : "border-slate-300"
@@ -496,18 +525,33 @@ export default function AdminOrganizations() {
                             {org.student_count}
                           </td>
 
-                          {/* Incomplete */}
+                          {/* Incomplete Demographics */}
                           <td className={cn(
                             "py-1 px-4 text-center border-r last:border-r-0 overflow-hidden",
                             isDark ? "border-white/20" : "border-slate-300"
                           )}>
                             <span className={cn(
                               "text-[13px] font-bold",
-                              org.incomplete_count > 0 
+                              org.incomplete_demographics_count > 0 
                                 ? "text-amber-500 dark:text-amber-400" 
                                 : "text-emerald-500 dark:text-emerald-400"
                             )}>
-                              {org.incomplete_count}
+                              {org.incomplete_demographics_count}
+                            </span>
+                          </td>
+
+                          {/* Incomplete Lab Selections */}
+                          <td className={cn(
+                            "py-1 px-4 text-center border-r last:border-r-0 overflow-hidden",
+                            isDark ? "border-white/20" : "border-slate-300"
+                          )}>
+                            <span className={cn(
+                              "text-[13px] font-bold",
+                              org.incomplete_picks_count > 0 
+                                ? "text-amber-500 dark:text-amber-400" 
+                                : "text-emerald-500 dark:text-emerald-400"
+                            )}>
+                              {org.incomplete_picks_count}
                             </span>
                           </td>
 
