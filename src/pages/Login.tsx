@@ -121,7 +121,7 @@ export default function LoginPage() {
                       <div className="text-left">
                         <p className="font-bold text-amber-900">Invite Link Expired</p>
                         <p className="mt-0.5 text-slate-500">
-                          Your invitation link has expired or has already been used. Enter your email address below and we will send you a new secure link to set up your password.
+                          Your invitation link has expired or has already been used. Enter your email address below and we will send you a new secure link to set up your password. <strong className="underline font-bold text-amber-950">Please make sure to use the exact email address where you received the invitation.</strong>
                         </p>
                       </div>
                     </div>

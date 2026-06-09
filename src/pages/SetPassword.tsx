@@ -1,275 +1,388 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, AlertCircle, CheckCircle2, Eye, EyeOff, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-} from '@/components/ui/field';
-import { cn } from "@/lib/utils"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Lock, Loader2, AlertCircle, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const HERO_IMAGE =
-  "/banner.webp"
+const HERO_IMAGE = '/banner.webp';
 
 export default function SetPassword() {
   const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
   const { profile, completePasswordSetup } = useAuth();
-  const [fullName, setFullName] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.full_name && profile.full_name !== 'Invited User') {
       setFullName(profile.full_name);
     }
   }, [profile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    if (!fullName.trim()) {
-      setError('Full Name is required');
+    if (!agreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
     setLoading(true);
+    setError(null);
+
+    if (!fullName.trim()) {
+      setError('Full name is required.');
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      setLoading(false);
+      return;
+    }
 
     try {
-      // 1. Update Auth password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      });
-
-      if (updateError) throw updateError;
+      // 1. Update password in auth system
+      const { error: authErr } = await supabase.auth.updateUser({ password });
+      if (authErr) throw authErr;
 
       // 2. Update name and password_set status in public profiles table
       if (profile?.id) {
-        const { error: profileError } = await supabase
+        const { error: profileErr } = await supabase
           .from('profiles')
           .update({ 
             full_name: fullName.trim(),
             password_set: true
           })
           .eq('id', profile.id);
-        if (profileError) throw profileError;
+        if (profileErr) throw profileErr;
       }
 
-      setMessage('Password and profile updated successfully!');
-      
-      // Small delay to show success message before redirecting
+      setSuccess(true);
       setTimeout(() => {
-        // Clear the intercept flag
         completePasswordSetup();
-
-        // Navigate to their specific dashboard based on role
         if (profile?.role === 'master_admin') navigate('/admin/dashboard');
-        else if (profile?.role === 'partner') navigate('/partner/dashboard');
         else if (profile?.role === 'educator') navigate('/educator/roster');
-        else navigate('/signin');
-      }, 1500);
-      
+        else navigate('/partner/dashboard');
+      }, 2000);
     } catch (err: any) {
-      console.error('Error setting password and profile:', err);
-      setError(err.message || 'Failed to update details');
+      setError(err.message || 'Failed to update details.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || message) {
+  if (loading || success) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white text-slate-900 animate-in fade-in duration-500">
         <div className="relative mb-6">
-          <Loader2 className="animate-spin text-sky-550 text-sky-600" size={48} />
+          <Loader2 className="animate-spin text-sky-600" size={48} />
           <div className="absolute inset-0 blur-xl bg-sky-500/10 animate-pulse" />
         </div>
         <h2 className="text-xl font-black tracking-tight text-slate-900">
-          {message ? 'Success!' : 'Updating Password...'}
+          {success ? 'Setup Complete!' : 'Updating Details...'}
         </h2>
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mt-2 animate-pulse">
-          {message ? 'Preparing your workspace... Please wait...' : 'Please wait...'}
+          {success ? 'Preparing your workspace... Please wait...' : 'Please wait...'}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-5xl">
-        <div className={cn("flex flex-col gap-6")}>
-          <Card className="overflow-hidden p-0">
-            <CardContent className="grid p-0 md:grid-cols-2">
-              <form
-                className="p-6 md:p-8"
-                onSubmit={handleSubmit}
-              >
-                <FieldGroup className="h-[480px]">
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="mb-2">
-                      <img src="/atfj-logo.png" alt="A Tribe for Jazz Logo" className="h-20 w-auto" />
-                    </div>
-                    <h1 className="text-2xl font-bold">Set Password</h1>
-                    <p className="text-balance text-muted-foreground text-sm">
-                      Secure your account by setting a new password
+    <div className="h-screen overflow-hidden bg-slate-50 flex flex-col justify-between">
+      {/* Header — mirrors Login portal header with new title */}
+      <header className="shrink-0 h-14 flex items-center px-8 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+        <div className="flex items-center justify-between w-full max-w-7xl mx-auto h-full">
+          <div className="flex items-center gap-3">
+            <span className="font-black text-sm tracking-tight text-slate-900">Jazz Lab Summer Experience - 2026</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account Setup</span>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 min-h-0 flex items-center justify-center px-6">
+        <div className="w-full max-w-5xl">
+          {/* Card structure mirrors Login Page */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[480px]">
+            {/* Left — Form */}
+            <div className="flex flex-col items-center justify-center px-10 py-10 md:px-14">
+              <div className="w-full max-w-sm space-y-6">
+                {/* Header Block */}
+                <div className="space-y-3 text-center">
+                  <div className="flex justify-center">
+                    <img src="/atfj-logo.png" alt="A Tribe for Jazz" className="h-14 w-auto" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h1 className="text-2xl font-black tracking-tighter text-slate-900">
+                      {success ? 'Setup Complete' : 'Secure Your Account'}
+                    </h1>
+                    <p className="text-sm font-medium italic text-slate-400">
+                      {success
+                        ? 'Redirecting to your dashboard...'
+                        : "Set your name and password."}
                     </p>
                   </div>
+                </div>
 
-                  <div className="flex-1 flex flex-col justify-center space-y-4 overflow-hidden">
-                    <div className="mx-auto w-full max-w-sm space-y-4">
-                      {error && (
-                        <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
-                          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                          <span>{error}</span>
-                        </div>
-                      )}
-
-                      {message && (
-                        <div className="flex flex-col items-center justify-center space-y-4 py-4 text-center animate-in fade-in zoom-in duration-300">
-                          <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm animate-bounce">
-                            <CheckCircle2 className="size-6" />
-                          </div>
-                          <div className="space-y-2">
-                            <h2 className="text-base font-bold text-foreground">Success!</h2>
-                            <p className="text-xs text-muted-foreground font-medium">
-                              {message}
-                            </p>
-                            <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-wider pt-2">
-                              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                              Preparing Workspace...
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {!message && (
-                        <>
-                          <Field>
-                            <FieldLabel htmlFor="full-name">Full Name</FieldLabel>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              <Input
-                                id="full-name"
-                                type="text"
-                                required
-                                placeholder="Your full name"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                disabled={loading}
-                                className="pl-9"
-                              />
-                            </div>
-                          </Field>
-
-                          <Field>
-                            <FieldLabel htmlFor="new-password">New Password</FieldLabel>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              <Input
-                                id="new-password"
-                                type={showPassword ? "text" : "password"}
-                                required
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={loading}
-                                className="pl-9 pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                                tabIndex={-1}
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="h-4 w-4" />
-                                ) : (
-                                  <Eye className="h-4 w-4" />
-                                )}
-                              </button>
-                            </div>
-                          </Field>
-
-                          <Field>
-                            <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              <Input
-                                id="confirm-password"
-                                type="password"
-                                required
-                                placeholder="••••••••"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                disabled={loading}
-                                className="pl-9"
-                              />
-                            </div>
-                          </Field>
-
-                          <Button type="submit" className="w-full flex items-center justify-center gap-2" disabled={loading}>
-                            {loading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Please wait....
-                              </>
-                            ) : (
-                              'Set Password and Continue'
-                            )}
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                {/* Form / Success State */}
+                {success ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center animate-in fade-in duration-700">
+                    <Loader2 size={24} className="text-emerald-500 animate-spin" />
+                    <p className="text-xs font-bold text-emerald-600">Preparing Workspace...</p>
                   </div>
+                ) : (
+                  <form onSubmit={handleSetup} className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Full Name
+                        </Label>
+                        <div className="relative group">
+                          <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10 pointer-events-none" />
+                          <Input
+                            type="text"
+                            placeholder="Albert Einstein"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            disabled={loading}
+                            className="pl-10 h-9 border border-slate-200 rounded-xl font-semibold text-[13px] transition-all bg-transparent focus-visible:border-sky-500/30 focus-visible:bg-sky-500/[0.01] focus-visible:ring-0"
+                            required
+                          />
+                        </div>
+                      </div>
 
-                  <FieldDescription className="text-center text-[10px]">
-                    Authorized personnel only. Contact the Program Director for
-                    access.
-                  </FieldDescription>
-                </FieldGroup>
-              </form>
-              <div className="relative hidden bg-muted md:block">
-                <img
-                  src={HERO_IMAGE}
-                  alt="A Tribe for Jazz Summer Arts Program"
-                  className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-                />
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          New Password
+                        </Label>
+                        <div className="relative group">
+                          <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10 pointer-events-none" />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={loading}
+                            className="pl-10 h-9 border border-slate-200 rounded-xl font-semibold text-[13px] transition-all bg-transparent focus-visible:border-sky-500/30 focus-visible:bg-sky-500/[0.01] focus-visible:ring-0"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Confirm Password
+                        </Label>
+                        <div className="relative group">
+                          <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10 pointer-events-none" />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            disabled={loading}
+                            className="pl-10 h-9 border border-slate-200 rounded-xl font-semibold text-[13px] transition-all bg-transparent focus-visible:border-sky-500/30 focus-visible:bg-sky-500/[0.01] focus-visible:ring-0"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mandatory Checkbox */}
+                    <div className="flex items-start gap-2.5 pt-1">
+                      <input
+                        id="agree-checkbox"
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => setAgreed(e.target.checked)}
+                        disabled={loading}
+                        className="mt-0.5 size-4 rounded border-slate-200 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                        required
+                      />
+                      <label htmlFor="agree-checkbox" className="text-[11px] font-semibold text-slate-500 leading-normal cursor-pointer select-none">
+                        I agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={() => setShowTerms(true)}
+                          className="text-sky-500 hover:text-sky-600 underline font-bold"
+                        >
+                          Terms of Service
+                        </button>{' '}
+                        and{' '}
+                        <button
+                          type="button"
+                          onClick={() => setShowPrivacy(true)}
+                          className="text-sky-500 hover:text-sky-600 underline font-bold"
+                        >
+                          Privacy Policy
+                        </button>
+                        , and acknowledge that all student and staff data will be handled in strict confidence.
+                      </label>
+                    </div>
+
+                    {error && (
+                      <p className="text-xs font-bold p-2.5 rounded-xl flex items-center gap-2 animate-in fade-in text-rose-500 bg-rose-50 border border-rose-100">
+                        <AlertCircle size={14} className="shrink-0" /> {error}
+                      </p>
+                    )}
+
+                    <Button
+                      type="submit"
+                      disabled={loading || !agreed}
+                      className={cn(
+                        "w-full rounded-xl h-10 px-6 font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border",
+                        agreed
+                          ? "bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100 hover:border-sky-300"
+                          : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Please wait....
+                        </span>
+                      ) : (
+                        'Set Password & Continue'
+                      )}
+                    </Button>
+                  </form>
+                )}
+
               </div>
-            </CardContent>
-          </Card>
-          <FieldDescription className="px-6 text-center">
-            By clicking Set Password, you agree to our{" "}
-            <a href="#">Terms of Service</a> and{" "}
-            <a href="#">Privacy Policy</a>.
-          </FieldDescription>
+            </div>
+
+            {/* Right — Hero Image matching Login screen */}
+            <div className="relative hidden md:block">
+              <img
+                src={HERO_IMAGE}
+                alt="A Tribe for Jazz Summer Arts Program"
+                className="absolute inset-0 h-full w-full object-cover brightness-[0.85]"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="shrink-0 py-4 text-center border-t border-slate-100 bg-white">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">
+          &copy; 2026 A Tribe for Jazz.
+        </p>
+      </footer>
+
+      {/* Terms of Use Modal */}
+      <Dialog open={showTerms} onOpenChange={setShowTerms}>
+        <DialogContent className="sm:max-w-[540px] rounded-2xl p-6 bg-white border border-slate-200 text-slate-900 shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
+          <DialogHeader className="border-b border-slate-150 pb-4 relative shrink-0">
+            <DialogTitle className="text-lg font-black tracking-tight leading-none text-slate-900">
+              Terms of Use
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-1 py-4 text-[12px] font-semibold text-slate-655 space-y-4 leading-relaxed">
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">1. Authorized Access Only</h4>
+              <p>
+                Access to the Jazz Lab Connect portal is strictly restricted to authorized partners, educators, and administrative personnel affiliated with A Tribe for Jazz. Shared credentials or account transfers are strictly prohibited.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">2. Data Submission Requirements</h4>
+              <p>
+                Users are responsible for ensuring that all student demographics, Lab preferences, and staff details submitted are accurate, complete, and updated in real time.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">3. Permitted Use Cases</h4>
+              <p>
+                This platform must be used solely to manage student registration, lab preferences, and schedules for the 2026 Jazz Lab Summer Experience. Any unauthorized data extraction, scraping, or utilization is strictly prohibited.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">4. Security & Liability</h4>
+              <p>
+                You are fully responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account.
+              </p>
+            </section>
+          </div>
+          <div className="border-t border-slate-150 pt-4 flex justify-end shrink-0">
+            <Button
+              onClick={() => setShowTerms(false)}
+              className="rounded-xl h-9 px-4 font-semibold tracking-wide text-xs bg-slate-900 text-white hover:bg-slate-800"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Privacy Policy Modal */}
+      <Dialog open={showPrivacy} onOpenChange={setShowPrivacy}>
+        <DialogContent className="sm:max-w-[540px] rounded-2xl p-6 bg-white border border-slate-200 text-slate-900 shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
+          <DialogHeader className="border-b border-slate-150 pb-4 relative shrink-0">
+            <DialogTitle className="text-lg font-black tracking-tight leading-none text-slate-900">
+              Privacy Policy
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-1 py-4 text-[12px] font-semibold text-slate-655 space-y-4 leading-relaxed">
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">1. Data We Collect</h4>
+              <p>
+                We collect partner and staff details (names, titles, email addresses, and phone numbers), student demographic details (first and last name, age, last grade completed, home zip code, race/ethnicity, gender, and first language), student program hours (where applicable), and student lab preferences.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">2. How We Use Information</h4>
+              <p>
+                All submitted data is processed exclusively to calculate eligible lab placements, generate schedules, manage session check-ins, and compile anonymized program metrics.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">3. Information Sharing Restrictions</h4>
+              <p>
+                Jazz Lab Connect does not sell, rent, or share personally identifiable information of students or staff with third parties. Data access is strictly restricted to authorized program coordinators.
+              </p>
+            </section>
+            <section className="space-y-1">
+              <h4 className="font-bold text-slate-800 text-[13px]">4. Security & Safeguards</h4>
+              <p>
+                User credentials, profiles, and student records are fully secured using industry-standard SSL/TLS transit protocols and AES-256 database encryption at rest.
+              </p>
+            </section>
+          </div>
+          <div className="border-t border-slate-150 pt-4 flex justify-end shrink-0">
+            <Button
+              onClick={() => setShowPrivacy(false)}
+              className="rounded-xl h-9 px-4 font-semibold tracking-wide text-xs bg-slate-900 text-white hover:bg-slate-800"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
