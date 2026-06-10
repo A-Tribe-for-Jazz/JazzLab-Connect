@@ -29,7 +29,7 @@ export default function PicksGrid({
   flushRef
 }: PicksGridProps) {
   const { profile } = useAuth();
-  const { childFlushRef } = useOutletContext<any>() || {};
+  const { childFlushRef, campDays = [] } = useOutletContext<any>() || {};
   const navigate = useNavigate();
   const [students, setStudents] = useState<LabPickRow[]>([]);
   const [labs, setLabs] = useState<{ id: string; name: string; min_age: number | null; max_age: number | null }[]>([]);
@@ -536,7 +536,15 @@ export default function PicksGrid({
                 <div className="hidden lg:flex items-center justify-center gap-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 text-center px-4 flex-1">
                   <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
                   <p className="leading-tight">
-                    Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                    {campDays.length > 1 ? (
+                      <>
+                        Start with <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>Select Camp Day</strong> from above. Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                      </>
+                    ) : (
+                      <>
+                        Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -575,7 +583,15 @@ export default function PicksGrid({
               <div className="flex lg:hidden items-center gap-2.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-150 dark:border-white/5 pt-3 mt-1">
                 <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
                 <p className="leading-tight">
-                  Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                  {campDays.length > 1 ? (
+                    <>
+                      Start with <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>Select Camp Day</strong> from above. Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                    </>
+                  ) : (
+                    <>
+                      Select all eligible lab preferences per student by clicking cells <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>(1 = top choice)</strong>. Age-restricted labs are blocked. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms selections. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Clear"</strong> to reset.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

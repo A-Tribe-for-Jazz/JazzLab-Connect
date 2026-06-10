@@ -997,7 +997,15 @@ export default function StudentGrid({
                 <div className="hidden lg:flex items-center justify-center gap-2 text-[12px] font-bold text-center px-4 flex-1">
                   <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
                   <p className="leading-tight text-slate-500 dark:text-slate-400 font-semibold">
-                    Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                    {campDays.length > 1 ? (
+                      <>
+                        Start with <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>Select Camp Day</strong> from above and fill all student info below attending on that day. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                      </>
+                    ) : (
+                      <>
+                        Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -1075,7 +1083,15 @@ export default function StudentGrid({
               <div className="flex lg:hidden items-center gap-2.5 text-[12px] font-bold border-t border-slate-150 dark:border-white/5 pt-3 mt-1">
                 <Info size={14} className="text-sky-500 dark:text-sky-400 shrink-0 animate-pulse" />
                 <p className="leading-tight text-slate-500 dark:text-slate-400 font-semibold">
-                  Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                  {campDays.length > 1 ? (
+                    <>
+                      Start with <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>Select Camp Day</strong> from above and fill all student info below attending on that day. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                    </>
+                  ) : (
+                    <>
+                      Fill out all fields for each student below. A green checkmark under <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Complete"</strong> confirms completion. Click <strong className={isDark ? "text-white font-bold" : "text-slate-900 font-bold"}>"Delete"</strong> to remove.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
