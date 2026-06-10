@@ -239,9 +239,10 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 # Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.invite]
+subject = '{{ if eq .Data.role "master_admin" }}JazzLab Connect - Master Admin Invitation{{ else }}JazzLab Connect - Invitation to Join{{ end }}'
+content_path = "./supabase/templates/invite.html"
+
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

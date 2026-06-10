@@ -66,7 +66,9 @@ serve(async (req) => {
     }
 
     // 4. Get the request payload
-    let { email, role, organizationId, fullName, redirectTo } = await req.json()
+    const payload = await req.json()
+    const { email, fullName, redirectTo } = payload
+    let { role, organizationId } = payload
 
     if (!email || !role) {
       return new Response(JSON.stringify({ error: 'Email and role are required' }), {
@@ -91,7 +93,7 @@ serve(async (req) => {
     // 5. Already initialized supabaseAdmin previously
 
     // 6. Send the invite
-    const inviteOptions: any = {
+    const inviteOptions: { data: Record<string, unknown>; redirectTo?: string } = {
       data: {
         role: role,
         organization_id: organizationId || null,
@@ -113,9 +115,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 
-  } catch (error: any) {
-    console.error('Edge Function Error:', error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('Edge Function Error:', errMsg)
+    return new Response(JSON.stringify({ error: errMsg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
