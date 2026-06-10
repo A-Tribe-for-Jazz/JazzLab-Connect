@@ -240,7 +240,7 @@ otp_expiry = 3600
 
 # Uncomment to customize email template
 [auth.email.template.invite]
-subject = '{{ if eq .Data.role "master_admin" }}A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform{{ else }}A Tribe for Jazz invites you to schedule your students for the Jazz Lab Summer Experience{{ end }}'
+subject = '{{ if eq .Data.role "master_admin" }}A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform{{ else if eq .UserMetadata.role "master_admin" }}A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform{{ else if eq .User.UserMetadata.role "master_admin" }}A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform{{ else }}A Tribe for Jazz invites you to schedule your students for the Jazz Lab Summer Experience{{ end }}'
 content_path = "./supabase/templates/invite.html"
 
 

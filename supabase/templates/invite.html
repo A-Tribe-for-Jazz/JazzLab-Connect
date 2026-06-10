@@ -10,6 +10,14 @@
     <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
       A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform as a Master Admin.
     </p>
+    {{ else if eq .UserMetadata.role "master_admin" }}
+    <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
+      A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform as a Master Admin.
+    </p>
+    {{ else if eq .User.UserMetadata.role "master_admin" }}
+    <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
+      A Tribe for Jazz invites you to manage the Jazz Lab Summer Experience platform as a Master Admin.
+    </p>
     {{ else }}
     <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
       A Tribe for Jazz invites you to schedule your students for the Jazz Lab Summer Experience.
