@@ -1020,6 +1020,9 @@ function OrgDataDrawer({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<OrgDataTab>('students');
+  const [activeCampDayId, setActiveCampDayId] = useState<string>(() => {
+    return org.camp_days && org.camp_days.length > 0 ? org.camp_days[0].id : '';
+  });
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -1031,10 +1034,11 @@ function OrgDataDrawer({
         )}
       >
         <div className={cn(
-          "grid grid-cols-3 items-center px-8 h-16 border-b shrink-0",
+          "flex items-center justify-between px-8 h-16 border-b shrink-0 gap-6",
           isDark ? "border-white/10" : "border-slate-200"
         )}>
-          <div className="flex items-center gap-3 min-w-0">
+          {/* Left: Logo & Name */}
+          <div className="flex items-center gap-3 min-w-0 shrink-0">
             <div className="h-12 w-12 overflow-hidden shrink-0 flex items-center justify-center rounded-xl">
               <img 
                 src={org.logo_url && org.logo_url !== 'none' ? org.logo_url : '/atfj-logo.png'} 
@@ -1047,7 +1051,74 @@ function OrgDataDrawer({
             </h2>
           </div>
 
-          <div className="flex items-center justify-center h-full">
+          {/* Middle: Camp Day toggle (if multiple camp days) */}
+          {org.camp_days && org.camp_days.length > 1 && (
+            <div className={cn(
+              "flex items-center gap-3 shrink-0 px-4 py-1.5 rounded-2xl border transition-all duration-500",
+              isDark
+                ? "bg-sky-400/[0.01] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+                : "bg-sky-500/[0.02] border-sky-100/80 shadow-[0_2px_12px_rgba(14,165,233,0.03)]"
+            )}>
+              <div className="flex items-center gap-1.5 shrink-0 select-none">
+                <Calendar size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-sky-600/90 dark:text-sky-400/90">
+                  Select Day
+                </span>
+              </div>
+              <div className={cn(
+                "flex items-center p-0.5 rounded-xl border gap-1 shadow-inner transition-colors duration-700",
+                isDark ? "bg-white/5" : "bg-slate-100/50",
+                isDark ? "border-white/10" : "border-slate-200"
+              )}>
+                {org.camp_days.map((day: any) => {
+                  const isActive = activeCampDayId === day.id;
+                  const formattedDate = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  return (
+                    <button
+                      key={day.id}
+                      onClick={() => setActiveCampDayId(day.id)}
+                      className={cn(
+                        "px-3 py-1 rounded-lg text-[10.5px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 border",
+                        isActive
+                          ? (isDark
+                            ? "bg-sky-500/10 text-sky-450 border-sky-500/35 shadow-[0_0_12px_rgba(14,165,233,0.2)] scale-105"
+                            : "bg-white text-sky-700 border-sky-200/80 shadow-[0_3px_10px_rgba(14,165,233,0.12)] scale-105")
+                          : (isDark
+                            ? "bg-transparent border-transparent text-slate-450 hover:text-white"
+                            : "bg-transparent border-transparent text-slate-500 hover:text-slate-900")
+                      )}
+                    >
+                      <span className="relative flex h-[10px] w-[10px] min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] shrink-0 items-center justify-center">
+                        <svg
+                          className={cn(
+                            "h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 transition-opacity duration-300",
+                            isActive ? "opacity-100" : "opacity-0"
+                          )}
+                          viewBox="0 0 8 8"
+                          fill="currentColor"
+                        >
+                          <circle cx="4" cy="4" r="3" />
+                        </svg>
+                        {isActive && (
+                          <svg
+                            className="absolute inset-0 m-auto h-[6px] w-[6px] min-w-[6px] min-h-[6px] max-w-[6px] max-h-[6px] text-emerald-500 dark:text-emerald-400 animate-ping-slow"
+                            viewBox="0 0 8 8"
+                            fill="currentColor"
+                          >
+                            <circle cx="4" cy="4" r="3" />
+                          </svg>
+                        )}
+                      </span>
+                      {formattedDate}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Middle-Right: Tabs */}
+          <div className="flex items-center justify-center h-full flex-1">
             <nav className="flex items-center gap-8 h-full">
               <button
                 onClick={() => setActiveTab('students')}
@@ -1086,7 +1157,8 @@ function OrgDataDrawer({
             </nav>
           </div>
 
-          <div className="flex items-center justify-end">
+          {/* Right: Close button */}
+          <div className="flex items-center justify-end shrink-0">
             <button
               onClick={onClose}
               className={cn(
@@ -1105,9 +1177,21 @@ function OrgDataDrawer({
           <div className="w-full flex-1 min-h-0 flex flex-col partner-enter">
             <section className="relative flex-1 min-h-0 flex flex-col">
               {activeTab === 'students' ? (
-                <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} />
+                <StudentGrid 
+                  key={activeCampDayId} 
+                  organizationId={org.id} 
+                  isDark={isDark} 
+                  isAdmin={true} 
+                  activeCampDayId={activeCampDayId || null} 
+                />
               ) : (
-                <PicksGrid organizationId={org.id} isDark={isDark} isAdmin={true} />
+                <PicksGrid 
+                  key={activeCampDayId} 
+                  organizationId={org.id} 
+                  isDark={isDark} 
+                  isAdmin={true} 
+                  activeCampDayId={activeCampDayId || null} 
+                />
               )}
             </section>
           </div>
