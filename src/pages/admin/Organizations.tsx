@@ -1035,16 +1035,11 @@ function OrgDataDrawer({
           isDark ? "border-white/10" : "border-slate-200"
         )}>
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className={cn(
-                'size-9 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden bg-white',
-                isDark ? 'border-white/10' : 'border-slate-200'
-              )}
-            >
+            <div className="h-12 w-12 overflow-hidden shrink-0 flex items-center justify-center rounded-xl">
               <img 
                 src={org.logo_url && org.logo_url !== 'none' ? org.logo_url : '/atfj-logo.png'} 
-                alt={org.name} 
-                className="size-full object-contain p-1"
+                alt={org.name || "Logo"} 
+                className="h-full w-full object-contain" 
               />
             </div>
             <h2 className="text-base font-black tracking-tight leading-none truncate">
