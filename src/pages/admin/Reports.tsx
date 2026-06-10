@@ -316,7 +316,7 @@ export default function AdminReports() {
                         <span className="truncate">
                           {selectedDayObj
                             ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-                            : 'Select Day'}
+                            : 'Select Camp Day'}
                         </span>
                       </div>
                     </SelectTrigger>

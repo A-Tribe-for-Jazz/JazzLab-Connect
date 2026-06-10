@@ -1073,8 +1073,8 @@ function OrgDataDrawer({
             )}>
               <div className="flex items-center gap-1.5 shrink-0 select-none">
                 <Calendar size={14} className="text-sky-500 dark:text-sky-400 shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-sky-600/90 dark:text-sky-400/90">
-                  Select Day
+                <span className="text-[11px] font-extrabold text-sky-600/90 dark:text-sky-400/90">
+                  Select Camp Day
                 </span>
               </div>
               <div className={cn(
