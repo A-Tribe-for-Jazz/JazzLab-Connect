@@ -17,9 +17,17 @@ interface PicksGridProps {
   bgFlavor?: BgFlavor;
   activeCampDayId?: string | null;
   isAdmin?: boolean;
+  flushRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-export default function PicksGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null, isAdmin = false }: PicksGridProps) {
+export default function PicksGrid({
+  organizationId,
+  isDark = false,
+  bgFlavor = 'slate',
+  activeCampDayId = null,
+  isAdmin = false,
+  flushRef
+}: PicksGridProps) {
   const { profile } = useAuth();
   const { childFlushRef } = useOutletContext<any>() || {};
   const navigate = useNavigate();
@@ -88,11 +96,19 @@ export default function PicksGrid({ organizationId, isDark = false, bgFlavor = '
   useEffect(() => {
     if (childFlushRef) {
       childFlushRef.current = flushToDB;
-      return () => {
-        childFlushRef.current = null;
-      };
     }
-  }, [childFlushRef, flushToDB]);
+    if (flushRef) {
+      flushRef.current = flushToDB;
+    }
+    return () => {
+      if (childFlushRef) {
+        childFlushRef.current = null;
+      }
+      if (flushRef) {
+        flushRef.current = null;
+      }
+    };
+  }, [childFlushRef, flushRef, flushToDB]);
 
   useEffect(() => {
     fetchData();

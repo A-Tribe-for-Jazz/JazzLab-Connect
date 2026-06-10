@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   Play, CheckCircle2, Settings2, RefreshCw, ShieldAlert, Award, X,
@@ -773,8 +773,21 @@ function ResolveModal({
 type OrgDataTab = 'students' | 'picks';
 function OrgDataDrawer({ org, isDark, onClose }: { org: any; isDark: boolean; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<OrgDataTab>('students');
+  const gridFlushRef = useRef<(() => Promise<void>) | null>(null);
+
+  const handleClose = async () => {
+    if (gridFlushRef.current) {
+      try {
+        await gridFlushRef.current();
+      } catch (err) {
+        console.error('Error flushing to DB before closing drawer:', err);
+      }
+    }
+    onClose();
+  };
+
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={handleClose}>
       <DialogContent showCloseButton={false}
         className={cn('!fixed !inset-0 !top-0 !left-0 !transform-none !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !rounded-none !border-none !p-0 !gap-0 flex flex-col overflow-hidden', isDark ? 'bg-black text-white' : 'bg-white text-slate-900')}>
         <div className={cn("grid grid-cols-3 items-center px-8 h-16 border-b shrink-0", isDark ? "border-white/10" : "border-slate-200")}>
@@ -795,7 +808,7 @@ function OrgDataDrawer({ org, isDark, onClose }: { org: any; isDark: boolean; on
             </nav>
           </div>
           <div className="flex items-center justify-end">
-            <button onClick={onClose} className={cn('size-9 rounded-xl flex items-center justify-center border transition-all duration-200', isDark ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')}>
+            <button onClick={handleClose} className={cn('size-9 rounded-xl flex items-center justify-center border transition-all duration-200', isDark ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')}>
               <X size={16} className="stroke-[2.5]" />
             </button>
           </div>
@@ -803,7 +816,11 @@ function OrgDataDrawer({ org, isDark, onClose }: { org: any; isDark: boolean; on
         <div className="flex-1 min-h-0 flex flex-col px-4 pb-4">
           <div className="w-full flex-1 min-h-0 flex flex-col partner-enter">
             <section className="relative flex-1 min-h-0 flex flex-col">
-              {activeTab === 'students' ? <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} /> : <PicksGrid organizationId={org.id} isDark={isDark} />}
+              {activeTab === 'students' ? (
+                <StudentGrid organizationId={org.id} isDark={isDark} isAdmin={true} flushRef={gridFlushRef} />
+              ) : (
+                <PicksGrid organizationId={org.id} isDark={isDark} flushRef={gridFlushRef} />
+              )}
             </section>
           </div>
         </div>

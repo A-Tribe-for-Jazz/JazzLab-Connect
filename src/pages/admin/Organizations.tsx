@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   Plus, Mail, Building, User as UserIcon,
@@ -1023,9 +1023,21 @@ function OrgDataDrawer({
   const [activeCampDayId, setActiveCampDayId] = useState<string>(() => {
     return org.camp_days && org.camp_days.length > 0 ? org.camp_days[0].id : '';
   });
+  const gridFlushRef = useRef<(() => Promise<void>) | null>(null);
+
+  const handleClose = async () => {
+    if (gridFlushRef.current) {
+      try {
+        await gridFlushRef.current();
+      } catch (err) {
+        console.error('Error flushing to DB before closing drawer:', err);
+      }
+    }
+    onClose();
+  };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={handleClose}>
       <DialogContent
         showCloseButton={false}
         className={cn(
@@ -1160,7 +1172,7 @@ function OrgDataDrawer({
           {/* Right: Close button */}
           <div className="flex items-center justify-end shrink-0">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className={cn(
                 'size-9 rounded-xl flex items-center justify-center border transition-all duration-200',
                 isDark
@@ -1183,6 +1195,7 @@ function OrgDataDrawer({
                   isDark={isDark} 
                   isAdmin={true} 
                   activeCampDayId={activeCampDayId || null} 
+                  flushRef={gridFlushRef}
                 />
               ) : (
                 <PicksGrid 
@@ -1191,6 +1204,7 @@ function OrgDataDrawer({
                   isDark={isDark} 
                   isAdmin={true} 
                   activeCampDayId={activeCampDayId || null} 
+                  flushRef={gridFlushRef}
                 />
               )}
             </section>

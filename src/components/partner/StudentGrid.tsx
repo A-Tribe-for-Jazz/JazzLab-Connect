@@ -47,9 +47,17 @@ interface StudentGridProps {
   bgFlavor?: BgFlavor;
   activeCampDayId?: string | null;
   isAdmin?: boolean;
+  flushRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-export default function StudentGrid({ organizationId, isDark = false, bgFlavor = 'slate', activeCampDayId = null, isAdmin = false }: StudentGridProps) {
+export default function StudentGrid({
+  organizationId,
+  isDark = false,
+  bgFlavor = 'slate',
+  activeCampDayId = null,
+  isAdmin = false,
+  flushRef
+}: StudentGridProps) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { childFlushRef } = useOutletContext<any>() || {};
@@ -95,7 +103,6 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   //   }
   // }, [loading, students]);
 
-  // Refs ─────────────────────────────────────────────────────────────────────
   const channelRef = useRef<any>(null);
   const connectionIdRef = useRef(crypto.randomUUID());
   const studentsRef = useRef<StudentRow[]>([]);
@@ -105,6 +112,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const ownInsertsRef = useRef(new Set<string>()); // Track our own DB inserts to avoid Postgres listener duplicates
   const stateFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Debounce React state updates
+  const idRemapRef = useRef<Map<string, string>>(new Map()); // Map phantom IDs to real database UUIDs
 
   // Keep studentsRef always current for use inside callbacks
   useEffect(() => { studentsRef.current = students; }, [students]);
@@ -301,6 +309,22 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
             ownInsertsRef.current.delete(p.realId);
           });
         } else if (data) {
+          phantomRows.forEach(p => {
+            idRemapRef.current.set(p.phantomId, p.realId);
+            
+            // Map the phantom ID in dirtyRowsRef to the real ID
+            if (dirtyRowsRef.current.has(p.phantomId)) {
+              dirtyRowsRef.current.delete(p.phantomId);
+              dirtyRowsRef.current.add(p.realId);
+            }
+            
+            // Map the phantom ID in pendingDeletesRef to the real ID
+            const delIdx = pendingDeletesRef.current.indexOf(p.phantomId);
+            if (delIdx !== -1) {
+              pendingDeletesRef.current[delIdx] = p.realId;
+            }
+          });
+
           setStudents(prev => {
             let next = [...prev];
             phantomRows.forEach(p => {
@@ -310,14 +334,9 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
                   s.id === p.phantomId
                     ? {
                         ...s,
-                        ...inserted,
-                        age: inserted.age ?? '',
-                        last_grade_completed: inserted.last_grade_completed ?? '',
-                        home_zip_code: inserted.home_zip_code ?? '',
-                        race_ethnicity: inserted.race_ethnicity ?? '',
-                        gender: inserted.gender ?? '',
-                        first_language: inserted.first_language ?? '',
-                        total_program_hours: inserted.total_program_hours ?? '',
+                        id: inserted.id,
+                        created_at: inserted.created_at,
+                        updated_at: inserted.updated_at,
                         sync_status: 'synced' as const
                       }
                     : s
@@ -353,11 +372,19 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
   useEffect(() => {
     if (childFlushRef) {
       childFlushRef.current = flushToDB;
-      return () => {
-        childFlushRef.current = null;
-      };
     }
-  }, [childFlushRef, flushToDB]);
+    if (flushRef) {
+      flushRef.current = flushToDB;
+    }
+    return () => {
+      if (childFlushRef) {
+        childFlushRef.current = null;
+      }
+      if (flushRef) {
+        flushRef.current = null;
+      }
+    };
+  }, [childFlushRef, flushRef, flushToDB]);
 
   // ─── Channel setup, periodic save, beforeunload ─────────────────────────
   useEffect(() => {
@@ -514,6 +541,72 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'students',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const updatedRow = payload.new as any;
+          if (!updatedRow?.id) return;
+          // Skip our own updates if we are actively editing/flushing them
+          if (dirtyRowsRef.current.has(updatedRow.id)) return;
+
+          setStudents(prev => {
+            const idx = prev.findIndex(s => s.id === updatedRow.id);
+            if (idx === -1) {
+              const hasData = hasAnyStudentData(updatedRow);
+              if (!hasData) return prev;
+              if (activeCampDayId && updatedRow.camp_day_id !== activeCampDayId) return prev;
+
+              const phantomIdx = prev.findIndex(
+                s => isPhantom(s.id) && !hasAnyStudentData(s)
+              );
+              const student: StudentRow = {
+                ...updatedRow,
+                age: updatedRow.age ?? '',
+                last_grade_completed: updatedRow.last_grade_completed ?? '',
+                home_zip_code: updatedRow.home_zip_code ?? '',
+                race_ethnicity: updatedRow.race_ethnicity ?? '',
+                gender: updatedRow.gender ?? '',
+                first_language: updatedRow.first_language ?? '',
+                total_program_hours: updatedRow.total_program_hours ?? '',
+                sync_status: 'synced' as const,
+                order_index: phantomIdx !== -1 ? phantomIdx : prev.length,
+              };
+              if (phantomIdx !== -1) {
+                const next = [...prev];
+                next[phantomIdx] = student;
+                return next;
+              }
+              return [...prev, student];
+            } else {
+              const next = [...prev];
+              if (activeCampDayId && updatedRow.camp_day_id !== activeCampDayId) {
+                const filtered = prev.filter(s => s.id !== updatedRow.id);
+                filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
+                return filtered;
+              }
+              next[idx] = {
+                ...next[idx],
+                ...updatedRow,
+                age: updatedRow.age ?? '',
+                last_grade_completed: updatedRow.last_grade_completed ?? '',
+                home_zip_code: updatedRow.home_zip_code ?? '',
+                race_ethnicity: updatedRow.race_ethnicity ?? '',
+                gender: updatedRow.gender ?? '',
+                first_language: updatedRow.first_language ?? '',
+                total_program_hours: updatedRow.total_program_hours ?? '',
+                sync_status: 'synced' as const,
+              };
+              return next;
+            }
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'DELETE',
           schema: 'public',
           table: 'students',
@@ -557,14 +650,20 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
       supabase.removeChannel(pgChannel);
       channelRef.current = null;
     };
-  }, [organizationId, profile, fetchData, flushToDB]);
+  }, [organizationId, profile, fetchData, flushToDB, flushRef]);
 
   // ─── Field change: local + broadcast instantly, DB later ────────────────
   const handleFieldChange = useCallback(
     (id: string, field: keyof StudentRow, value: any) => {
+      // Resolve phantom ID to real ID if it has been remapped
+      let targetId = id;
+      if (idRemapRef.current.has(id)) {
+        targetId = idRemapRef.current.get(id)!;
+      }
+
       // 1. Update ref SYNCHRONOUSLY — CollaborativeInput shows value instantly
       //    via its own local state, so this ref is the source of truth for flush.
-      const refIdx = studentsRef.current.findIndex(s => s.id === id);
+      const refIdx = studentsRef.current.findIndex(s => s.id === targetId);
       if (refIdx !== -1) {
         const updated = [...studentsRef.current];
         updated[refIdx] = { ...updated[refIdx], [field]: value };
@@ -572,7 +671,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
       }
 
       // 2. Mark dirty immediately so periodic flush saves correctly
-      dirtyRowsRef.current.add(id);
+      dirtyRowsRef.current.add(targetId);
 
       // 3. Debounce React state update — CollaborativeInput already shows the
       //    value instantly via localValue state, so we only need to sync React
@@ -582,9 +681,9 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
       stateFlushTimerRef.current = setTimeout(() => {
         const latest = studentsRef.current; // always has most up-to-date values
         setStudents(prev => {
-          const idx = prev.findIndex(s => s.id === id);
+          const idx = prev.findIndex(s => s.id === targetId);
           if (idx === -1) return prev;
-          const latestStudent = latest.find(s => s.id === id);
+          const latestStudent = latest.find(s => s.id === targetId);
           if (!latestStudent) return prev;
 
           const next = [...prev];
@@ -604,7 +703,7 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
       }, 200);
 
       // 4. Debounced broadcast — coalesces rapid keystrokes into fewer messages
-      const broadcastKey = `${id}_${String(field)}`;
+      const broadcastKey = `${targetId}_${String(field)}`;
       const pendingTimer = broadcastTimersRef.current.get(broadcastKey);
       if (pendingTimer) clearTimeout(pendingTimer);
       broadcastTimersRef.current.set(broadcastKey, setTimeout(() => {
@@ -612,35 +711,40 @@ export default function StudentGrid({ organizationId, isDark = false, bgFlavor =
         channelRef.current?.send({
           type: 'broadcast',
           event: 'cell_edit',
-          payload: { senderId: connectionIdRef.current, studentId: id, field, value },
+          payload: { senderId: connectionIdRef.current, studentId: targetId, field, value },
         });
       }, 150));
     },
-    [organizationId, activeCampDayId]
+    [organizationId, activeCampDayId, maxSlots]
   );
 
   // ─── Delete: local + broadcast instantly, DB in next flush ──────────────
   const deleteStudent = useCallback(
     (id: string) => {
+      let targetId = id;
+      if (idRemapRef.current.has(id)) {
+        targetId = idRemapRef.current.get(id)!;
+      }
+
       // 1. Update local state
       setStudents(prev => {
-        const filtered = prev.filter(s => s.id !== id);
+        const filtered = prev.filter(s => s.id !== targetId);
         if (filtered.length === prev.length) return prev;
         filtered.push(makeEmptyRow(organizationId, filtered.length, activeCampDayId));
         return filtered;
       });
 
       // 2. Schedule DB delete (phantom rows don't need one)
-      if (!isPhantom(id)) {
-        pendingDeletesRef.current.push(id);
+      if (!isPhantom(targetId)) {
+        pendingDeletesRef.current.push(targetId);
       }
-      dirtyRowsRef.current.delete(id); // no point saving a deleted row
+      dirtyRowsRef.current.delete(targetId); // no point saving a deleted row
 
       // 3. Broadcast instantly
       channelRef.current?.send({
         type: 'broadcast',
         event: 'row_delete',
-        payload: { senderId: connectionIdRef.current, studentId: id },
+        payload: { senderId: connectionIdRef.current, studentId: targetId },
       });
     },
     [organizationId, activeCampDayId]
