@@ -298,12 +298,13 @@ export default function PicksGrid({
       if (studentsRes.data) {
         const existingStudents = studentsRes.data
           .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
-          .filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId)
           .map(s => ({
             ...s,
+            camp_day_id: s.camp_day_id || activeCampDayId || null,
             preferences: (s.preferences as any[] || []).sort((a, b) => a.rank - b.rank),
             sync_status: 'synced'
-          })) as any[];
+          }))
+          .filter(s => !activeCampDayId || s.camp_day_id === activeCampDayId) as any[];
 
         const limitSlots = orgRes.data?.max_slots;
         const targetCount = (limitSlots !== null && limitSlots !== undefined && limitSlots > 0)

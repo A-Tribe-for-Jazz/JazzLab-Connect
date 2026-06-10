@@ -171,6 +171,7 @@ export default function StudentGrid({
           .filter(hasAnyStudentData)
           .map((s, idx) => ({
             ...s,
+            camp_day_id: s.camp_day_id || activeCampDayId || null,
             sync_status: 'synced' as const,
             order_index: s.order_index ?? idx,
             age: s.age ?? '',
