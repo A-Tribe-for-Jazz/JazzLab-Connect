@@ -39,22 +39,30 @@ function CollaborativeInput({
   type?: string;
 }) {
   const [localValue, setLocalValue] = useState(value);
-  const isLocalEdit = useRef(false);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    if (!isLocalEdit.current) setLocalValue(value);
-    isLocalEdit.current = false;
+    if (!isFocusedRef.current) setLocalValue(value);
   }, [value]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newVal = e.target.value;
-      isLocalEdit.current = true;
       setLocalValue(newVal);
       startTransition(() => onChange(e));
     },
     [onChange]
   );
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
+    if (onFocus) onFocus();
+  }, [onFocus]);
+
+  const handleBlur = useCallback(() => {
+    isFocusedRef.current = false;
+    if (onBlur) onBlur();
+  }, [onBlur]);
 
   const isOtherEditing = !!activeCursorsRef.current[`${staffId}_${fieldName}`];
 
@@ -70,8 +78,8 @@ function CollaborativeInput({
         value={localValue}
         placeholder={placeholder}
         onChange={handleChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn(className, 'bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 truncate')}
         title={localValue}
       />

@@ -48,22 +48,30 @@ function CollaborativeInput({
 }) {
   // Local state for instant input response — parent update is deferred
   const [localValue, setLocalValue] = useState(value);
-  const isLocalEdit = useRef(false);
+  const isFocusedRef = useRef(false);
 
   // Sync from parent when value changes externally (colleague edit, realtime)
   useEffect(() => {
-    if (!isLocalEdit.current) {
+    if (!isFocusedRef.current) {
       setLocalValue(value);
     }
-    isLocalEdit.current = false;
   }, [value]);
 
   const handleChange = useCallback((e: any) => {
     const newVal = e.target.value;
-    isLocalEdit.current = true;
     setLocalValue(newVal);             // instant — only this input re-renders
     onChange(e);                        // sync — ensures dirty-marking before any navigation
   }, [onChange]);
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
+    if (onFocus) onFocus();
+  }, [onFocus]);
+
+  const handleBlur = useCallback(() => {
+    isFocusedRef.current = false;
+    if (onBlur) onBlur();
+  }, [onBlur]);
 
   const isOtherEditing = !!activeCursorsRef.current[`${studentId}_${fieldName}`];
 
@@ -77,8 +85,8 @@ function CollaborativeInput({
         value={localValue}
         placeholder={placeholder}
         onChange={handleChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn(
           className,
           "bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 truncate"
@@ -118,11 +126,11 @@ function SelectWithOther({
   inputPlaceholder: string;
 }) {
   const [localValue, setLocalValue] = useState(value);
-  const isLocalEdit = useRef(false);
+  const isFocusedRef = useRef(false);
   const [showInput, setShowInput] = useState(false);
 
   useEffect(() => {
-    if (!isLocalEdit.current) {
+    if (!isFocusedRef.current) {
       setLocalValue(value);
       if (value && !predefined.includes(value)) {
         setShowInput(true);
@@ -130,12 +138,10 @@ function SelectWithOther({
         setShowInput(false);
       }
     }
-    isLocalEdit.current = false;
   }, [value, predefined]);
 
   const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    isLocalEdit.current = true;
     if (val === "Other") {
       setShowInput(true);
       setLocalValue("");
@@ -148,17 +154,25 @@ function SelectWithOther({
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    isLocalEdit.current = true;
     setLocalValue(val);
     onChange(val);
   }, [onChange]);
 
   const handleReset = useCallback(() => {
-    isLocalEdit.current = true;
     setShowInput(false);
     setLocalValue("");
     onChange("");
   }, [onChange]);
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
+    if (onFocus) onFocus();
+  }, [onFocus]);
+
+  const handleBlur = useCallback(() => {
+    isFocusedRef.current = false;
+    if (onBlur) onBlur();
+  }, [onBlur]);
 
   const isOtherEditing = activeCursorsRef?.current ? !!activeCursorsRef.current[`${studentId}_${fieldName}`] : false;
 
@@ -172,8 +186,8 @@ function SelectWithOther({
           value={localValue}
           placeholder={inputPlaceholder}
           onChange={handleInputChange}
-          onFocus={onFocus}
-          onBlur={onBlur}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={cn(
             className,
             "bg-transparent dark:bg-transparent placeholder:text-[11px] placeholder:opacity-90 pr-6 w-full text-center"
@@ -214,8 +228,8 @@ function SelectWithOther({
       </div>
       <select
         value={localValue}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         onChange={handleSelectChange}
         className={cn(
           className,

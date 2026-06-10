@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Info, ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+import { Search, Info, ArrowLeft, ArrowRight, AlertCircle, Save, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { DataTable } from './students/data-table';
@@ -42,8 +42,15 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
     await flushToDB();
     navigate(path);
   };
+
+  const handleSaveClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await flushToDB();
+  };
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const activeCursorsRef = useRef<{ [cellKey: string]: string }>({});
 
   const channelRef = useRef<any>(null);
@@ -53,6 +60,8 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
   const pendingDeletesRef = useRef<string[]>([]);
   const isFlushingRef = useRef(false);
   const broadcastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const idRemapRef = useRef<Map<string, string>>(new Map()); // Map phantom IDs to real database UUIDs
+  const inFlightSavesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { staffRef.current = staff; }, [staff]);
 
@@ -114,8 +123,17 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
     if (dirtyIds.length === 0 && deletes.length === 0) return;
 
     isFlushingRef.current = true;
+    setIsSaving(true);
     dirtyRowsRef.current.clear();
     pendingDeletesRef.current = [];
+
+    // Track in-flight saves to prevent replication/sync event overrides
+    dirtyIds.forEach(id => inFlightSavesRef.current.add(id));
+
+    // Set dirty rows sync_status to 'saving' in state
+    setStaff((prev) =>
+      prev.map((s) => (dirtyIds.includes(s.id) ? { ...s, sync_status: 'saving' } : s))
+    );
 
     const currentStaff = staffRef.current;
 
@@ -157,6 +175,9 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
         if (error) {
           console.error('Batch upsert error:', error.message);
           upsertIds.forEach((id) => dirtyRowsRef.current.add(id));
+          setStaff((prev) =>
+            prev.map((s) => (upsertIds.includes(s.id) ? { ...s, sync_status: 'error' } : s))
+          );
         } else {
           setStaff((prev) =>
             prev.map((s) => (upsertIds.includes(s.id) ? { ...s, sync_status: 'synced' } : s))
@@ -174,7 +195,27 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
         if (error) {
           console.error('Batch insert error:', error.message);
           phantomRows.forEach(p => dirtyRowsRef.current.add(p.phantomId));
+          const phantomIds = phantomRows.map(p => p.phantomId);
+          setStaff((prev) =>
+            prev.map((s) => (phantomIds.includes(s.id) ? { ...s, sync_status: 'error' } : s))
+          );
         } else if (data) {
+          phantomRows.forEach(p => {
+            idRemapRef.current.set(p.phantomId, p.realId);
+            
+            // Map the phantom ID in dirtyRowsRef to the real ID
+            if (dirtyRowsRef.current.has(p.phantomId)) {
+              dirtyRowsRef.current.delete(p.phantomId);
+              dirtyRowsRef.current.add(p.realId);
+            }
+            
+            // Map the phantom ID in pendingDeletesRef to the real ID
+            const delIdx = pendingDeletesRef.current.indexOf(p.phantomId);
+            if (delIdx !== -1) {
+              pendingDeletesRef.current[delIdx] = p.realId;
+            }
+          });
+
           setStaff((prev) => {
             let next = [...prev];
             phantomRows.forEach(p => {
@@ -206,8 +247,18 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
         const { error } = await supabase.from('staff_members').delete().in('id', realDeletes);
         if (error) console.error('Batch delete error:', error.message);
       }
+    } catch (err) {
+      console.error('Flush to DB error:', err);
+      dirtyIds.forEach((id) => dirtyRowsRef.current.add(id));
+      deletes.forEach((id) => pendingDeletesRef.current.push(id));
+      setStaff((prev) =>
+        prev.map((s) => (dirtyIds.includes(s.id) ? { ...s, sync_status: 'error' } : s))
+      );
     } finally {
+      dirtyIds.forEach(id => inFlightSavesRef.current.delete(id));
       isFlushingRef.current = false;
+      setIsSaving(false);
+      setHasUnsavedChanges(dirtyRowsRef.current.size > 0 || pendingDeletesRef.current.length > 0);
     }
   }, [organizationId]);
 
@@ -270,6 +321,12 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
       setStaff((prev) =>
         prev.map((s) => (s.id === payload.oldId ? { ...s, id: payload.newId } : s))
       );
+      // Also remap any active cursor entries
+      const cursorsCopy: { [key: string]: string } = {};
+      for (const [key, val] of Object.entries(activeCursorsRef.current)) {
+        cursorsCopy[key.replace(payload.oldId, payload.newId)] = val;
+      }
+      activeCursorsRef.current = cursorsCopy;
     });
 
     channel.on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
@@ -331,8 +388,13 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
 
   const handleFieldChange = useCallback(
     (id: string, field: keyof StaffRow, value: any) => {
+      let targetId = id;
+      if (idRemapRef.current.has(id)) {
+        targetId = idRemapRef.current.get(id)!;
+      }
+
       setStaff((prev) => {
-        const idx = prev.findIndex((s) => s.id === id);
+        const idx = prev.findIndex((s) => s.id === targetId);
         if (idx === -1) return prev;
         const next = [...prev];
         next[idx] = { ...next[idx], [field]: value };
@@ -345,9 +407,10 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
         return next;
       });
 
-      dirtyRowsRef.current.add(id);
+      dirtyRowsRef.current.add(targetId);
+      setHasUnsavedChanges(true);
 
-      const broadcastKey = `${id}_${String(field)}`;
+      const broadcastKey = `${targetId}_${String(field)}`;
       const pending = broadcastTimersRef.current.get(broadcastKey);
       if (pending) clearTimeout(pending);
       broadcastTimersRef.current.set(
@@ -357,31 +420,37 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
           channelRef.current?.send({
             type: 'broadcast',
             event: 'cell_edit',
-            payload: { senderId: connectionIdRef.current, staffId: id, field, value },
+            payload: { senderId: connectionIdRef.current, staffId: targetId, field, value },
           });
         }, 150)
       );
     },
-    [organizationId]
+    [organizationId, setHasUnsavedChanges]
   );
 
   const deleteStaff = useCallback(
     (id: string) => {
+      let targetId = id;
+      if (idRemapRef.current.has(id)) {
+        targetId = idRemapRef.current.get(id)!;
+      }
+
       setStaff((prev) => {
-        const filtered = prev.filter((s) => s.id !== id);
+        const filtered = prev.filter((s) => s.id !== targetId);
         if (filtered.length === prev.length) return prev;
         filtered.push(makeEmptyRow(organizationId, filtered.length));
         return filtered;
       });
-      if (!isPhantom(id)) pendingDeletesRef.current.push(id);
-      dirtyRowsRef.current.delete(id);
+      if (!isPhantom(targetId)) pendingDeletesRef.current.push(targetId);
+      dirtyRowsRef.current.delete(targetId);
+      setHasUnsavedChanges(true);
       channelRef.current?.send({
         type: 'broadcast',
         event: 'row_delete',
-        payload: { senderId: connectionIdRef.current, staffId: id },
+        payload: { senderId: connectionIdRef.current, staffId: targetId },
       });
     },
-    [organizationId]
+    [organizationId, setHasUnsavedChanges]
   );
 
   const filteredStaff = useMemo(
@@ -460,8 +529,45 @@ export default function StaffGrid({ organizationId, isDark = false, bgFlavor = '
                   </p>
                 </div>
 
-                {/* Right Side: Back to Dashboard & Next Buttons */}
+                {/* Right Side: Save & Back to Dashboard & Next Buttons */}
                 <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
+                  {/* Save Button */}
+                  <button
+                    onClick={handleSaveClick}
+                    disabled={isSaving || !hasUnsavedChanges}
+                    className={cn(
+                      "rounded-xl h-10 w-28 justify-center font-semibold tracking-wide text-[13px] transition-all duration-300 shadow-sm border flex items-center gap-2 shrink-0 select-none",
+                      isSaving
+                        ? isDark
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400/60 cursor-wait"
+                          : "bg-emerald-50 border-emerald-200/60 text-emerald-700/60 cursor-wait"
+                        : hasUnsavedChanges
+                          ? isDark
+                            ? "bg-emerald-500/20 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-500/50"
+                            : "bg-emerald-50 border-emerald-200/60 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95"
+                          : isDark
+                            ? "bg-white/5 border-white/10 text-slate-500 cursor-not-allowed opacity-50"
+                            : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin text-emerald-500" />
+                        <span>Saving...</span>
+                      </>
+                    ) : hasUnsavedChanges ? (
+                      <>
+                        <Save size={16} />
+                        <span>Save</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} className="text-emerald-500" strokeWidth={3} />
+                        <span>Saved</span>
+                      </>
+                    )}
+                  </button>
+
                   <button
                     onClick={(e) => handleNavClick(e, '/partner/dashboard')}
                     className={cn(
