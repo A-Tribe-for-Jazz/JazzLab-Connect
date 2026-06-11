@@ -111,6 +111,12 @@ export default function AdminOrganizations() {
             first_name,
             last_name,
             age,
+            last_grade_completed,
+            home_zip_code,
+            race_ethnicity,
+            gender,
+            first_language,
+            total_program_hours,
             preferences (lab_id)
           `),
         supabase
@@ -144,9 +150,20 @@ export default function AdminOrganizations() {
         const orgStudents = realStudents.filter(s => s.organization_id === org.id);
         const sCount = orgStudents.length;
 
-        const missingDemoCount = orgStudents.filter(
-          s => !s.first_name?.trim() || !s.last_name?.trim() || s.age === null || s.age === undefined || s.age === ''
-        ).length;
+        const missingDemoCount = orgStudents.filter(s => {
+          const fields = [
+            s.first_name,
+            s.last_name,
+            s.age,
+            s.last_grade_completed,
+            s.home_zip_code,
+            s.race_ethnicity,
+            s.gender,
+            s.first_language,
+            s.total_program_hours
+          ];
+          return fields.some(f => f === '' || f === null || f === undefined);
+        }).length;
 
         const coreComplete = orgStudents.filter(
           s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
