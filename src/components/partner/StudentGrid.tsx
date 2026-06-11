@@ -33,7 +33,7 @@ const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | nul
   race_ethnicity: '',
   gender: '',
   first_language: '',
-  total_program_hours: 4.5,
+  total_program_hours: '',
   camp_day_id: activeCampDayId || null,
   notes: '',
   organization_id: orgId,
@@ -283,6 +283,7 @@ export default function StudentGrid({
             realId,
             insertPayload: {
               ...dbPayload,
+              total_program_hours: dbPayload.total_program_hours === null ? 4.5 : dbPayload.total_program_hours,
               id: realId,
               organization_id: organizationId
             }
@@ -361,6 +362,7 @@ export default function StudentGrid({
                         ...s,
                         id: inserted.id,
                         created_at: inserted.created_at,
+                        total_program_hours: inserted.total_program_hours ?? s.total_program_hours,
                         sync_status: 'synced' as const
                       }
                     : s
