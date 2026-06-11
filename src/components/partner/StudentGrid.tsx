@@ -33,7 +33,7 @@ const makeEmptyRow = (orgId: string, idx: number, activeCampDayId?: string | nul
   race_ethnicity: '',
   gender: '',
   first_language: '',
-  total_program_hours: '',
+  total_program_hours: 4.5,
   camp_day_id: activeCampDayId || null,
   notes: '',
   organization_id: orgId,

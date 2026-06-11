@@ -28,7 +28,6 @@ export function hasAnyStudentData(s: any): boolean {
     s.race_ethnicity?.trim() ||
     s.gender?.trim() ||
     s.first_language?.trim() ||
-    s.notes?.trim() ||
-    (s.total_program_hours !== '' && s.total_program_hours !== null && s.total_program_hours !== undefined)
+    s.notes?.trim()
   );
 }
