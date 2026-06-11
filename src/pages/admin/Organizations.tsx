@@ -621,7 +621,10 @@ export default function AdminOrganizations() {
         <OrgDataDrawer
           org={viewDataOrg}
           isDark={isDark}
-          onClose={() => setViewDataOrg(null)}
+          onClose={() => {
+            setViewDataOrg(null);
+            fetchOrganizations();
+          }}
         />
       )}
 
