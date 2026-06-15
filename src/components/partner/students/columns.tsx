@@ -282,6 +282,7 @@ const RACE_PREDEFINED = [
   "Asian",
   "Black or African American",
   "Biracial",
+  "Caucasian",
   "Native Hawaiian or Pacific Islander",
   "White",
   "Two or more races"
