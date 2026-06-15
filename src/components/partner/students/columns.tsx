@@ -326,6 +326,7 @@ interface ColumnProps {
   handleCellFocus?: (studentId: string, field: string) => void;
   handleCellBlur?: () => void;
   isAdmin?: boolean;
+  highlightIncomplete?: boolean;
 }
 
 const defaultCursorsRef = { current: {} as { [cellKey: string]: string } };
@@ -337,7 +338,8 @@ export const getColumns = ({
   activeCursorsRef = defaultCursorsRef,
   handleCellFocus,
   handleCellBlur,
-  isAdmin = false
+  isAdmin = false,
+  highlightIncomplete = false
 }: ColumnProps): ColumnDef<StudentRow>[] => {
   const headerTextClass = "font-bold text-[11px] tracking-wide " + (isDark ? "text-slate-400" : "text-slate-500");
 
@@ -390,7 +392,7 @@ export const getColumns = ({
               studentId={row.original.id}
               fieldName="first_name"
               activeCursorsRef={activeCursorsRef}
-              isIncomplete={isRowActive && !row.original.first_name?.trim()}
+              isIncomplete={highlightIncomplete && isRowActive && !row.original.first_name?.trim()}
             />
           </div>
         );
@@ -421,7 +423,7 @@ export const getColumns = ({
             studentId={row.original.id}
             fieldName="last_name"
             activeCursorsRef={activeCursorsRef}
-            isIncomplete={isRowActive && !row.original.last_name?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.last_name?.trim()}
           />
         );
       },
@@ -453,7 +455,7 @@ export const getColumns = ({
               studentId={row.original.id}
               fieldName="age"
               activeCursorsRef={activeCursorsRef}
-              isIncomplete={isRowActive && (row.original.age === '' || row.original.age === null || row.original.age === undefined)}
+              isIncomplete={highlightIncomplete && isRowActive && (row.original.age === '' || row.original.age === null || row.original.age === undefined)}
             />
           </div>
         );
@@ -487,7 +489,7 @@ export const getColumns = ({
               "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
               isDark ? "text-white" : "text-slate-900"
             )}
-            isIncomplete={isRowActive && !row.original.last_grade_completed?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.last_grade_completed?.trim()}
           />
         );
       },
@@ -517,7 +519,7 @@ export const getColumns = ({
             studentId={row.original.id}
             fieldName="home_zip_code"
             activeCursorsRef={activeCursorsRef}
-            isIncomplete={isRowActive && (!row.original.home_zip_code?.trim() || !/^\d{5}$/.test(row.original.home_zip_code.trim()))}
+            isIncomplete={highlightIncomplete && isRowActive && (!row.original.home_zip_code?.trim() || !/^\d{5}$/.test(row.original.home_zip_code.trim()))}
           />
         );
       },
@@ -550,7 +552,7 @@ export const getColumns = ({
               "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
               isDark ? "text-white" : "text-slate-900"
             )}
-            isIncomplete={isRowActive && !row.original.race?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.race?.trim()}
           />
         );
       },
@@ -583,7 +585,7 @@ export const getColumns = ({
               "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
               isDark ? "text-white" : "text-slate-900"
             )}
-            isIncomplete={isRowActive && !row.original.ethnicity?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.ethnicity?.trim()}
           />
         );
       },
@@ -616,7 +618,7 @@ export const getColumns = ({
               "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
               isDark ? "text-white" : "text-slate-900"
             )}
-            isIncomplete={isRowActive && !row.original.gender?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.gender?.trim()}
           />
         );
       },
@@ -649,7 +651,7 @@ export const getColumns = ({
               "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
               isDark ? "text-white" : "text-slate-900"
             )}
-            isIncomplete={isRowActive && !row.original.first_language?.trim()}
+            isIncomplete={highlightIncomplete && isRowActive && !row.original.first_language?.trim()}
           />
         );
       },
@@ -680,7 +682,7 @@ export const getColumns = ({
             studentId={row.original.id}
             fieldName="total_program_hours"
             activeCursorsRef={activeCursorsRef}
-            isIncomplete={isRowActive && (row.original.total_program_hours === '' || row.original.total_program_hours === null || row.original.total_program_hours === undefined)}
+            isIncomplete={highlightIncomplete && isRowActive && (row.original.total_program_hours === '' || row.original.total_program_hours === null || row.original.total_program_hours === undefined)}
           />
         );
       },

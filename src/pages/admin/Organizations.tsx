@@ -4,7 +4,7 @@ import {
   Plus, Mail, Building, User as UserIcon,
   Database, X, Users, SlidersHorizontal, Calendar, Save, Check,
   Search, Filter, ArrowUpDown, ChevronUp, ChevronDown, Trash2,
-  Table, Settings
+  Table, Settings, AlertCircle
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { hasAnyStudentData } from '../../lib/utils';
@@ -53,6 +53,7 @@ interface Organization {
   members: OrganizationMember[];
   logo_url?: string | null;
   max_slots?: number | null;
+  highlight_incomplete?: boolean;
 }
 
 const AVAILABLE_LOGOS = [
@@ -94,7 +95,7 @@ export default function AdminOrganizations() {
   const fetchOrganizations = async () => {
     setLoading(true);
     try {
-      const [orgsRes, studentsRes, profilesRes, campDaysRes, labsRes] = await Promise.all([
+      const [orgsRes, studentsRes, profilesRes, campDaysRes, labsRes, highlightRes] = await Promise.all([
         supabase
           .from('organizations')
           .select(`
@@ -130,7 +131,18 @@ export default function AdminOrganizations() {
           .order('date'),
         supabase
           .from('labs')
-          .select('id, min_age, max_age')
+          .select('id, min_age, max_age'),
+        (async () => {
+          try {
+            const res = await supabase
+              .from('organizations')
+              .select('id, highlight_incomplete');
+            if (res.error) return [];
+            return (res.data || []) as { id: string; highlight_incomplete: boolean }[];
+          } catch {
+            return [];
+          }
+        })()
       ]);
 
       if (orgsRes.error) throw orgsRes.error;
@@ -189,6 +201,9 @@ export default function AdminOrganizations() {
 
         const orgMembers = profilesData.filter((p: any) => p.organization_id === org.id);
 
+        const dbHighlight = highlightRes.find((h: any) => h.id === org.id)?.highlight_incomplete ?? false;
+        const localFallback = localStorage.getItem(`highlight_incomplete_fallback_${org.id}`) === 'true';
+
         return {
           id: org.id,
           name: org.name,
@@ -202,7 +217,8 @@ export default function AdminOrganizations() {
           incomplete_count: incompleteCount,
           members: orgMembers,
           logo_url: org.logo_url,
-          max_slots: org.max_slots
+          max_slots: org.max_slots,
+          highlight_incomplete: dbHighlight || localFallback
         };
       });
 
@@ -1047,6 +1063,27 @@ function OrgDataDrawer({
   const [activeCampDayId, setActiveCampDayId] = useState<string>(() => {
     return org.camp_days && org.camp_days.length > 0 ? org.camp_days[0].id : '';
   });
+  const [highlightIncomplete, setHighlightIncomplete] = useState(() => {
+    return !!org.highlight_incomplete;
+  });
+
+  const handleToggleHighlight = async () => {
+    const nextVal = !highlightIncomplete;
+    setHighlightIncomplete(nextVal);
+    localStorage.setItem(`highlight_incomplete_fallback_${org.id}`, String(nextVal));
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ highlight_incomplete: nextVal })
+        .eq('id', org.id);
+      if (error) {
+        console.warn('DB update failed, using localStorage fallback. Column may be missing:', error.message);
+      }
+    } catch (err) {
+      console.warn('DB update threw error, using localStorage fallback:', err);
+    }
+  };
+
   const gridFlushRef = useRef<(() => Promise<void>) | null>(null);
 
   const handleClose = async () => {
@@ -1195,6 +1232,24 @@ function OrgDataDrawer({
 
           {/* Right: Close button */}
           <div className="flex items-center justify-end shrink-0">
+            {activeTab === 'students' && (
+              <Button
+                onClick={handleToggleHighlight}
+                className={cn(
+                  "rounded-xl h-9 px-4 font-semibold tracking-wide text-xs transition-all duration-300 border flex items-center gap-1.5 mr-2 shadow-sm",
+                  highlightIncomplete
+                    ? (isDark
+                      ? "bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30 hover:border-orange-500/40 shadow-[0_0_12px_rgba(249,115,22,0.15)]"
+                      : "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 hover:border-orange-300")
+                    : (isDark
+                      ? "bg-transparent border-white/10 text-slate-400 hover:bg-white/5 hover:text-white"
+                      : "bg-transparent border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800")
+                )}
+              >
+                <AlertCircle size={13} className={cn("transition-transform duration-300", highlightIncomplete && "scale-110")} />
+                <span>Highlight Incomplete</span>
+              </Button>
+            )}
             <button
               onClick={handleClose}
               className={cn(
@@ -1220,6 +1275,7 @@ function OrgDataDrawer({
                   isAdmin={true} 
                   activeCampDayId={activeCampDayId || null} 
                   flushRef={gridFlushRef}
+                  highlightIncomplete={highlightIncomplete}
                 />
               ) : (
                 <PicksGrid 

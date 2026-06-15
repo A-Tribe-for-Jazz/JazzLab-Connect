@@ -49,6 +49,7 @@ interface StudentGridProps {
   activeCampDayId?: string | null;
   isAdmin?: boolean;
   flushRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  highlightIncomplete?: boolean;
 }
 
 export default function StudentGrid({
@@ -57,7 +58,8 @@ export default function StudentGrid({
   bgFlavor = 'slate',
   activeCampDayId = null,
   isAdmin = false,
-  flushRef
+  flushRef,
+  highlightIncomplete = false
 }: StudentGridProps) {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -70,6 +72,7 @@ export default function StudentGrid({
   const [searchTerm, setSearchTerm] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [dbHighlightIncomplete, setDbHighlightIncomplete] = useState(false);
 
   const handleNavClick = async (e: React.MouseEvent, path: string) => {
     e.preventDefault();
@@ -146,7 +149,7 @@ export default function StudentGrid({
   // ─── Fetch initial data from DB ─────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
-      const [studentsRes, daysRes, orgRes] = await Promise.all([
+      const [studentsRes, daysRes, orgRes, dbHighlightIncompleteVal] = await Promise.all([
         supabase
           .from('students')
           .select('*')
@@ -160,12 +163,27 @@ export default function StudentGrid({
           .from('organizations')
           .select('max_slots')
           .eq('id', organizationId)
-          .maybeSingle()
+          .maybeSingle(),
+        (async () => {
+          try {
+            const res = await supabase
+              .from('organizations')
+              .select('highlight_incomplete')
+              .eq('id', organizationId)
+              .maybeSingle();
+            if (res.error) return false;
+            return !!(res.data as any)?.highlight_incomplete;
+          } catch {
+            return false;
+          }
+        })()
       ]);
 
       if (orgRes.data) {
         setMaxSlots(orgRes.data.max_slots);
       }
+      const localFallback = localStorage.getItem(`highlight_incomplete_fallback_${organizationId}`) === 'true';
+      setDbHighlightIncomplete(dbHighlightIncompleteVal || localFallback);
 
       if (studentsRes.data) {
         const existing = studentsRes.data
@@ -512,6 +530,12 @@ export default function StudentGrid({
       }
     });
 
+    // ── Broadcast: highlight toggle ───────────────────────────────────────
+    channel.on('broadcast', { event: 'highlight_toggle' }, ({ payload }) => {
+      if (payload.senderId === connId) return;
+      setDbHighlightIncomplete(!!payload.enabled);
+    });
+
     // ── Presence: clean up stale cursors when a user disconnects ──────────
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       const leftSenders = new Set(
@@ -704,6 +728,17 @@ export default function StudentGrid({
     };
   }, [organizationId, profile, fetchData, flushToDB, flushRef]);
 
+  // Broadcast highlight toggle updates to other active clients (partners/admins)
+  useEffect(() => {
+    if (isAdmin && channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'highlight_toggle',
+        payload: { senderId: connectionIdRef.current, enabled: highlightIncomplete },
+      });
+    }
+  }, [highlightIncomplete, isAdmin]);
+
   // ─── Field change: local + broadcast instantly, DB later ────────────────
   const handleFieldChange = useCallback(
     (id: string, field: keyof StudentRow, value: any) => {
@@ -876,8 +911,9 @@ export default function StudentGrid({
         handleCellFocus,
         handleCellBlur,
         isAdmin,
+        highlightIncomplete: isAdmin ? highlightIncomplete : dbHighlightIncomplete,
       }),
-    [handleFieldChange, deleteStudent, campDays, isDark, handleCellFocus, handleCellBlur, isAdmin]
+    [handleFieldChange, deleteStudent, campDays, isDark, handleCellFocus, handleCellBlur, isAdmin, highlightIncomplete, dbHighlightIncomplete]
   );
 
   if (loading) return <PartnerLoader label="Powering Up Database..." isDark={isDark} />;
