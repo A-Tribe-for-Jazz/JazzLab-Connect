@@ -215,7 +215,7 @@ export function DataTable<TData, TValue>({
                             maxWidth: cell.column.getSize(),
                           }}
                           className={cn(
-                            "p-0 border-r last:border-r-0 relative overflow-hidden",
+                            "p-0 border-r last:border-r-0 relative overflow-visible",
                             (cell.column.columnDef.meta as any)?.isEditable && [
                               "hover:ring-1 hover:ring-inset hover:ring-sky-400/30 hover:z-20 hover:bg-sky-400/[0.02]",
                               "focus-within:ring-2 focus-within:ring-inset focus-within:ring-sky-400 focus-within:z-30 focus-within:bg-sky-400/[0.05]"

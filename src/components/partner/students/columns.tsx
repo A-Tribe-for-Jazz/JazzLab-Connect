@@ -82,7 +82,7 @@ function CollaborativeInput({
     <div className={cn(
       "relative w-full h-10 flex items-center transition-all duration-300",
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-      isIncomplete && "outline outline-2 outline-rose-500/80 dark:outline-rose-500/60 outline-offset-[-2px] bg-rose-500/[0.04] dark:bg-rose-500/[0.02] shadow-[0_0_10px_rgba(244,63,94,0.35)] dark:shadow-[0_0_12px_rgba(244,63,94,0.3)] z-10"
+      isIncomplete && "outline outline-2 outline-red-600 dark:outline-red-500 outline-offset-[-2px] bg-red-500/[0.12] dark:bg-red-500/[0.10] shadow-[0_0_14px_rgba(220,38,38,0.75)] dark:shadow-[0_0_16px_rgba(239,68,68,0.7)] z-10"
     )}>
       <Input
         type={type}
@@ -187,7 +187,7 @@ function SelectWithOther({
       <div className={cn(
         "relative w-full h-10 flex items-center pr-8 transition-all duration-300",
         isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-        isIncomplete && "outline outline-2 outline-rose-500/80 dark:outline-rose-500/60 outline-offset-[-2px] bg-rose-500/[0.04] dark:bg-rose-500/[0.02] shadow-[0_0_10px_rgba(244,63,94,0.35)] dark:shadow-[0_0_12px_rgba(244,63,94,0.3)] z-10"
+        isIncomplete && "outline outline-2 outline-red-600 dark:outline-red-500 outline-offset-[-2px] bg-red-500/[0.12] dark:bg-red-500/[0.10] shadow-[0_0_14px_rgba(220,38,38,0.75)] dark:shadow-[0_0_16px_rgba(239,68,68,0.7)] z-10"
       )}>
         <Input
           value={localValue}
@@ -218,7 +218,7 @@ function SelectWithOther({
     <div className={cn(
       "group/select relative w-full h-10 flex items-center justify-center transition-all duration-300",
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-      isIncomplete && "outline outline-2 outline-rose-500/80 dark:outline-rose-500/60 outline-offset-[-2px] bg-rose-500/[0.04] dark:bg-rose-500/[0.02] shadow-[0_0_10px_rgba(244,63,94,0.35)] dark:shadow-[0_0_12px_rgba(244,63,94,0.3)] z-10"
+      isIncomplete && "outline outline-2 outline-red-600 dark:outline-red-500 outline-offset-[-2px] bg-red-500/[0.12] dark:bg-red-500/[0.10] shadow-[0_0_14px_rgba(220,38,38,0.75)] dark:shadow-[0_0_16px_rgba(239,68,68,0.7)] z-10"
     )}>
       {/* Underlying Display Wrapper */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-4 text-center">
