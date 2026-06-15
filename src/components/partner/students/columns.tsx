@@ -579,7 +579,7 @@ export const getColumns = ({
         />
       ),
       meta: { isEditable: true },
-      size: 120,
+      size: 100,
     },
     {
       accessorKey: "first_language",
@@ -608,7 +608,7 @@ export const getColumns = ({
         />
       ),
       meta: { isEditable: true },
-      size: 150,
+      size: 130,
     },
     {
       accessorKey: "total_program_hours",
