@@ -252,7 +252,20 @@ export default function AdminReports() {
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    if (activeView === 'labs') {
+      document.title = 'Lab Assignments';
+    } else if (activeView === 'orgs') {
+      document.title = 'Schedule by Org';
+    } else if (activeView === 'slips') {
+      document.title = 'Student Slips';
+    } else {
+      document.title = 'Master Camp Schedule';
+    }
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 100);
   };
 
   // Safe fallback sessions
@@ -1058,6 +1071,31 @@ export default function AdminReports() {
               font-style: italic !important;
               color: #94a3b8 !important;
               font-weight: 500 !important;
+            }
+
+            /* Lab Assignments View custom print sizes */
+            .print-lab-session-block h2 {
+              font-size: 22px !important;
+              font-weight: 900 !important;
+            }
+
+            .print-lab-session-block .text-sm {
+              font-size: 14px !important;
+              font-weight: 700 !important;
+            }
+
+            .print-lab-session-block table {
+              font-size: 13px !important;
+            }
+
+            .print-lab-session-block th {
+              font-size: 13px !important;
+              padding: 8px 12px !important;
+            }
+
+            .print-lab-session-block td {
+              font-size: 13px !important;
+              padding: 7px 12px !important;
             }
 
             /* Slips styling */
