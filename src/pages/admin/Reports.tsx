@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useOutletContext, Link } from 'react-router-dom';
-import { Calendar, Search, Filter, Printer, Building, AlertTriangle, ArrowRight, Info } from 'lucide-react';
+import { Calendar, Search, Filter, Printer, Building, AlertTriangle, ArrowRight, Info, Eye, ChevronDown } from 'lucide-react';
 import { cn, formatTimeString, hasAnyStudentData } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,12 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -42,6 +48,22 @@ interface PlacementRow {
   };
 }
 
+export function getLabRoom(labName: string): string {
+  if (!labName) return '';
+  const nameLower = labName.toLowerCase();
+  if (nameLower.includes('mixed media')) return 'Room 106';
+  if (nameLower.includes('producer')) return 'Room 108';
+  if (nameLower.includes('afro-futuristic') || nameLower.includes('afrofuturistic')) return 'Room 110';
+  if (nameLower.includes('pixel beat') || nameLower.includes('pixelbeats')) return 'Room 112';
+  if (nameLower.includes('virtual reality') || nameLower.includes('virtureality') || nameLower.includes('vr')) return 'Room 118';
+  if (nameLower.includes('reverb')) return 'Room 120';
+  if (nameLower.includes('remix')) return 'Room 122';
+  if (nameLower.includes('conga')) return 'Room 125';
+  if (nameLower.includes('ecojazz') || nameLower.includes('eco jazz') || nameLower.includes('eco-jazz')) return 'Room 128';
+  if (nameLower.includes('jazzfablab') || nameLower.includes('jazz fab') || nameLower.includes('jazzfab') || nameLower.includes('fab lab') || nameLower.includes('fablab')) return 'Room 130';
+  return '';
+}
+
 export default function AdminReports() {
   const { isDark }: any = useOutletContext();
 
@@ -59,6 +81,7 @@ export default function AdminReports() {
   const [activeOrgId, setActiveOrgId] = useState<string>('all');
   const [activeLabId, setActiveLabId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [activeView, setActiveView] = useState<'master' | 'labs' | 'orgs' | 'slips'>('master');
 
   // Day specific data states
   const [students, setStudents] = useState<any[]>([]);
@@ -196,6 +219,14 @@ export default function AdminReports() {
     });
   }, [placements, searchTerm, activeOrgId, activeLabId]);
 
+  const chunkedSlips = useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < filteredPlacements.length; i += 6) {
+      chunks.push(filteredPlacements.slice(i, i + 6));
+    }
+    return chunks;
+  }, [filteredPlacements]);
+
   const isFinalized = useMemo(() => {
     return assignments.length > 0;
   }, [assignments]);
@@ -271,29 +302,84 @@ export default function AdminReports() {
               isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/30"
             )}>
               <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 w-full">
-                {/* Left: Search */}
-                <div className="relative flex-1 max-w-xs w-full group/search">
-                  <Search
-                    className={cn(
-                      "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
-                      isDark
-                        ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400"
-                        : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
-                    )}
-                    size={20}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search students..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={cn(
-                      "pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
-                      isDark
-                        ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
-                        : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
-                    )}
-                  />
+                {/* Left: Search & View Selector */}
+                <div className="flex flex-wrap items-center gap-3 flex-1">
+                  <div className="relative max-w-xs w-full group/search">
+                    <Search
+                      className={cn(
+                        "absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-500 z-10",
+                        isDark
+                          ? "text-sky-700 group-hover/search:text-sky-400 group-focus-within/search:text-sky-400"
+                          : "text-sky-300 group-hover/search:text-sky-600 group-focus-within/search:text-sky-600"
+                      )}
+                      size={20}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={cn(
+                        "pl-16 pr-5 h-10 rounded-xl border-2 transition-all duration-500 text-[13px] font-semibold outline-none w-full",
+                        isDark
+                          ? "bg-sky-400/[0.03] border-white/10 text-white hover:border-sky-400/50 hover:bg-sky-400/5 focus-visible:border-sky-400/50 focus-visible:bg-sky-400/5 focus-visible:ring-0"
+                          : "bg-sky-50/20 border-slate-200 text-slate-900 hover:border-sky-500/30 hover:bg-sky-50/50 focus-visible:border-sky-500/30 focus-visible:bg-sky-50/50 focus-visible:ring-0"
+                      )}
+                    />
+                  </div>
+
+                  {/* View Options Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-10 rounded-xl px-4 font-semibold text-[13px] transition-all duration-300 border shadow-sm flex items-center gap-2",
+                          isDark
+                            ? "bg-slate-900 border-white/10 text-white hover:bg-slate-800 hover:border-white/20"
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                        )}
+                      >
+                        <Eye size={15} className="text-sky-500" />
+                        <span>
+                          {activeView === 'master' && 'Master Roster'}
+                          {activeView === 'labs' && 'Lab Assignments View'}
+                          {activeView === 'orgs' && 'Schedule by Org'}
+                          {activeView === 'slips' && 'Student Slips'}
+                        </span>
+                        <ChevronDown size={14} className="opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className={cn(
+                      "rounded-xl border p-1 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 z-50",
+                      isDark ? "bg-slate-900 border-white/10 text-white shadow-black" : "bg-white border-slate-100 text-slate-900"
+                    )}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveView('master')}
+                        className={cn("font-semibold text-[13px] py-2 px-3 rounded-lg cursor-pointer", isDark ? "focus:bg-white/5" : "focus:bg-slate-50")}
+                      >
+                        Master Roster
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setActiveView('labs')}
+                        className={cn("font-semibold text-[13px] py-2 px-3 rounded-lg cursor-pointer", isDark ? "focus:bg-white/5" : "focus:bg-slate-50")}
+                      >
+                        Lab Assignments View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setActiveView('orgs')}
+                        className={cn("font-semibold text-[13px] py-2 px-3 rounded-lg cursor-pointer", isDark ? "focus:bg-white/5" : "focus:bg-slate-50")}
+                      >
+                        Schedule by Org
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setActiveView('slips')}
+                        className={cn("font-semibold text-[13px] py-2 px-3 rounded-lg cursor-pointer", isDark ? "focus:bg-white/5" : "focus:bg-slate-50")}
+                      >
+                        Student Slips
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
 
@@ -423,23 +509,10 @@ export default function AdminReports() {
                     )}
                   >
                     <Printer size={15} />
-                    <span>Print Roster</span>
+                    <span>Print Schedule</span>
                   </Button>
                 </div>
               </div>
-            </div>
-
-            {/* Printable Header Context */}
-            <div className="hidden print:block mb-8">
-              <h1 className="text-2xl font-bold text-black uppercase tracking-tight">Jazz Lab Master Schedule</h1>
-              <p className="text-xs text-slate-500 mt-1 font-bold">
-                Camp Session Date: {selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unassigned Day'}
-              </p>
-              {activeOrgId !== 'all' && (
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Organization: {organizations.find(o => o.id === activeOrgId)?.name}
-                </p>
-              )}
             </div>
 
             {/* Non-finalized Alert Banner */}
@@ -451,9 +524,9 @@ export default function AdminReports() {
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="shrink-0 size-5 text-amber-500" />
                   <div className="text-xs font-semibold">
-                    <p className="font-bold text-sm">Schedule Not Finalized</p>
+                    <p className="font-bold text-sm">Schedule Not Finalized / No Active Placements</p>
                     <p className={isDark ? "text-slate-400 mt-0.5" : "text-slate-600 mt-0.5"}>
-                      Assignments have not been generated for this camp day yet. All student slots will show as "Unassigned".
+                      Please select another Camp Day from the date picker above, or go to Assignments to run the solver for this day.
                     </p>
                   </div>
                 </div>
@@ -484,7 +557,7 @@ export default function AdminReports() {
                   )} />
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Loading schedules for day...</p>
                 </div>
-              ) : (
+              ) : activeView === 'master' ? (
                 <Table className="border-collapse" wrapperClassName="overflow-visible" style={{ width: "100%" }}>
                   <TableHeader className="sticky top-0 z-40">
                     <TableRow className={cn(
@@ -739,10 +812,619 @@ export default function AdminReports() {
                     )}
                   </TableBody>
                 </Table>
+              ) : activeView === 'labs' ? (
+                /* Lab Assignments View */
+                <div className="p-6 space-y-8 select-none">
+                  {labs.map(lab => {
+                    return activeSessions.map(slot => {
+                      const sessionStudents = filteredPlacements.filter(p => p.sessionAssignments[slot.id]?.labId === lab.id);
+                      if (sessionStudents.length === 0) return null;
+
+                      return (
+                        <div key={`${lab.id}-${slot.id}`} className={cn(
+                          "rounded-xl border p-4 shadow-sm",
+                          isDark ? "bg-[#0f172a]/55 border-white/10" : "bg-slate-50/60 border-slate-200"
+                        )}>
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-2 mb-3 gap-2">
+                            <h3 className="font-extrabold text-sm text-sky-500">{lab.name}</h3>
+                            <span className="text-xs font-bold text-slate-400">{slot.name} ({formatTimeString(slot.start_time)} - {formatTimeString(slot.end_time)})</span>
+                            <span className="text-xs font-semibold text-slate-400">Date: {visitDate}</span>
+                          </div>
+                          <Table className="border-collapse" style={{ width: "100%" }}>
+                            <TableHeader>
+                              <TableRow className={isDark ? "border-white/10" : "border-slate-200"}>
+                                <TableHead className="w-[50px] font-bold text-xs">S.No</TableHead>
+                                <TableHead className="font-bold text-xs">Student FULL NAME</TableHead>
+                                <TableHead className="font-bold text-xs">Organization/Camp</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sessionStudents.map((stud, sidx) => (
+                                <TableRow key={stud.studentId} className={isDark ? "border-white/5" : "border-slate-100"}>
+                                  <TableCell className="text-xs font-bold">{String(sidx + 1).padStart(2, '0')}</TableCell>
+                                  <TableCell className="text-xs font-semibold">{stud.studentName}</TableCell>
+                                  <TableCell className="text-xs font-semibold">{stud.organizationName}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      );
+                    });
+                  })}
+                </div>
+              ) : activeView === 'orgs' ? (
+                /* Schedule by Org */
+                <div className="p-6 space-y-8 select-none">
+                  {organizations.map(org => {
+                    const orgStudents = filteredPlacements.filter(p => p.organizationId === org.id);
+                    if (orgStudents.length === 0) return null;
+
+                    return (
+                      <div key={org.id} className={cn(
+                        "rounded-xl border p-4 shadow-sm",
+                        isDark ? "bg-[#0f172a]/55 border-white/10" : "bg-slate-50/60 border-slate-200"
+                      )}>
+                        <div className="flex justify-between items-center border-b pb-2 mb-3">
+                          <h3 className="font-extrabold text-sm text-indigo-400">{org.name}</h3>
+                          <span className="text-xs font-semibold text-slate-400">Date: {visitDate}</span>
+                        </div>
+                        <Table className="border-collapse" style={{ width: "100%" }}>
+                          <TableHeader>
+                            <TableRow className={isDark ? "border-white/10" : "border-slate-200"}>
+                              <TableHead className="w-[50px] font-bold text-xs">S.No</TableHead>
+                              <TableHead className="font-bold text-xs">Student FULL NAME</TableHead>
+                              <TableHead className="font-bold text-xs">Assigned Lab 1</TableHead>
+                              <TableHead className="font-bold text-xs">Lab 1 Time Slot</TableHead>
+                              <TableHead className="font-bold text-xs">Assigned Lab 2</TableHead>
+                              <TableHead className="font-bold text-xs">Lab 2 Time Slot</TableHead>
+                              <TableHead className="font-bold text-xs">Assigned Lab 3</TableHead>
+                              <TableHead className="font-bold text-xs">Lab 3 Time Slot</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {orgStudents.map((stud, oidx) => {
+                              const a1 = s1 ? stud.sessionAssignments[s1.id] : null;
+                              const a2 = s2 ? stud.sessionAssignments[s2.id] : null;
+                              const a3 = s3 ? stud.sessionAssignments[s3.id] : null;
+
+                              return (
+                                <TableRow key={stud.studentId} className={isDark ? "border-white/5" : "border-slate-100"}>
+                                  <TableCell className="text-xs font-bold">{String(oidx + 1).padStart(2, '0')}</TableCell>
+                                  <TableCell className="text-xs font-bold">{stud.studentName}</TableCell>
+                                  <TableCell className="text-xs">{a1 ? a1.labName : <span className="text-slate-500 italic">Unassigned</span>}</TableCell>
+                                  <TableCell className="text-xs text-slate-400">{s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "—"}</TableCell>
+                                  <TableCell className="text-xs">{a2 ? a2.labName : <span className="text-slate-500 italic">Unassigned</span>}</TableCell>
+                                  <TableCell className="text-xs text-slate-400">{s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "—"}</TableCell>
+                                  <TableCell className="text-xs">{a3 ? a3.labName : <span className="text-slate-500 italic">Unassigned</span>}</TableCell>
+                                  <TableCell className="text-xs text-slate-400">{s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "—"}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Student Slips View */
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none print:hidden">
+                  {filteredPlacements.map(stud => {
+                    const a1 = s1 ? stud.sessionAssignments[s1.id] : null;
+                    const a2 = s2 ? stud.sessionAssignments[s2.id] : null;
+                    const a3 = s3 ? stud.sessionAssignments[s3.id] : null;
+
+                    return (
+                      <div key={stud.studentId} className={cn(
+                        "rounded-2xl border p-5 flex flex-col justify-between shadow-md",
+                        isDark ? "bg-[#0b0f19] border-white/10" : "bg-white border-slate-200"
+                      )} style={{ minHeight: "220px" }}>
+                        <div>
+                          <div className="flex justify-between items-baseline gap-2">
+                            <h3 className="font-black text-xl tracking-tight text-slate-900 dark:text-white truncate" title={stud.studentName}>{stud.studentName}</h3>
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Age: {stud.studentAge}</span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">{stud.organizationName}</p>
+                          <div className={cn("h-px my-3", isDark ? "bg-white/5" : "bg-slate-100")} />
+                          <p className="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-2">Your Labs:</p>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start text-xs">
+                              <span className="font-bold text-slate-500 shrink-0 mr-3 text-xs md:text-sm pt-0.5">10:00 - 10:50</span>
+                              <div className="text-right">
+                                <div className="font-black text-slate-900 dark:text-slate-100 text-xs md:text-sm">{a1 ? a1.labName : 'Unassigned'}</div>
+                                {a1 && getLabRoom(a1.labName) && (
+                                  <div className="text-xs md:text-sm font-semibold text-slate-400 dark:text-slate-500 mt-0.5">{getLabRoom(a1.labName)}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-start text-xs">
+                              <span className="font-bold text-slate-500 shrink-0 mr-3 text-xs md:text-sm pt-0.5">11:00 - 11:50</span>
+                              <div className="text-right">
+                                <div className="font-black text-slate-900 dark:text-slate-100 text-xs md:text-sm">{a2 ? a2.labName : 'Unassigned'}</div>
+                                {a2 && getLabRoom(a2.labName) && (
+                                  <div className="text-xs md:text-sm font-semibold text-slate-400 dark:text-slate-500 mt-0.5">{getLabRoom(a2.labName)}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-start text-xs">
+                              <span className="font-bold text-slate-500 shrink-0 mr-3 text-xs md:text-sm pt-0.5">12:30 - 01:20</span>
+                              <div className="text-right">
+                                <div className="font-black text-slate-900 dark:text-slate-100 text-xs md:text-sm">{a3 ? a3.labName : 'Unassigned'}</div>
+                                {a3 && getLabRoom(a3.labName) && (
+                                  <div className="text-xs md:text-sm font-semibold text-slate-400 dark:text-slate-500 mt-0.5">{getLabRoom(a3.labName)}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Print Section (Only visible during printing) */}
+      <div id="print-section" className="hidden">
+        <style>{`
+          @media print {
+            @page {
+              size: ${activeView === 'slips' ? 'portrait' : 'landscape'};
+              margin: ${activeView === 'slips' ? '6mm' : '12mm'};
+            }
+            
+            /* Reset body styles for print */
+            html, body, #root, [class*="layout"], [class*="Layout"] {
+              background: white !important;
+              color: black !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: auto !important;
+            }
+
+            /* Hide everything in the document body */
+            body * {
+              visibility: hidden;
+              background: transparent !important;
+            }
+
+            /* Enable visibility only for the print section and its children */
+            #print-section, #print-section * {
+              visibility: visible;
+            }
+
+            #print-section {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              display: block !important;
+              background: white !important;
+              color: black !important;
+            }
+
+            /* Styled print table */
+            #print-section table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin-top: 15px !important;
+              margin-bottom: 25px !important;
+              font-family: system-ui, -apple-system, sans-serif !important;
+              font-size: 11px !important;
+              color: #0f172a !important;
+              background: white !important;
+            }
+
+            #print-section th {
+              background-color: #f1f5f9 !important;
+              color: #0f172a !important;
+              font-weight: 800 !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.05em !important;
+              border: 1.5px solid #cbd5e1 !important;
+              padding: 8px 10px !important;
+              text-align: left !important;
+            }
+
+            #print-section td {
+              border: 1px solid #cbd5e1 !important;
+              padding: 6px 10px !important;
+              color: #334155 !important;
+              background: white !important;
+            }
+
+            #print-section tr:nth-child(even) {
+              background-color: #f8fafc !important;
+            }
+
+            #print-section tr {
+              page-break-inside: avoid !important;
+            }
+
+            #print-section .pref-badge {
+              font-weight: 700 !important;
+              font-size: 8px !important;
+              color: #64748b !important;
+              text-transform: uppercase !important;
+              margin-left: 4px !important;
+            }
+
+            #print-section .unassigned-text {
+              font-style: italic !important;
+              color: #94a3b8 !important;
+              font-weight: 500 !important;
+            }
+
+            /* Slips styling */
+            .slips-print-container {
+              width: 100% !important;
+              background: white !important;
+              display: block !important;
+            }
+
+            .slips-page-sheet {
+              display: grid !important;
+              grid-template-columns: repeat(2, 1fr) !important;
+              grid-template-rows: repeat(3, 1fr) !important;
+              gap: 10px !important;
+              width: 100% !important;
+              height: 248mm !important;
+              page-break-after: always !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              box-sizing: border-box !important;
+              padding: 2mm !important;
+              background: white !important;
+            }
+
+            .slip-card {
+              border: 1px dashed #94a3b8 !important;
+              border-radius: 8px !important;
+              padding: 12px !important;
+              box-sizing: border-box !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              background: white !important;
+              height: 100% !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+
+            .slip-card-header {
+              margin-bottom: 4px !important;
+            }
+
+            .slip-student-name {
+              font-size: 20px !important;
+              font-weight: 800 !important;
+              color: #0f172a !important;
+              line-height: 1.2 !important;
+              margin-bottom: 2px !important;
+            }
+
+            .slip-org-name {
+              font-size: 11px !important;
+              font-weight: 700 !important;
+              color: #475569 !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.05em !important;
+            }
+
+            .slip-age {
+              font-size: 11px !important;
+              font-weight: 700 !important;
+              color: #64748b !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.05em !important;
+              margin-top: 2px !important;
+            }
+
+             .slip-your-labs-title {
+              font-size: 10px !important;
+              font-weight: 800 !important;
+              color: #0284c7 !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.1em !important;
+              margin-top: 4px !important;
+              margin-bottom: 2px !important;
+            }
+
+            .slip-labs-table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin-top: 0 !important;
+              margin-bottom: 0 !important;
+            }
+
+            .slip-labs-table td {
+              border: none !important;
+              padding: 2px 0 !important;
+              background: transparent !important;
+            }
+
+            .slip-time-col {
+              font-size: 12px !important;
+              font-weight: 700 !important;
+              color: #475569 !important;
+              width: 90px !important;
+              white-space: nowrap !important;
+              text-align: left !important;
+              vertical-align: top !important;
+              padding-top: 2px !important;
+            }
+
+            .slip-lab-col {
+              text-align: right !important;
+              vertical-align: top !important;
+              padding-top: 2px !important;
+            }
+
+            .slip-lab-name {
+              font-size: 13px !important;
+              font-weight: 800 !important;
+              color: #0f172a !important;
+              text-align: right !important;
+            }
+
+            .slip-lab-room {
+              font-size: 12px !important;
+              font-weight: 600 !important;
+              color: #64748b !important;
+              text-align: right !important;
+              margin-top: 1px !important;
+            }
+          }
+        `}</style>
+
+        {activeView === 'master' && (
+          <>
+            <div className="mb-6">
+              <div className="flex items-center justify-between border-b-2 border-slate-300 pb-4">
+                <div>
+                  <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Master Camp Schedule</h1>
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mt-1">Student Placements</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-black text-slate-900">
+                    Date: {selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unassigned Day'}
+                  </p>
+                  {activeOrgId !== 'all' && (
+                    <p className="text-xs font-bold text-slate-600 mt-1">
+                      Partner: {organizations.find(o => o.id === activeOrgId)?.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '40px', textAlign: 'center' }}>#</th>
+                  <th style={{ width: '22%' }}>Student Name</th>
+                  <th style={{ width: '20%' }}>Partner Organization</th>
+                  <th>Session 1 ({s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "10:00 - 10:50"})</th>
+                  <th>Session 2 ({s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "11:00 - 11:50"})</th>
+                  <th>Session 3 ({s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "12:30 - 13:20"})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlacements.map((row, idx) => {
+                  const a1 = s1 ? row.sessionAssignments[s1.id] : null;
+                  const a2 = s2 ? row.sessionAssignments[s2.id] : null;
+                  const a3 = s3 ? row.sessionAssignments[s3.id] : null;
+
+                  return (
+                    <tr key={row.studentId}>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{String(idx + 1).padStart(2, '0')}</td>
+                      <td style={{ fontWeight: '700', color: '#0f172a' }}>{row.studentName}</td>
+                      <td>{row.organizationName}</td>
+                      <td>
+                        {a1 ? (
+                          <div>
+                            <span style={{ fontWeight: '600' }}>{a1.labName}</span>
+                            <span className="pref-badge">({getPrefLabel(a1.pickNumber)})</span>
+                          </div>
+                        ) : (
+                          <span className="unassigned-text">Unassigned</span>
+                        )}
+                      </td>
+                      <td>
+                        {a2 ? (
+                          <div>
+                            <span style={{ fontWeight: '600' }}>{a2.labName}</span>
+                            <span className="pref-badge">({getPrefLabel(a2.pickNumber)})</span>
+                          </div>
+                        ) : (
+                          <span className="unassigned-text">Unassigned</span>
+                        )}
+                      </td>
+                      <td>
+                        {a3 ? (
+                          <div>
+                            <span style={{ fontWeight: '600' }}>{a3.labName}</span>
+                            <span className="pref-badge">({getPrefLabel(a3.pickNumber)})</span>
+                          </div>
+                        ) : (
+                          <span className="unassigned-text">Unassigned</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {activeView === 'labs' && (
+          <div className="space-y-8">
+            {labs.map(lab => {
+              return activeSessions.map(slot => {
+                const sessionStudents = filteredPlacements.filter(p => p.sessionAssignments[slot.id]?.labId === lab.id);
+                if (sessionStudents.length === 0) return null;
+
+                return (
+                  <div key={`${lab.id}-${slot.id}`} className="print-lab-session-block" style={{ pageBreakInside: 'avoid', breakInside: 'avoid', marginBottom: '30px' }}>
+                    <div className="flex items-center justify-between border-b-2 border-slate-300 pb-2 mb-3">
+                      <div>
+                        <h2 className="text-lg font-black text-slate-900">{lab.name}</h2>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-sm font-bold text-slate-700">
+                          {slot.name} ({formatTimeString(slot.start_time)} - {formatTimeString(slot.end_time)})
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-slate-700">Date: {selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                      </div>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '60px', textAlign: 'center' }}>S.No</th>
+                          <th>Student FULL NAME</th>
+                          <th style={{ width: '40%' }}>Organization/Camp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessionStudents.map((stud, sidx) => (
+                          <tr key={stud.studentId}>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{String(sidx + 1).padStart(2, '0')}</td>
+                            <td style={{ fontWeight: '700', color: '#0f172a' }}>{stud.studentName}</td>
+                            <td>{stud.organizationName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              });
+            })}
+          </div>
+        )}
+
+        {activeView === 'orgs' && (
+          <div className="space-y-8">
+            {organizations.map(org => {
+              const orgStudents = filteredPlacements.filter(p => p.organizationId === org.id);
+              if (orgStudents.length === 0) return null;
+
+              return (
+                <div key={org.id} className="print-org-block" style={{ pageBreakInside: 'avoid', breakInside: 'avoid', marginBottom: '30px' }}>
+                  <div className="flex items-center justify-between border-b-2 border-slate-300 pb-2 mb-3">
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900">{org.name}</h2>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-slate-700">Date: {selectedDayObj ? new Date(selectedDayObj.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                    </div>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px', textAlign: 'center' }}>S.No</th>
+                        <th>Student FULL NAME</th>
+                        <th>Assigned Lab 1</th>
+                        <th>Lab 1 Time Slot</th>
+                        <th>Assigned Lab 2</th>
+                        <th>Lab 2 Time Slot</th>
+                        <th>Assigned Lab 3</th>
+                        <th>Lab 3 Time Slot</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orgStudents.map((stud, oidx) => {
+                        const a1 = s1 ? stud.sessionAssignments[s1.id] : null;
+                        const a2 = s2 ? stud.sessionAssignments[s2.id] : null;
+                        const a3 = s3 ? stud.sessionAssignments[s3.id] : null;
+
+                        return (
+                          <tr key={stud.studentId}>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{String(oidx + 1).padStart(2, '0')}</td>
+                            <td style={{ fontWeight: '700', color: '#0f172a' }}>{stud.studentName}</td>
+                            <td>{a1 ? a1.labName : <span className="unassigned-text">Unassigned</span>}</td>
+                            <td>{s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "—"}</td>
+                            <td>{a2 ? a2.labName : <span className="unassigned-text">Unassigned</span>}</td>
+                            <td>{s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "—"}</td>
+                            <td>{a3 ? a3.labName : <span className="unassigned-text">Unassigned</span>}</td>
+                            <td>{s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {activeView === 'slips' && (
+          <div className="slips-print-container">
+            {chunkedSlips.map((chunk, pageIdx) => (
+              <div key={pageIdx} className="slips-page-sheet">
+                {chunk.map(stud => {
+                  const a1 = s1 ? stud.sessionAssignments[s1.id] : null;
+                  const a2 = s2 ? stud.sessionAssignments[s2.id] : null;
+                  const a3 = s3 ? stud.sessionAssignments[s3.id] : null;
+
+                  return (
+                    <div key={stud.studentId} className="slip-card">
+                      <div className="slip-card-header">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <div className="slip-student-name">{stud.studentName}</div>
+                          <div className="slip-age">Age: {stud.studentAge}</div>
+                        </div>
+                        <div className="slip-org-name">{stud.organizationName}</div>
+                      </div>
+                      <div className="slip-card-body">
+                        <div className="slip-your-labs-title">Your Labs:</div>
+                        <table className="slip-labs-table">
+                          <tbody>
+                            <tr>
+                              <td className="slip-time-col">{s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "10:00 - 10:50"}</td>
+                              <td className="slip-lab-col">
+                                <div className="slip-lab-name">{a1 ? a1.labName : <span className="unassigned-text">Unassigned</span>}</div>
+                                {a1 && getLabRoom(a1.labName) && (
+                                  <div className="slip-lab-room">{getLabRoom(a1.labName)}</div>
+                                )}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="slip-time-col">{s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "11:00 - 11:50"}</td>
+                              <td className="slip-lab-col">
+                                <div className="slip-lab-name">{a2 ? a2.labName : <span className="unassigned-text">Unassigned</span>}</div>
+                                {a2 && getLabRoom(a2.labName) && (
+                                  <div className="slip-lab-room">{getLabRoom(a2.labName)}</div>
+                                )}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="slip-time-col">{s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "12:30 - 01:20"}</td>
+                              <td className="slip-lab-col">
+                                <div className="slip-lab-name">{a3 ? a3.labName : <span className="unassigned-text">Unassigned</span>}</div>
+                                {a3 && getLabRoom(a3.labName) && (
+                                  <div className="slip-lab-room">{getLabRoom(a3.labName)}</div>
+                                )}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

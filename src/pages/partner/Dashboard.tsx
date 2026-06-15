@@ -266,7 +266,7 @@ export default function PartnerDashboard() {
         s => !s.first_name?.trim() || !s.last_name?.trim() || s.age === null || s.age === undefined || s.age === ''
       ).length;
       const coreComplete = realStudents.filter(
-        s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
+        s => s.first_name?.trim() && s.last_name?.trim()
       );
       
       const missingPicks = coreComplete.filter(s => {
@@ -280,9 +280,9 @@ export default function PartnerDashboard() {
         const selectedCount = s.preferences?.length || 0;
         return requiredCount > 0 && selectedCount < requiredCount;
       }).length;
-
+ 
       const fullyReady = realStudents.filter(s => {
-        const hasCore = s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '';
+        const hasCore = s.first_name?.trim() && s.last_name?.trim();
         if (!hasCore) return false;
         
         const studentAge = s.age !== '' && s.age != null ? Number(s.age) : null;

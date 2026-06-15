@@ -182,7 +182,7 @@ export default function AdminOrganizations() {
         }).length;
 
         const coreComplete = orgStudents.filter(
-          s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
+          s => s.first_name?.trim() && s.last_name?.trim()
         );
 
         const missingPicksCount = coreComplete.filter(s => {

@@ -67,12 +67,24 @@ export default function AdminAssignment() {
   const fetchInitData = async () => {
     setLoading(true);
     try {
-      const [labsRes, slotsRes, sessionsRes, campDaysRes, orgsRes, studentsRes, instructorsRes] = await Promise.all([
+      const [labsRes, slotsRes, sessionsRes, campDaysRes, orgsData, studentsRes, instructorsRes] = await Promise.all([
         supabase.from('labs').select('id, name, capacity_per_session, min_age, max_age').order('name'),
         supabase.from('time_slots').select('id, name').order('start_time'),
         supabase.from('lab_sessions').select('*'),
         supabase.from('camp_days').select('*, camp_day_organizations(camp_day_id)').order('date'),
-        supabase.from('organizations').select('id, name, contact_name, contact_email, camp_day_organizations ( camp_day_id )'),
+        (async () => {
+          try {
+            const { data, error } = await supabase.from('organizations').select('id, name, contact_name, contact_email, group_together, camp_day_organizations ( camp_day_id )');
+            if (error) {
+              const { data: fallbackData } = await supabase.from('organizations').select('id, name, contact_name, contact_email, camp_day_organizations ( camp_day_id )');
+              return fallbackData || [];
+            }
+            return data || [];
+          } catch {
+            const { data: fallbackData } = await supabase.from('organizations').select('id, name, contact_name, contact_email, camp_day_organizations ( camp_day_id )');
+            return fallbackData || [];
+          }
+        })(),
         supabase.from('students').select('*, preferences (lab_id)'),
         supabase.from('lab_instructors').select('lab_id, educator_id'),
       ]);
@@ -82,7 +94,15 @@ export default function AdminAssignment() {
       const fetchedDays = (campDaysRes.data || []).filter(d => d.camp_day_organizations?.length > 0);
       setCampDays(fetchedDays);
       if (fetchedDays.length > 0) setSelectedDayId(fetchedDays[0].id);
-      setOrganizations(orgsRes.data || []);
+
+      const mappedOrgs = (orgsData || []).map((org: any) => {
+        const localFallback = localStorage.getItem(`group_together_fallback_${org.id}`) === 'true';
+        return {
+          ...org,
+          group_together: org.group_together ?? localFallback
+        };
+      });
+      setOrganizations(mappedOrgs);
       setStudents(studentsRes.data || []);
       setInstructors(instructorsRes.data || []);
       await fetchPlacements();
@@ -124,6 +144,31 @@ export default function AdminAssignment() {
       console.error(error);
     } finally {
       setRunning(false);
+    }
+  };
+
+  const toggleGrouping = async (orgId: string) => {
+    const org = organizations.find(o => o.id === orgId);
+    if (!org) return;
+    const nextVal = !org.group_together;
+
+    // 1. Update local UI state
+    setOrganizations(prev => prev.map(o => o.id === orgId ? { ...o, group_together: nextVal } : o));
+
+    // 2. Save to localStorage fallback
+    localStorage.setItem(`group_together_fallback_${orgId}`, String(nextVal));
+
+    // 3. Save to database
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ group_together: nextVal })
+        .eq('id', orgId);
+      if (error) {
+        console.warn('DB update failed, using localStorage fallback:', error);
+      }
+    } catch (err) {
+      console.warn('DB update error, using localStorage fallback:', err);
     }
   };
 
@@ -459,11 +504,29 @@ export default function AdminAssignment() {
               {activeOrgs.length > 0 && (
                 <div className="mt-5">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Partners on this Day</h4>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {activeOrgs.map(org => {
                       return (
-                        <div key={org.id}>
-                          <span className={cn("text-[12px] font-medium truncate", isDark ? "text-slate-300" : "text-slate-700")}>{org.name}</span>
+                        <div key={org.id} className="flex items-center justify-between py-0.5 pr-0.5">
+                          <span className={cn("text-[12px] font-medium truncate flex-1 mr-2", isDark ? "text-slate-300" : "text-slate-700")}>
+                            {org.name}
+                          </span>
+                          <button
+                            onClick={() => toggleGrouping(org.id)}
+                            title={org.group_together ? "Grouping enabled: Solver will prioritize keeping students together in same sessions" : "Group students of this organization together"}
+                            className={cn(
+                              "size-6 rounded-lg flex items-center justify-center transition-all duration-300 shrink-0 border",
+                              org.group_together
+                                ? (isDark 
+                                    ? "bg-sky-500/20 text-sky-400 border-sky-500/30 hover:bg-sky-500/30 hover:border-sky-500/40" 
+                                    : "bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100 hover:border-sky-300")
+                                : (isDark
+                                    ? "bg-transparent border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                                    : "bg-transparent border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-100")
+                            )}
+                          >
+                            <Users size={12} className={org.group_together ? "stroke-[2.5]" : "stroke-[2]"} />
+                          </button>
                         </div>
                       );
                     })}

@@ -124,7 +124,7 @@ export default function PartnerSchedule() {
       const { data: studentsData } = await supabase
         .from('students').select('*').eq('organization_id', orgId);
       const valid = (studentsData || []).filter(
-        s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== ''
+        s => s.first_name?.trim() && s.last_name?.trim()
       );
       setValidStudents(valid);
 

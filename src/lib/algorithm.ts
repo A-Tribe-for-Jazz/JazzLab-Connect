@@ -38,16 +38,44 @@ export async function runAssignmentAlgorithm(campDayId: string) {
       throw new Error("campDayId is required for running the assignment algorithm");
     }
 
-    // 1. Fetch labs, time slots, and students attending this camp day
-    const [{ data: labs }, { data: timeSlotsData }, { data: students }] = await Promise.all([
+    // 1. Fetch labs, time slots, students, and organizations attending this camp day
+    const [labsRes, slotsRes, studentsRes, orgsData] = await Promise.all([
       supabase.from('labs').select('*').order('name'),
       supabase.from('time_slots').select('*').order('start_time'),
-      supabase.from('students').select('*').eq('camp_day_id', campDayId)
+      supabase.from('students').select('*').eq('camp_day_id', campDayId),
+      (async () => {
+        try {
+          const { data, error } = await supabase.from('organizations').select('id, group_together');
+          if (error) {
+            const { data: fallbackData } = await supabase.from('organizations').select('id');
+            return fallbackData || [];
+          }
+          return data || [];
+        } catch {
+          const { data: fallbackData } = await supabase.from('organizations').select('id');
+          return fallbackData || [];
+        }
+      })()
     ]);
+
+    const labs = labsRes.data;
+    const timeSlotsData = slotsRes.data;
+    const students = studentsRes.data;
+    const orgs = orgsData;
 
     if (!labs || !timeSlotsData || !students) {
       throw new Error("Failed to fetch required core data for algorithm");
     }
+
+    // Process organizations to find those with active cohort grouping
+    const groupedOrgIds = new Set<string>();
+    (orgs || []).forEach((org: any) => {
+      const dbVal = org.group_together;
+      const localFallback = localStorage.getItem(`group_together_fallback_${org.id}`) === 'true';
+      if (dbVal || (dbVal === undefined && localFallback) || localFallback) {
+        groupedOrgIds.add(org.id);
+      }
+    });
 
     const activeLabs = labs;
     const activeTimeSlots = timeSlotsData;
@@ -140,10 +168,22 @@ export async function runAssignmentAlgorithm(campDayId: string) {
         return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
       });
 
-      let studentEligible = eligible;
-      if (studentEligible.length === 0) studentEligible = activeLabs;
-      while (studentEligible.length < k) {
-        studentEligible = [...studentEligible, ...studentEligible];
+      // Deduplicate and pad eligible labs to ensure at least k unique labs
+      const uniqueEligible = eligible.filter((lab, index, self) =>
+        self.findIndex(l => l.id === lab.id) === index
+      );
+
+      let studentEligible = [...uniqueEligible];
+      if (studentEligible.length < k) {
+        for (const lab of activeLabs) {
+          if (!studentEligible.some(l => l.id === lab.id)) {
+            studentEligible.push(lab);
+            if (studentEligible.length >= k) break;
+          }
+        }
+      }
+      if (studentEligible.length < k) {
+        studentEligible = activeLabs;
       }
 
       const rawTuples = generatePermutations(studentEligible, k);
@@ -161,133 +201,195 @@ export async function runAssignmentAlgorithm(campDayId: string) {
       });
     }
 
-    // 4. Run Backtracking solver with Randomized Restarts
+    // 4. Run Backtracking solver with Randomized Restarts and Capacity Slack Fallback
     const MAX_RESTARTS = 50;
+    const MAX_SLACK = 5; // Allow going up to +5 over capacity if absolutely necessary
     let finalAssignment: { [studentId: string]: string[] } | null = null;
+    let capacitySlack = 0;
 
-    for (let restart = 0; restart < MAX_RESTARTS; restart++) {
-      const studentTuples: { [studentId: string]: string[][] } = {};
-      
-      for (const student of sortedStudents) {
-        const eligible = activeLabs.filter(lab => {
-          if (lab.min_age == null) return true;
-          return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
-        });
+    for (let slack = 0; slack <= MAX_SLACK; slack++) {
+      capacitySlack = slack;
+      let solved = false;
 
-        let studentEligible = eligible;
-        if (studentEligible.length === 0) studentEligible = activeLabs;
-        while (studentEligible.length < k) {
-          studentEligible = [...studentEligible, ...studentEligible];
-        }
-
-        const rawTuples = generatePermutations(studentEligible, k);
-        const prefMap = studentPrefsMap[student.id] || {};
-
-        const tupleWithScore = rawTuples.map(tuple => {
-          const key = tuple.join('_');
-          const baseScore = studentPrefsScores[student.id]?.[key] || 0;
-          const score = baseScore + Math.random() * 0.5;
-          return { tuple, score };
-        });
-
-        tupleWithScore.sort((a, b) => b.score - a.score);
-        studentTuples[student.id] = tupleWithScore.map(x => x.tuple);
-      }
-
-      // Shuffle students within the same age group to diversify search order
-      const ageGroups: { [age: number]: any[] } = {};
-      for (const st of sortedStudents) {
-        const age = st.age ?? 99;
-        if (!ageGroups[age]) ageGroups[age] = [];
-        ageGroups[age].push(st);
-      }
-
-      const shuffledStudents: any[] = [];
-      const sortedAges = Object.keys(ageGroups).map(Number).sort((a, b) => a - b);
-      for (const age of sortedAges) {
-        const grp = [...ageGroups[age]];
-        for (let i = grp.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [grp[i], grp[j]] = [grp[j], grp[i]];
-        }
-        shuffledStudents.push(...grp);
-      }
-
-      // Run CSP Backtracking Search
-      const assignment: { [studentId: string]: string[] } = {};
-      const capacities: { [slotId: string]: { [labId: string]: number } } = {};
-      activeTimeSlots.forEach(slot => {
-        capacities[slot.id] = {};
-        activeLabs.forEach(lab => {
-          capacities[slot.id][lab.id] = 0;
-        });
-      });
-
-      let backtrackCount = 0;
-      const BACKTRACK_LIMIT = 20000;
-
-      function backtrack(index: number): boolean {
-        if (index === shuffledStudents.length) return true;
+      for (let restart = 0; restart < MAX_RESTARTS; restart++) {
+        const studentTuples: { [studentId: string]: string[][] } = {};
         
-        backtrackCount++;
-        if (backtrackCount > BACKTRACK_LIMIT) return false;
+        for (const student of sortedStudents) {
+          const eligible = activeLabs.filter(lab => {
+            if (lab.min_age == null) return true;
+            return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
+          });
 
-        const student = shuffledStudents[index];
-        const tuples = studentTuples[student.id];
+          // Deduplicate and pad eligible labs to ensure at least k unique labs
+          const uniqueEligible = eligible.filter((lab, index, self) =>
+            self.findIndex(l => l.id === lab.id) === index
+          );
 
-        // LCV dynamic sorting
-        const scoredTuples = tuples.map(tuple => {
-          const [l1, l2, l3] = tuple;
-          const cap1 = capacities[activeTimeSlots[0].id][l1] || 0;
-          const cap2 = capacities[activeTimeSlots[1].id][l2] || 0;
-          const cap3 = capacities[activeTimeSlots[2].id][l3] || 0;
-
-          if (cap1 >= 20 || cap2 >= 20 || cap3 >= 20) {
-            return { tuple, val: -Infinity };
+          let studentEligible = [...uniqueEligible];
+          if (studentEligible.length < k) {
+            for (const lab of activeLabs) {
+              if (!studentEligible.some(l => l.id === lab.id)) {
+                studentEligible.push(lab);
+                if (studentEligible.length >= k) break;
+              }
+            }
+          }
+          if (studentEligible.length < k) {
+            studentEligible = activeLabs;
           }
 
-          const key = tuple.join('_');
-          const utility = studentPrefsScores[student.id]?.[key] || 0;
-          const capCost = cap1 + cap2 + cap3;
-          // Subtract capacity cost penalty to prefer less loaded labs
-          const val = utility - 15 * capCost;
-          return { tuple, val };
-        });
+          const rawTuples = generatePermutations(studentEligible, k);
+          const prefMap = studentPrefsMap[student.id] || {};
 
-        const validTuples = scoredTuples
-          .filter(x => x.val !== -Infinity)
-          .sort((a, b) => b.val - a.val)
-          .map(x => x.tuple);
+          const tupleWithScore = rawTuples.map(tuple => {
+            const key = tuple.join('_');
+            const baseScore = studentPrefsScores[student.id]?.[key] || 0;
+            const score = baseScore + Math.random() * 0.5;
+            return { tuple, score };
+          });
 
-        for (const tuple of validTuples) {
-          const [l1, l2, l3] = tuple;
-
-          // Assign
-          assignment[student.id] = tuple;
-          for (let slotIdx = 0; slotIdx < k; slotIdx++) {
-            const labId = tuple[slotIdx];
-            const slotId = activeTimeSlots[slotIdx].id;
-            capacities[slotId][labId]++;
-          }
-
-          if (backtrack(index + 1)) return true;
-
-          // Unassign
-          delete assignment[student.id];
-          for (let slotIdx = 0; slotIdx < k; slotIdx++) {
-            const labId = tuple[slotIdx];
-            const slotId = activeTimeSlots[slotIdx].id;
-            capacities[slotId][labId]--;
-          }
+          tupleWithScore.sort((a, b) => b.score - a.score);
+          studentTuples[student.id] = tupleWithScore.map(x => x.tuple);
         }
 
-        return false;
+        // Shuffle students within the same age group to diversify search order
+        const ageGroups: { [age: number]: any[] } = {};
+        for (const st of sortedStudents) {
+          const age = st.age ?? 99;
+          if (!ageGroups[age]) ageGroups[age] = [];
+          ageGroups[age].push(st);
+        }
+
+        const shuffledStudents: any[] = [];
+        const sortedAges = Object.keys(ageGroups).map(Number).sort((a, b) => a - b);
+        for (const age of sortedAges) {
+          const grp = [...ageGroups[age]];
+          for (let i = grp.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [grp[i], grp[j]] = [grp[j], grp[i]];
+          }
+          shuffledStudents.push(...grp);
+        }
+
+        // Run CSP Backtracking Search
+        const assignment: { [studentId: string]: string[] } = {};
+        const capacities: { [slotId: string]: { [labId: string]: number } } = {};
+        activeTimeSlots.forEach(slot => {
+          capacities[slot.id] = {};
+          activeLabs.forEach(lab => {
+            capacities[slot.id][lab.id] = 0;
+          });
+        });
+
+        // Track same-organization student counts in each lab at each slot
+        const sameOrgCapacities: { [orgId: string]: { [slotId: string]: { [labId: string]: number } } } = {};
+        const activeOrgsList = [...new Set(sortedStudents.map(s => s.organization_id))];
+        activeOrgsList.forEach(orgId => {
+          if (orgId) {
+            sameOrgCapacities[orgId] = {};
+            activeTimeSlots.forEach(slot => {
+              sameOrgCapacities[orgId][slot.id] = {};
+              activeLabs.forEach(lab => {
+                sameOrgCapacities[orgId][slot.id][lab.id] = 0;
+              });
+            });
+          }
+        });
+
+        let backtrackCount = 0;
+        const BACKTRACK_LIMIT = 20000;
+
+        function backtrack(index: number): boolean {
+          if (index === shuffledStudents.length) return true;
+          
+          backtrackCount++;
+          if (backtrackCount > BACKTRACK_LIMIT) return false;
+
+          const student = shuffledStudents[index];
+          const tuples = studentTuples[student.id];
+
+          // LCV dynamic sorting
+          const scoredTuples = tuples.map(tuple => {
+            let isOverCapacity = false;
+            let capCost = 0;
+            let clusteringReward = 0;
+
+            for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+              const labId = tuple[slotIdx];
+              const slotId = activeTimeSlots[slotIdx].id;
+              const cap = capacities[slotId]?.[labId] || 0;
+              
+              // Respect the specific capacity limit of the lab + slack, fallback to 20
+              const lab = activeLabs.find(l => l.id === labId);
+              const capLimit = (lab?.capacity_per_session ?? 20) + capacitySlack;
+
+              if (cap >= capLimit) {
+                isOverCapacity = true;
+                break;
+              }
+              capCost += cap;
+
+              if (student.organization_id && groupedOrgIds.has(student.organization_id)) {
+                const orgId = student.organization_id;
+                const sameOrgCount = sameOrgCapacities[orgId]?.[slotId]?.[labId] || 0;
+                // Add reward for keeping students of this organization together
+                clusteringReward += sameOrgCount * 50; 
+              }
+            }
+
+            if (isOverCapacity) {
+              return { tuple, val: -Infinity };
+            }
+
+            const key = tuple.join('_');
+            const utility = studentPrefsScores[student.id]?.[key] || 0;
+            // Subtract capacity cost penalty to prefer less loaded labs, add clustering reward
+            const val = utility - 15 * capCost + clusteringReward;
+            return { tuple, val };
+          });
+
+          const validTuples = scoredTuples
+            .filter(x => x.val !== -Infinity)
+            .sort((a, b) => b.val - a.val)
+            .map(x => x.tuple);
+
+          for (const tuple of validTuples) {
+            // Assign
+            assignment[student.id] = tuple;
+            for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+              const labId = tuple[slotIdx];
+              const slotId = activeTimeSlots[slotIdx].id;
+              capacities[slotId][labId]++;
+              if (student.organization_id && sameOrgCapacities[student.organization_id]) {
+                sameOrgCapacities[student.organization_id][slotId][labId]++;
+              }
+            }
+
+            if (backtrack(index + 1)) return true;
+
+            // Unassign
+            delete assignment[student.id];
+            for (let slotIdx = 0; slotIdx < k; slotIdx++) {
+              const labId = tuple[slotIdx];
+              const slotId = activeTimeSlots[slotIdx].id;
+              capacities[slotId][labId]--;
+              if (student.organization_id && sameOrgCapacities[student.organization_id]) {
+                sameOrgCapacities[student.organization_id][slotId][labId]--;
+              }
+            }
+          }
+
+          return false;
+        }
+
+        if (backtrack(0)) {
+          finalAssignment = assignment;
+          solved = true;
+          break;
+        }
       }
 
-      if (backtrack(0)) {
-        finalAssignment = assignment;
-        break;
-      }
+      if (solved) break;
     }
 
     if (!finalAssignment) {

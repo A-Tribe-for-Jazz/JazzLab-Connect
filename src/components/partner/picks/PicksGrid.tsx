@@ -184,9 +184,6 @@ export default function PicksGrid({
       const isValid = !!(
         student.first_name?.trim() &&
         student.last_name?.trim() &&
-        student.age !== null &&
-        student.age !== undefined &&
-        student.age !== '' &&
         (!activeCampDayId || student.camp_day_id === activeCampDayId)
       );
 
@@ -297,7 +294,7 @@ export default function PicksGrid({
 
       if (studentsRes.data) {
         const existingStudents = studentsRes.data
-          .filter(s => s.first_name?.trim() && s.last_name?.trim() && s.age !== null && s.age !== undefined && s.age !== '')
+          .filter(s => s.first_name?.trim() && s.last_name?.trim())
           .map(s => ({
             ...s,
             camp_day_id: s.camp_day_id || activeCampDayId || null,
