@@ -1,7 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Check, Loader2, AlertCircle, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, hasAnyStudentData } from "@/lib/utils";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
@@ -34,7 +34,8 @@ function CollaborativeInput({
   studentId,
   fieldName,
   activeCursorsRef,
-  type
+  type,
+  isIncomplete
 }: {
   value: any;
   placeholder: string;
@@ -46,6 +47,7 @@ function CollaborativeInput({
   fieldName: string;
   activeCursorsRef: { current: { [key: string]: string } };
   type?: string;
+  isIncomplete?: boolean;
 }) {
   // Local state for instant input response — parent update is deferred
   const [localValue, setLocalValue] = useState(value);
@@ -78,8 +80,9 @@ function CollaborativeInput({
 
   return (
     <div className={cn(
-      "relative w-full h-10 flex items-center",
-      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+      "relative w-full h-10 flex items-center transition-all duration-300",
+      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
+      isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
     )}>
       <Input
         type={type}
@@ -112,6 +115,7 @@ function SelectWithOther({
   fieldName,
   predefined,
   inputPlaceholder,
+  isIncomplete
 }: {
   value: string;
   placeholder: string;
@@ -125,6 +129,7 @@ function SelectWithOther({
   fieldName: string;
   predefined: string[];
   inputPlaceholder: string;
+  isIncomplete?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
   const isFocusedRef = useRef(false);
@@ -180,8 +185,9 @@ function SelectWithOther({
   if (showInput) {
     return (
       <div className={cn(
-        "relative w-full h-10 flex items-center pr-8",
-        isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+        "relative w-full h-10 flex items-center pr-8 transition-all duration-300",
+        isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
+        isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
       )}>
         <Input
           value={localValue}
@@ -210,8 +216,9 @@ function SelectWithOther({
 
   return (
     <div className={cn(
-      "group/select relative w-full h-10 flex items-center justify-center",
-      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10"
+      "group/select relative w-full h-10 flex items-center justify-center transition-all duration-300",
+      isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
+      isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
     )}>
       {/* Underlying Display Wrapper */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-4 text-center">
@@ -366,24 +373,28 @@ export const getColumns = ({
           <span className={headerTextClass}>First Name</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <div id={row.index === 0 ? "tour-student-name" : undefined}>
-          <CollaborativeInput
-            value={row.original.first_name}
-            placeholder=""
-            onChange={(e) => handleFieldChange(row.original.id, 'first_name', e.target.value)}
-            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
-            onBlur={() => handleCellBlur && handleCellBlur()}
-            className={cn(
-              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-              isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
-            )}
-            studentId={row.original.id}
-            fieldName="first_name"
-            activeCursorsRef={activeCursorsRef}
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <div id={row.index === 0 ? "tour-student-name" : undefined}>
+            <CollaborativeInput
+              value={row.original.first_name}
+              placeholder=""
+              onChange={(e) => handleFieldChange(row.original.id, 'first_name', e.target.value)}
+              onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_name')}
+              onBlur={() => handleCellBlur && handleCellBlur()}
+              className={cn(
+                "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+                isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
+              )}
+              studentId={row.original.id}
+              fieldName="first_name"
+              activeCursorsRef={activeCursorsRef}
+              isIncomplete={isRowActive && !row.original.first_name?.trim()}
+            />
+          </div>
+        );
+      },
       meta: { isEditable: true },
       size: 185,
     },
@@ -394,22 +405,26 @@ export const getColumns = ({
           <span className={headerTextClass}>Last Name</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <CollaborativeInput
-          value={row.original.last_name}
-          placeholder=""
-          onChange={(e) => handleFieldChange(row.original.id, 'last_name', e.target.value)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-            isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
-          )}
-          studentId={row.original.id}
-          fieldName="last_name"
-          activeCursorsRef={activeCursorsRef}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <CollaborativeInput
+            value={row.original.last_name}
+            placeholder=""
+            onChange={(e) => handleFieldChange(row.original.id, 'last_name', e.target.value)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_name')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+              isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
+            )}
+            studentId={row.original.id}
+            fieldName="last_name"
+            activeCursorsRef={activeCursorsRef}
+            isIncomplete={isRowActive && !row.original.last_name?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 185,
     },
@@ -420,25 +435,29 @@ export const getColumns = ({
           <span className={headerTextClass}>Age</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <div id={row.index === 0 ? "tour-student-cell" : undefined}>
-          <CollaborativeInput
-            type="number"
-            value={row.original.age}
-            placeholder=""
-            onChange={(e) => handleFieldChange(row.original.id, 'age', e.target.value)}
-            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
-            onBlur={() => handleCellBlur && handleCellBlur()}
-            className={cn(
-              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
-            )}
-            studentId={row.original.id}
-            fieldName="age"
-            activeCursorsRef={activeCursorsRef}
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <div id={row.index === 0 ? "tour-student-cell" : undefined}>
+            <CollaborativeInput
+              type="number"
+              value={row.original.age}
+              placeholder=""
+              onChange={(e) => handleFieldChange(row.original.id, 'age', e.target.value)}
+              onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'age')}
+              onBlur={() => handleCellBlur && handleCellBlur()}
+              className={cn(
+                "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
+              )}
+              studentId={row.original.id}
+              fieldName="age"
+              activeCursorsRef={activeCursorsRef}
+              isIncomplete={isRowActive && (row.original.age === '' || row.original.age === null || row.original.age === undefined)}
+            />
+          </div>
+        );
+      },
       meta: { isEditable: true },
       size: 60,
     },
@@ -449,25 +468,29 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>Last grade completed</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <SelectWithOther
-          value={row.original.last_grade_completed ?? ""}
-          placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'last_grade_completed', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_grade_completed')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          isDark={isDark}
-          studentId={row.original.id}
-          activeCursorsRef={activeCursorsRef}
-          fieldName="last_grade_completed"
-          predefined={GRADE_PREDEFINED}
-          inputPlaceholder="Type grade..."
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
-            isDark ? "text-white" : "text-slate-900"
-          )}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <SelectWithOther
+            value={row.original.last_grade_completed ?? ""}
+            placeholder=""
+            onChange={(val) => handleFieldChange(row.original.id, 'last_grade_completed', val)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'last_grade_completed')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            isDark={isDark}
+            studentId={row.original.id}
+            activeCursorsRef={activeCursorsRef}
+            fieldName="last_grade_completed"
+            predefined={GRADE_PREDEFINED}
+            inputPlaceholder="Type grade..."
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            isIncomplete={isRowActive && !row.original.last_grade_completed?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 160,
     },
@@ -478,22 +501,26 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>Home zip code</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <CollaborativeInput
-          value={row.original.home_zip_code ?? ""}
-          placeholder=""
-          onChange={(e) => handleFieldChange(row.original.id, 'home_zip_code', e.target.value)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'home_zip_code')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
-            isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
-          )}
-          studentId={row.original.id}
-          fieldName="home_zip_code"
-          activeCursorsRef={activeCursorsRef}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <CollaborativeInput
+            value={row.original.home_zip_code ?? ""}
+            placeholder=""
+            onChange={(e) => handleFieldChange(row.original.id, 'home_zip_code', e.target.value)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'home_zip_code')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full text-center",
+              isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
+            )}
+            studentId={row.original.id}
+            fieldName="home_zip_code"
+            activeCursorsRef={activeCursorsRef}
+            isIncomplete={isRowActive && (!row.original.home_zip_code?.trim() || !/^\d{5}$/.test(row.original.home_zip_code.trim()))}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 120,
     },
@@ -504,25 +531,29 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>Race</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <SelectWithOther
-          value={row.original.race ?? ""}
-          placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'race', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'race')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          isDark={isDark}
-          studentId={row.original.id}
-          activeCursorsRef={activeCursorsRef}
-          fieldName="race"
-          predefined={RACE_PREDEFINED}
-          inputPlaceholder="Type race..."
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-            isDark ? "text-white" : "text-slate-900"
-          )}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <SelectWithOther
+            value={row.original.race ?? ""}
+            placeholder=""
+            onChange={(val) => handleFieldChange(row.original.id, 'race', val)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'race')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            isDark={isDark}
+            studentId={row.original.id}
+            activeCursorsRef={activeCursorsRef}
+            fieldName="race"
+            predefined={RACE_PREDEFINED}
+            inputPlaceholder="Type race..."
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            isIncomplete={isRowActive && !row.original.race?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 160,
     },
@@ -533,25 +564,29 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>Ethnicity</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <SelectWithOther
-          value={row.original.ethnicity ?? ""}
-          placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'ethnicity', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'ethnicity')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          isDark={isDark}
-          studentId={row.original.id}
-          activeCursorsRef={activeCursorsRef}
-          fieldName="ethnicity"
-          predefined={ETHNICITY_PREDEFINED}
-          inputPlaceholder="Type ethnicity..."
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-            isDark ? "text-white" : "text-slate-900"
-          )}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <SelectWithOther
+            value={row.original.ethnicity ?? ""}
+            placeholder=""
+            onChange={(val) => handleFieldChange(row.original.id, 'ethnicity', val)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'ethnicity')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            isDark={isDark}
+            studentId={row.original.id}
+            activeCursorsRef={activeCursorsRef}
+            fieldName="ethnicity"
+            predefined={ETHNICITY_PREDEFINED}
+            inputPlaceholder="Type ethnicity..."
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            isIncomplete={isRowActive && !row.original.ethnicity?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 160,
     },
@@ -562,25 +597,29 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>Gender</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <SelectWithOther
-          value={row.original.gender ?? ""}
-          placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'gender', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'gender')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          isDark={isDark}
-          studentId={row.original.id}
-          activeCursorsRef={activeCursorsRef}
-          fieldName="gender"
-          predefined={GENDER_PREDEFINED}
-          inputPlaceholder="Type gender..."
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-            isDark ? "text-white" : "text-slate-900"
-          )}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <SelectWithOther
+            value={row.original.gender ?? ""}
+            placeholder=""
+            onChange={(val) => handleFieldChange(row.original.id, 'gender', val)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'gender')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            isDark={isDark}
+            studentId={row.original.id}
+            activeCursorsRef={activeCursorsRef}
+            fieldName="gender"
+            predefined={GENDER_PREDEFINED}
+            inputPlaceholder="Type gender..."
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            isIncomplete={isRowActive && !row.original.gender?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 100,
     },
@@ -591,25 +630,29 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center")}>First Language</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <SelectWithOther
-          value={row.original.first_language ?? ""}
-          placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'first_language', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_language')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          isDark={isDark}
-          studentId={row.original.id}
-          activeCursorsRef={activeCursorsRef}
-          fieldName="first_language"
-          predefined={LANGUAGE_PREDEFINED}
-          inputPlaceholder="Type language..."
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
-            isDark ? "text-white" : "text-slate-900"
-          )}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <SelectWithOther
+            value={row.original.first_language ?? ""}
+            placeholder=""
+            onChange={(val) => handleFieldChange(row.original.id, 'first_language', val)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'first_language')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            isDark={isDark}
+            studentId={row.original.id}
+            activeCursorsRef={activeCursorsRef}
+            fieldName="first_language"
+            predefined={LANGUAGE_PREDEFINED}
+            inputPlaceholder="Type language..."
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+              isDark ? "text-white" : "text-slate-900"
+            )}
+            isIncomplete={isRowActive && !row.original.first_language?.trim()}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 130,
     },
@@ -620,23 +663,27 @@ export const getColumns = ({
           <span className={cn(headerTextClass, "text-center whitespace-normal leading-tight px-1")}>Total number of program hours completed</span>
         </div>
       ),
-      cell: ({ row }) => (
-        <CollaborativeInput
-          type="number"
-          value={row.original.total_program_hours ?? ""}
-          placeholder=""
-          onChange={(e) => handleFieldChange(row.original.id, 'total_program_hours', e.target.value)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'total_program_hours')}
-          onBlur={() => handleCellBlur && handleCellBlur()}
-          className={cn(
-            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-            isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
-          )}
-          studentId={row.original.id}
-          fieldName="total_program_hours"
-          activeCursorsRef={activeCursorsRef}
-        />
-      ),
+      cell: ({ row }) => {
+        const isRowActive = hasAnyStudentData(row.original);
+        return (
+          <CollaborativeInput
+            type="number"
+            value={row.original.total_program_hours ?? ""}
+            placeholder=""
+            onChange={(e) => handleFieldChange(row.original.id, 'total_program_hours', e.target.value)}
+            onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'total_program_hours')}
+            onBlur={() => handleCellBlur && handleCellBlur()}
+            className={cn(
+              "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent transition-all rounded-none w-full text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              isDark ? "text-white placeholder:text-slate-700" : "text-slate-900 placeholder:text-slate-300"
+            )}
+            studentId={row.original.id}
+            fieldName="total_program_hours"
+            activeCursorsRef={activeCursorsRef}
+            isIncomplete={isRowActive && (row.original.total_program_hours === '' || row.original.total_program_hours === null || row.original.total_program_hours === undefined)}
+          />
+        );
+      },
       meta: { isEditable: true },
       size: 120,
     },
@@ -664,7 +711,8 @@ export const getColumns = ({
           ...(isAdmin ? [total_program_hours] : [])
         ];
         const hasAnyData = fields.some(f => f !== '' && f !== null && f !== undefined);
-        const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined);
+        const isZipValid = /^\d{5}$/.test(home_zip_code?.trim() || '');
+        const isAllFilled = fields.every(f => f !== '' && f !== null && f !== undefined) && isZipValid;
 
         return (
           <div id={row.index === 0 ? "tour-status-ready" : undefined} className="flex items-center justify-center h-10">

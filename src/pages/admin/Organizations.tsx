@@ -164,7 +164,9 @@ export default function AdminOrganizations() {
             s.first_language,
             s.total_program_hours
           ];
-          return fields.some(f => f === '' || f === null || f === undefined);
+          const hasMissing = fields.some(f => f === '' || f === null || f === undefined);
+          const isZipValid = /^\d{5}$/.test(s.home_zip_code?.trim() || '');
+          return hasMissing || !isZipValid;
         }).length;
 
         const coreComplete = orgStudents.filter(
