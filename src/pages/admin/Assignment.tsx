@@ -43,6 +43,7 @@ export default function AdminAssignment() {
 
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [selectedUtilizationSession, setSelectedUtilizationSession] = useState<string>('all');
 
   // Modal state
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function AdminAssignment() {
     if (selectedDayId && campDays.length > 0) {
       const selectedDay = campDays.find(d => d.id === selectedDayId);
       if (selectedDay) setCurrentMonth(new Date(selectedDay.date + 'T00:00:00'));
+      setSelectedUtilizationSession('all');
     }
   }, [selectedDayId, campDays]);
 
@@ -260,12 +262,22 @@ export default function AdminAssignment() {
 
   const labCapacity = useMemo(() => {
     return labs.filter(l => activeLabIds.includes(l.id)).map(lab => {
-      const labSessionIds = daySessions.filter(s => s.lab_id === lab.id).map(s => s.id);
+      let sessionsForLab = daySessions.filter(s => s.lab_id === lab.id);
+      if (selectedUtilizationSession !== 'all') {
+        sessionsForLab = sessionsForLab.filter(s => s.time_slot_id === selectedUtilizationSession);
+      }
+      const labSessionIds = sessionsForLab.map(s => s.id);
       const filled = dayPlacements.filter(a => labSessionIds.includes(a.lab_session_id)).length;
       const totalCap = lab.capacity_per_session * labSessionIds.length;
-      return { name: lab.name, filled, capacity: totalCap, perSession: lab.capacity_per_session, sessions: labSessionIds.length };
+      return { 
+        name: lab.name, 
+        filled, 
+        capacity: totalCap, 
+        perSession: lab.capacity_per_session, 
+        sessions: labSessionIds.length 
+      };
     });
-  }, [labs, activeLabIds, daySessions, dayPlacements]);
+  }, [labs, activeLabIds, daySessions, dayPlacements, selectedUtilizationSession]);
 
   const unassignedCount = useMemo(() => {
     const assignedStudentIds = new Set(dayPlacements.map(a => a.student_id));
@@ -640,7 +652,7 @@ export default function AdminAssignment() {
                               <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: bucket.color }} />
                               <div className="flex flex-col">
                                 <span className={cn("text-[12px] font-semibold leading-tight", isDark ? "text-slate-200" : "text-slate-700")}>{bucket.label}</span>
-                                <span className="text-[10px] text-slate-400">{bucket.count} students ({pct}%)</span>
+                                <span className="text-[10px] text-slate-400">{bucket.count} assignments ({pct}%)</span>
                               </div>
                             </div>
                           );
@@ -660,7 +672,7 @@ export default function AdminAssignment() {
                           <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
                           <div className="flex flex-col">
                             <span className={cn("text-[12px] font-semibold leading-tight", isDark ? "text-slate-200" : "text-slate-700")}>{b.label}</span>
-                            <span className="text-[10px] text-slate-400">— students</span>
+                            <span className="text-[10px] text-slate-400">— assignments</span>
                           </div>
                         </div>
                       ))}
@@ -670,12 +682,50 @@ export default function AdminAssignment() {
               </div>
 
               {/* Lab Utilization */}
-              <div className="p-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-                  <Microscope size={11} className="text-slate-400" /> Lab Utilization
-                </h4>
+              <div className="p-4 flex flex-col">
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Microscope size={11} className="text-slate-400" /> Lab Utilization
+                  </h4>
+                  {daySessions.length > 0 && (
+                    <div className={cn(
+                      "flex items-center gap-1 p-0.5 rounded-lg border text-[9px] font-bold",
+                      isDark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
+                    )}>
+                      <button
+                        onClick={() => setSelectedUtilizationSession('all')}
+                        className={cn(
+                          "px-2 py-0.5 rounded-md transition-all",
+                          selectedUtilizationSession === 'all'
+                            ? (isDark ? "bg-white text-slate-950 font-black" : "bg-slate-900 text-white font-black")
+                            : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-800")
+                        )}
+                      >
+                        All
+                      </button>
+                      {timeSlots.map(slot => {
+                        const hasSession = daySessions.some(s => s.time_slot_id === slot.id);
+                        if (!hasSession) return null;
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() => setSelectedUtilizationSession(slot.id)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md transition-all whitespace-nowrap",
+                              selectedUtilizationSession === slot.id
+                                ? (isDark ? "bg-white text-slate-950 font-black" : "bg-slate-900 text-white font-black")
+                                : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-800")
+                            )}
+                          >
+                            {slot.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 {labCapacity.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex-1 overflow-y-auto">
                     {labCapacity.map(lab => {
                       const pct = lab.capacity > 0 ? Math.min((lab.filled / lab.capacity) * 100, 100) : 0;
                       const barColor = pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
