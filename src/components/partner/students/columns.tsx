@@ -82,7 +82,7 @@ function CollaborativeInput({
     <div className={cn(
       "relative w-full h-10 flex items-center transition-all duration-300",
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-      isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
+      isIncomplete && "outline outline-1 outline-rose-500/60 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01] shadow-[0_0_8px_rgba(244,63,94,0.15)] dark:shadow-[0_0_10px_rgba(244,63,94,0.15)] z-10"
     )}>
       <Input
         type={type}
@@ -187,7 +187,7 @@ function SelectWithOther({
       <div className={cn(
         "relative w-full h-10 flex items-center pr-8 transition-all duration-300",
         isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-        isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
+        isIncomplete && "outline outline-1 outline-rose-500/60 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01] shadow-[0_0_8px_rgba(244,63,94,0.15)] dark:shadow-[0_0_10px_rgba(244,63,94,0.15)] z-10"
       )}>
         <Input
           value={localValue}
@@ -218,7 +218,7 @@ function SelectWithOther({
     <div className={cn(
       "group/select relative w-full h-10 flex items-center justify-center transition-all duration-300",
       isOtherEditing && "outline outline-2 outline-purple-500 outline-offset-[-2px] bg-purple-500/10 z-10",
-      isIncomplete && "outline outline-1 outline-rose-500/50 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01]"
+      isIncomplete && "outline outline-1 outline-rose-500/60 dark:outline-rose-500/40 outline-offset-[-1px] bg-rose-500/[0.02] dark:bg-rose-500/[0.01] shadow-[0_0_8px_rgba(244,63,94,0.15)] dark:shadow-[0_0_10px_rgba(244,63,94,0.15)] z-10"
     )}>
       {/* Underlying Display Wrapper */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-4 text-center">
