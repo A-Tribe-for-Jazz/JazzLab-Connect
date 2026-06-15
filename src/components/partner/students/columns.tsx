@@ -12,7 +12,8 @@ export type StudentRow = {
   age: number | '';
   last_grade_completed?: string;
   home_zip_code?: string;
-  race_ethnicity?: string;
+  race?: string;
+  ethnicity?: string;
   gender?: string;
   first_language?: string;
   total_program_hours?: number | '';
@@ -279,10 +280,14 @@ const RACE_PREDEFINED = [
   "American Indian or Alaska Native",
   "Asian",
   "Black or African American",
-  "Hispanic or Latino",
   "Native Hawaiian or Pacific Islander",
   "White",
   "Two or more races"
+];
+
+const ETHNICITY_PREDEFINED = [
+  "Hispanic or Latino",
+  "Not Hispanic or Latino"
 ];
 
 const GENDER_PREDEFINED = [
@@ -490,25 +495,25 @@ export const getColumns = ({
       size: 120,
     },
     {
-      accessorKey: "race_ethnicity",
+      accessorKey: "race",
       header: () => (
         <div className="flex items-center justify-center w-full">
-          <span className={cn(headerTextClass, "text-center")}>Race/ethnicity</span>
+          <span className={cn(headerTextClass, "text-center")}>Race</span>
         </div>
       ),
       cell: ({ row }) => (
         <SelectWithOther
-          value={row.original.race_ethnicity ?? ""}
+          value={row.original.race ?? ""}
           placeholder=""
-          onChange={(val) => handleFieldChange(row.original.id, 'race_ethnicity', val)}
-          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'race_ethnicity')}
+          onChange={(val) => handleFieldChange(row.original.id, 'race', val)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'race')}
           onBlur={() => handleCellBlur && handleCellBlur()}
           isDark={isDark}
           studentId={row.original.id}
           activeCursorsRef={activeCursorsRef}
-          fieldName="race_ethnicity"
+          fieldName="race"
           predefined={RACE_PREDEFINED}
-          inputPlaceholder="Type race/ethnicity..."
+          inputPlaceholder="Type race..."
           className={cn(
             "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
             isDark ? "text-white" : "text-slate-900"
@@ -516,7 +521,36 @@ export const getColumns = ({
         />
       ),
       meta: { isEditable: true },
-      size: 180,
+      size: 160,
+    },
+    {
+      accessorKey: "ethnicity",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <span className={cn(headerTextClass, "text-center")}>Ethnicity</span>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <SelectWithOther
+          value={row.original.ethnicity ?? ""}
+          placeholder=""
+          onChange={(val) => handleFieldChange(row.original.id, 'ethnicity', val)}
+          onFocus={() => handleCellFocus && handleCellFocus(row.original.id, 'ethnicity')}
+          onBlur={() => handleCellBlur && handleCellBlur()}
+          isDark={isDark}
+          studentId={row.original.id}
+          activeCursorsRef={activeCursorsRef}
+          fieldName="ethnicity"
+          predefined={ETHNICITY_PREDEFINED}
+          inputPlaceholder="Type ethnicity..."
+          className={cn(
+            "h-10 px-3 font-semibold text-[13px] border-none focus:ring-0 bg-transparent rounded-none w-full",
+            isDark ? "text-white" : "text-slate-900"
+          )}
+        />
+      ),
+      meta: { isEditable: true },
+      size: 160,
     },
     {
       accessorKey: "gender",
@@ -612,7 +646,7 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { sync_status, first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
+        const { sync_status, first_name, last_name, age, last_grade_completed, home_zip_code, race, ethnicity, gender, first_language, total_program_hours } = row.original;
 
         const fields = [
           first_name,
@@ -620,7 +654,8 @@ export const getColumns = ({
           age,
           last_grade_completed,
           home_zip_code,
-          race_ethnicity,
+          race,
+          ethnicity,
           gender,
           first_language,
           ...(isAdmin ? [total_program_hours] : [])
@@ -665,14 +700,15 @@ export const getColumns = ({
         </div>
       ),
       cell: ({ row }) => {
-        const { first_name, last_name, age, last_grade_completed, home_zip_code, race_ethnicity, gender, first_language, total_program_hours } = row.original;
+        const { first_name, last_name, age, last_grade_completed, home_zip_code, race, ethnicity, gender, first_language, total_program_hours } = row.original;
         const fields = [
           first_name,
           last_name,
           age,
           last_grade_completed,
           home_zip_code,
-          race_ethnicity,
+          race,
+          ethnicity,
           gender,
           first_language,
           ...(isAdmin ? [total_program_hours] : [])

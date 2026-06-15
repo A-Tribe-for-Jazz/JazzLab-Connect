@@ -25,7 +25,8 @@ export function hasAnyStudentData(s: any): boolean {
     (s.age !== '' && s.age !== null && s.age !== undefined) ||
     s.last_grade_completed?.trim() ||
     s.home_zip_code?.trim() ||
-    s.race_ethnicity?.trim() ||
+    s.race?.trim() ||
+    s.ethnicity?.trim() ||
     s.gender?.trim() ||
     s.first_language?.trim() ||
     s.notes?.trim()
