@@ -273,7 +273,8 @@ const GRADE_PREDEFINED = [
   "10th Grade",
   "11th Grade",
   "12th Grade",
-  "College/Post-Secondary"
+  "College/Post-Secondary",
+  "CSCC"
 ];
 
 const RACE_PREDEFINED = [
