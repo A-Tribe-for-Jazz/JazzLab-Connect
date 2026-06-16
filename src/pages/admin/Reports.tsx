@@ -1461,6 +1461,48 @@ export default function AdminReports() {
                 })}
               </div>
             ))}
+
+            {/* Blank passports (2 pages of 6 cards each) */}
+            {[1, 2].map(pageIndex => (
+              <div key={`blank-page-${pageIndex}`} className="slips-page-sheet">
+                {[...Array(6)].map((_, cardIndex) => (
+                  <div key={`blank-card-${pageIndex}-${cardIndex}`} className="slip-card">
+                    <div className="slip-card-header">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <div className="slip-student-name" style={{ fontSize: '15px', color: '#94a3b8', borderBottom: '1px solid #cbd5e1', width: '70%', height: '24px' }}>Name:</div>
+                        <div className="slip-age" style={{ color: '#94a3b8', borderBottom: '1px solid #cbd5e1', width: '25%', height: '24px', textAlign: 'left' }}>Age:</div>
+                      </div>
+                      <div className="slip-org-name" style={{ color: '#94a3b8', borderBottom: '1px solid #cbd5e1', width: '100%', height: '20px', marginTop: '6px' }}>Organization:</div>
+                    </div>
+                    <div className="slip-card-body">
+                      <div className="slip-your-labs-title">Your Labs:</div>
+                      <table className="slip-labs-table">
+                        <tbody>
+                          <tr>
+                            <td className="slip-time-col">{s1 ? `${formatTimeString(s1.start_time)} - ${formatTimeString(s1.end_time)}` : "10:00 - 10:50"}</td>
+                            <td className="slip-lab-col">
+                              <div style={{ borderBottom: '1px dashed #cbd5e1', height: '18px', width: '100%' }}></div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="slip-time-col">{s2 ? `${formatTimeString(s2.start_time)} - ${formatTimeString(s2.end_time)}` : "11:00 - 11:50"}</td>
+                            <td className="slip-lab-col">
+                              <div style={{ borderBottom: '1px dashed #cbd5e1', height: '18px', width: '100%' }}></div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="slip-time-col">{s3 ? `${formatTimeString(s3.start_time)} - ${formatTimeString(s3.end_time)}` : "12:30 - 01:20"}</td>
+                            <td className="slip-lab-col">
+                              <div style={{ borderBottom: '1px dashed #cbd5e1', height: '18px', width: '100%' }}></div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
       </div>
