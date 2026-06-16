@@ -55,7 +55,7 @@ export function getLabRoom(labName: string): string {
   if (nameLower.includes('producer')) return 'Room 108';
   if (nameLower.includes('afro-futuristic') || nameLower.includes('afrofuturistic')) return 'Room 110';
   if (nameLower.includes('pixel beat') || nameLower.includes('pixelbeats')) return 'Room 112';
-  if (nameLower.includes('virtual reality') || nameLower.includes('virtureality') || nameLower.includes('vr')) return 'Room 118';
+  if (nameLower.includes('virtual reality') || nameLower.includes('virtureality') || nameLower.includes('vr')) return 'Room 124';
   if (nameLower.includes('reverb')) return 'Room 120';
   if (nameLower.includes('remix')) return 'Room 122';
   if (nameLower.includes('conga')) return 'Room 125';
