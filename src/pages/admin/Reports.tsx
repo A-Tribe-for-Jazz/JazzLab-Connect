@@ -64,6 +64,47 @@ export function getLabRoom(labName: string): string {
   return '';
 }
 
+const HIDE_AGE_STUDENTS_LIST = [
+  "mahari allen",
+  "lunabella battise",
+  "janoris cage",
+  "makari clinton",
+  "braiden coran",
+  "amiyah cox",
+  "meskeren giday",
+  "gregory harris",
+  "kamaiya johnson",
+  "willow jones",
+  "deven king-fields jr.",
+  "kamayah malcom",
+  "sir'lamar mccloud",
+  "kaeden moss",
+  "kameron parker-moore",
+  "roman myers",
+  "hayden roberts",
+  "eryk rasheed-jones",
+  "messiah samuels",
+  "sanaa sharif",
+  "brailynn white",
+  "mikal smith",
+  "braxton smith",
+  "donavon williams",
+  "karsen white"
+];
+
+function shouldHideAgeForStudent(studentName: string, orgName: string): boolean {
+  if (!studentName || !orgName) return false;
+  if (!orgName.toLowerCase().includes('ywca')) return false;
+  
+  const normalized = studentName
+    .toLowerCase()
+    .replace(/['’‘`"]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+    
+  return HIDE_AGE_STUDENTS_LIST.includes(normalized);
+}
+
 export default function AdminReports() {
   const { isDark }: any = useOutletContext();
 
@@ -1418,7 +1459,9 @@ export default function AdminReports() {
                       <div className="slip-card-header">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                           <div className="slip-student-name">{stud.studentName}</div>
-                          <div className="slip-age">Age: {stud.studentAge}</div>
+                          <div className="slip-age">
+                            {shouldHideAgeForStudent(stud.studentName, stud.organizationName) ? '' : `Age: ${stud.studentAge}`}
+                          </div>
                         </div>
                         <div className="slip-org-name">{stud.organizationName}</div>
                       </div>
