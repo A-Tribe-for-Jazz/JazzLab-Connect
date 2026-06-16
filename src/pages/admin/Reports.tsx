@@ -64,45 +64,39 @@ export function getLabRoom(labName: string): string {
   return '';
 }
 
-const HIDE_AGE_STUDENTS_LIST = [
-  "mahari allen",
-  "lunabella battise",
-  "janoris cage",
-  "makari clinton",
-  "braiden coran",
-  "amiyah cox",
-  "meskeren giday",
-  "gregory harris",
-  "kamaiya johnson",
-  "willow jones",
-  "deven king-fields jr.",
-  "kamayah malcom",
-  "sir'lamar mccloud",
-  "kaeden moss",
-  "kameron parker-moore",
-  "roman myers",
-  "hayden roberts",
-  "eryk rasheed-jones",
-  "messiah samuels",
-  "sanaa sharif",
-  "brailynn white",
-  "mikal smith",
-  "braxton smith",
-  "donavon williams",
-  "karsen white"
-];
+const HIDE_AGE_STUDENTS = new Set([
+  'mahariallen',
+  'lunabellabattise',
+  'janoriscage',
+  'makariclinton',
+  'braidencoran',
+  'amiyahcox',
+  'meskerengiday',
+  'gregoryharris',
+  'kamaiyajohnson',
+  'willowjones',
+  'devenkingfieldsjr',
+  'kamayahmalcom',
+  'sirlamarmccloud',
+  'kaedenmoss',
+  'kameronparkermoore',
+  'romanmyers',
+  'haydenroberts',
+  'erykrasheedjones',
+  'messiahsamuels',
+  'sanaasharif',
+  'brailynnwhite',
+  'mikalsmith',
+  'braxtonsmith',
+  'donavonwilliams',
+  'karsenwhite'
+]);
 
-function shouldHideAgeForStudent(studentName: string, orgName: string): boolean {
-  if (!studentName || !orgName) return false;
-  if (!orgName.toLowerCase().includes('ywca')) return false;
-  
-  const normalized = studentName
-    .toLowerCase()
-    .replace(/['’‘`"]/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-    
-  return HIDE_AGE_STUDENTS_LIST.includes(normalized);
+function shouldHideAge(studentName: string, organizationName: string): boolean {
+  if (!studentName || !organizationName) return false;
+  if (organizationName !== 'YWCA Safe & Sound') return false;
+  const normalized = studentName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return HIDE_AGE_STUDENTS.has(normalized);
 }
 
 export default function AdminReports() {
@@ -977,7 +971,7 @@ export default function AdminReports() {
                         <div>
                           <div className="flex justify-between items-baseline gap-2">
                             <h3 className="font-black text-xl tracking-tight text-slate-900 dark:text-white truncate" title={stud.studentName}>{stud.studentName}</h3>
-                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Age: {stud.studentAge}</span>
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Age: {shouldHideAge(stud.studentName, stud.organizationName) ? "___" : stud.studentAge}</span>
                           </div>
                           <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">{stud.organizationName}</p>
                           <div className={cn("h-px my-3", isDark ? "bg-white/5" : "bg-slate-100")} />
@@ -1459,9 +1453,7 @@ export default function AdminReports() {
                       <div className="slip-card-header">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                           <div className="slip-student-name">{stud.studentName}</div>
-                          <div className="slip-age">
-                            {shouldHideAgeForStudent(stud.studentName, stud.organizationName) ? '' : `Age: ${stud.studentAge}`}
-                          </div>
+                          <div className="slip-age">Age: {shouldHideAge(stud.studentName, stud.organizationName) ? "___" : stud.studentAge}</div>
                         </div>
                         <div className="slip-org-name">{stud.organizationName}</div>
                       </div>
