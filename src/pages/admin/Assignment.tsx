@@ -63,6 +63,7 @@ export default function AdminAssignment() {
       const selectedDay = campDays.find(d => d.id === selectedDayId);
       if (selectedDay) setCurrentMonth(new Date(selectedDay.date + 'T00:00:00'));
       setSelectedUtilizationSession('all');
+      fetchPlacements();
     }
   }, [selectedDayId, campDays]);
 
@@ -116,14 +117,16 @@ export default function AdminAssignment() {
   };
 
   const fetchPlacements = async () => {
+    if (!selectedDayId) return;
     try {
       const { data, error } = await supabase
         .from('assignments')
         .select(`
           id, pick_number, student_id, lab_session_id,
           students ( id, first_name, last_name, age, organization_id, organizations (name) ),
-          lab_sessions ( id, camp_day_id, time_slot_id, lab_id, labs (name) )
-        `);
+          lab_sessions!inner ( id, camp_day_id, time_slot_id, lab_id, labs (name) )
+        `)
+        .eq('lab_sessions.camp_day_id', selectedDayId);
       if (error) throw error;
       setAllAssignments(data || []);
     } catch (error) {
