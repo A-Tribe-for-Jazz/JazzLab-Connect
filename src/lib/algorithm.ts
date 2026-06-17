@@ -201,16 +201,22 @@ export async function runAssignmentAlgorithm(campDayId: string) {
         studentPrefsScores[student.id][key] = score;
       });
 
-      // Pre-sort tuples based on preference scores (highest utility first) and limit to top 150
+      // Pre-sort tuples based on preference scores (highest utility first)
       const tupleWithScore = rawTuples.map(tuple => {
         const key = tuple.join('_');
         const score = studentPrefsScores[student.id][key] || 0;
         return { tuple, score };
       });
       tupleWithScore.sort((a, b) => b.score - a.score);
-      // We limit to the top 150 tuples to keep the CSP search domain highly focused and fast
-      studentTuples[student.id] = tupleWithScore.slice(0, 150).map(x => x.tuple);
+      // Keep all valid permutations to avoid discarding mathematically necessary placements
+      studentTuples[student.id] = tupleWithScore.map(x => x.tuple);
     }
+
+    // Precompute lab capacities map for O(1) lookup in backtrack loop
+    const labCapacityLimits: { [labId: string]: number } = {};
+    activeLabs.forEach(lab => {
+      labCapacityLimits[lab.id] = lab.capacity_per_session ?? 20;
+    });
 
     // 4. Run Backtracking solver with Randomized Restarts and Capacity Slack Fallback
     const MAX_SLACK = 5; // Allow going up to +5 over capacity if absolutely necessary
@@ -229,6 +235,41 @@ export async function runAssignmentAlgorithm(campDayId: string) {
 
       // Try strictness 2 (must get top 1 or 2 pick), then 1 (must get at least one choice), then 0 (no force/full fallback)
       for (const strictness of [2, 1, 0]) {
+        // Pre-filter student tuples for the current strictness level to optimize backtracking speed
+        const filteredTuples: { [studentId: string]: string[][] } = {};
+        for (const student of sortedStudents) {
+          const tuples = studentTuples[student.id];
+          const prefMap = studentPrefsMap[student.id] || {};
+          const eligiblePrefIds = Object.keys(prefMap).filter(labId => {
+            const lab = activeLabs.find(l => l.id === labId);
+            if (!lab) return false;
+            if (lab.min_age == null) return true;
+            return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
+          });
+          const hasEligiblePrefs = eligiblePrefIds.length > 0;
+
+          filteredTuples[student.id] = tuples.filter(tuple => {
+            if (!hasEligiblePrefs) return true;
+
+            const assignedRanks = tuple
+              .map(labId => prefMap[labId])
+              .filter(rank => rank !== undefined);
+
+            if (strictness === 2) {
+              const hasAgeEligibleTop1Or2 = eligiblePrefIds.some(labId => prefMap[labId] === 1 || prefMap[labId] === 2);
+              if (hasAgeEligibleTop1Or2) {
+                const hasTop1Or2 = assignedRanks.some(r => r === 1 || r === 2);
+                if (!hasTop1Or2) return false;
+              } else {
+                if (assignedRanks.length === 0) return false;
+              }
+            } else if (strictness === 1) {
+              if (assignedRanks.length === 0) return false;
+            }
+            return true;
+          });
+        }
+
         // Run restarts to find a solution under this strictness/slack combination
         for (let restart = 0; restart < 15; restart++) {
           // Shuffle students within the same age group to diversify search order
@@ -285,7 +326,7 @@ export async function runAssignmentAlgorithm(campDayId: string) {
             if (backtrackCount > BACKTRACK_LIMIT) return false;
 
             const student = shuffledStudents[index];
-            const tuples = studentTuples[student.id];
+            const tuples = filteredTuples[student.id];
 
             // LCV dynamic sorting: evaluate top valid tuples, limit to 100 to prevent freezes
             const validTuples: { tuple: string[]; val: number }[] = [];
@@ -298,8 +339,7 @@ export async function runAssignmentAlgorithm(campDayId: string) {
                 const labId = tuple[slotIdx];
                 const slotId = activeTimeSlots[slotIdx].id;
                 const cap = capacities[slotId]?.[labId] || 0;
-                const lab = activeLabs.find(l => l.id === labId);
-                const capLimit = (lab?.capacity_per_session ?? 20) + capacitySlack;
+                const capLimit = labCapacityLimits[labId] + capacitySlack;
 
                 if (cap >= capLimit) {
                   isOverCapacity = true;
@@ -315,34 +355,6 @@ export async function runAssignmentAlgorithm(campDayId: string) {
               }
 
               if (isOverCapacity) continue;
-
-              // Enforce preference satisfaction constraints
-              const prefMap = studentPrefsMap[student.id] || {};
-              const eligiblePrefIds = Object.keys(prefMap).filter(labId => {
-                const lab = activeLabs.find(l => l.id === labId);
-                if (!lab) return false;
-                if (lab.min_age == null) return true;
-                return student.age >= lab.min_age && student.age <= (lab.max_age ?? 999);
-              });
-              const hasEligiblePrefs = eligiblePrefIds.length > 0;
-
-              if (hasEligiblePrefs) {
-                const assignedRanks = tuple
-                  .map(labId => prefMap[labId])
-                  .filter(rank => rank !== undefined);
-
-                if (strictness === 2) {
-                  const hasAgeEligibleTop1Or2 = eligiblePrefIds.some(labId => prefMap[labId] === 1 || prefMap[labId] === 2);
-                  if (hasAgeEligibleTop1Or2) {
-                    const hasTop1Or2 = assignedRanks.some(r => r === 1 || r === 2);
-                    if (!hasTop1Or2) continue;
-                  } else {
-                    if (assignedRanks.length === 0) continue;
-                  }
-                } else if (strictness === 1) {
-                  if (assignedRanks.length === 0) continue;
-                }
-              }
 
               const key = tuple.join('_');
               const utility = studentPrefsScores[student.id]?.[key] || 0;
