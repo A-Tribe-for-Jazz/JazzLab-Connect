@@ -71,7 +71,9 @@ export async function runAssignmentAlgorithm(campDayId: string) {
     const groupedOrgIds = new Set<string>();
     (orgs || []).forEach((org: any) => {
       const dbVal = org.group_together;
-      const localFallback = localStorage.getItem(`group_together_fallback_${org.id}`) === 'true';
+      const localFallback = typeof localStorage !== 'undefined'
+        ? localStorage.getItem(`group_together_fallback_${org.id}`) === 'true'
+        : false;
       if (dbVal || (dbVal === undefined && localFallback) || localFallback) {
         groupedOrgIds.add(org.id);
       }
@@ -94,13 +96,26 @@ export async function runAssignmentAlgorithm(campDayId: string) {
 
     const studentIds = activeStudents.map(s => s.id);
 
-    // Fetch preferences for these students
-    const { data: preferences, error: prefError } = await supabase
-      .from('preferences')
-      .select('*')
-      .in('student_id', studentIds);
-
-    if (prefError) throw prefError;
+    // Fetch preferences for these students in chunks of 100 to avoid Supabase 1000 row select limit
+    const prefChunkSize = 100;
+    const preferences: any[] = [];
+    const prefPromises = [];
+    for (let i = 0; i < studentIds.length; i += prefChunkSize) {
+      const chunk = studentIds.slice(i, i + prefChunkSize);
+      prefPromises.push(
+        supabase
+          .from('preferences')
+          .select('*')
+          .in('student_id', chunk)
+      );
+    }
+    const prefResults = await Promise.all(prefPromises);
+    for (const res of prefResults) {
+      if (res.error) throw res.error;
+      if (res.data) {
+        preferences.push(...res.data);
+      }
+    }
 
     // 2. Ensure lab sessions exist for this camp day
     const { data: existingSessions, error: sessError } = await supabase
